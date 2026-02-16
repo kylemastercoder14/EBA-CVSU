@@ -23,7 +23,7 @@ const Page = () => {
   useEffect(() => {
     const storedKey = localStorage.getItem("eba_access_key");
     if (storedKey === "EBA-2026-KIOSK") {
-      router.push("/dashboard");
+      router.push("/admin/dashboard");
     }
   }, [router]);
 
@@ -44,7 +44,7 @@ const Page = () => {
       toast.success("Access granted!");
       setOpen(false);
       // If valid, navigate to dashboard
-      router.push("/dashboard");
+      router.push("/admin/dashboard");
     }
   };
 
