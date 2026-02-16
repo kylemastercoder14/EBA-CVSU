@@ -21,6 +21,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const data = {
   user: {
@@ -68,24 +73,29 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const {state} = useSidebar()
+  const { state } = useSidebar();
   return (
     <Sidebar collapsible="icon" {...props}>
       {state !== "collapsed" && (
-		<SidebarHeader className="border-b">
-        <div className="p-3 text-white">
-          <h3 className="text-xl font-semibold font-serif">EBA System</h3>
-          <p className="text-base">Management Dashboard</p>
-        </div>
-      </SidebarHeader>
-	  )}
+        <SidebarHeader className="border-b">
+          <div className="p-3 text-white">
+            <h3 className="text-xl font-semibold font-serif">EBA System</h3>
+            <p className="text-base">Management Dashboard</p>
+          </div>
+        </SidebarHeader>
+      )}
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter className="border-t">
         <NavUser user={data.user} />
       </SidebarFooter>
-	  <SidebarTrigger className="-ml-1 bg-[#07484A] rounded-full absolute bottom-50 text-white -right-5 hover:bg-[#07484A] shadow-xl hover:text-white" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <SidebarTrigger className="-ml-1 bg-[#07484A] rounded-full absolute bottom-50 text-white -right-5 hover:bg-[#07484A] shadow-xl hover:text-white" />
+        </TooltipTrigger>
+        <TooltipContent>{state === "expanded" ? "Hide" : "Show"} Sidebar</TooltipContent>
+      </Tooltip>
     </Sidebar>
   );
 }

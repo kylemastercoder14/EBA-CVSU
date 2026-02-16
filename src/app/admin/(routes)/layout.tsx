@@ -21,7 +21,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
     >
       <AppSidebar variant="sidebar" />
       <SidebarInset>
-        <main className='px-20 py-15'>
+        <main className='lg:px-20 lg:py-15 p-5'>
           {children}
         </main>
       </SidebarInset>
