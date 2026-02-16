@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserType {
+  STUDENT
+  VISITOR
+}
+
+enum OrderStage {
+  TO_CONFIRM
+  TO_PAY
+  PAID
+  COMPLETED
+}
+
+enum OrderReleaseStatus {
+  READY
+  RELEASED
+}
+
+enum PaymentMethod {
+  GCASH
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+}
+
+enum StockStatus {
+  NORMAL
+  LOW
+  CRITICAL
+}
+
+enum LogType {
+  ORDER
+  PAYMENT
+  ACTIVITY
+  SYSTEM
+}
+
+enum LogCategory {
+  ORDER_CREATED
+  PAYMENT_VERIFIED
+  STOCK_UPDATED
+  LOW_STOCK_ALERT
+  ORDER_RELEASED
+  PAYMENT_PENDING
+}
+
+enum LogStatus {
+  SUCCESS
+  INFO
+  WARNING
+}
+
+model User {
+  id            String      @id
+  type          UserType
+  fullName      String
+  mobileNumber  String
+  studentNumber String?
+  cvsuEmail     String?
+  password      String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orders        Order[]
+  systemLogs    SystemLog[] @relation("LogActorUser")
+
+  @@unique([studentNumber])
+  @@index([type])
+  @@index([mobileNumber])
+  @@map("users")
+}
+
+model Product {
+  id                 String           @id
+  name               String
+  category           String
+  imageUrl           String?
+  isActive           Boolean          @default(true)
+  isVisitorOrderable Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  variants           ProductVariant[]
+  stockItem          StockItem?
+  orderItems         OrderItem[]
+  systemLogs         SystemLog[]
+
+  @@index([name])
+  @@index([category])
+  @@map("products")
+}
+
+model ProductVariant {
+  id         String      @id
+  productId  String
+  size       String
+  price      Decimal     @db.Decimal(10, 2)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([productId, size])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model StockItem {
+  id           String      @id
+  productId    String      @unique
+  minStock     Int
+  maxStock     Int
+  currentStock Int
+  status       StockStatus @default(NORMAL)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  systemLogs   SystemLog[]
+
+  @@index([status])
+  @@map("stock_items")
+}
+
+model Order {
+  id            String             @id
+  orderNumber   String             @unique
+  userId        String
+  itemsSummary  String?
+  totalQuantity Int                @default(0)
+  pickupDate    DateTime?
+  stage         OrderStage         @default(TO_CONFIRM)
+  releaseStatus OrderReleaseStatus @default(READY)
+  paymentMethod PaymentMethod?
+  paymentStatus PaymentStatus      @default(PENDING)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  orderItems    OrderItem[]
+  payment       Payment?
+  systemLogs    SystemLog[]
+
+  @@index([userId])
+  @@index([stage])
+  @@index([releaseStatus])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String          @id
+  orderId          String
+  productId        String
+  productVariantId String?
+  quantity         Int
+  unitPrice        Decimal         @db.Decimal(10, 2)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([productVariantId])
+  @@map("order_items")
+}
+
+model Payment {
+  id         String        @id
+  orderId    String        @unique
+  amount     Decimal       @db.Decimal(10, 2)
+  reference  String
+  method     PaymentMethod
+  status     PaymentStatus @default(PENDING)
+  verifiedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  systemLogs SystemLog[]
+
+  @@index([method])
+  @@index([status])
+  @@index([reference])
+  @@map("payments")
+}
+
+model SystemLog {
+  id          String      @id
+  logCode     String      @unique
+  type        LogType
+  category    LogCategory
+  description String
+  status      LogStatus
+  actorName   String?     @default("System")
+  actorUserId String?
+  orderId     String?
+  paymentId   String?
+  productId   String?
+  stockItemId String?
+  createdAt   DateTime    @default(now())
+  actorUser   User?       @relation("LogActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  order       Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  payment     Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  product     Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  stockItem   StockItem?  @relation(fields: [stockItemId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([productId])
+  @@index([stockItemId])
+  @@map("system_logs")
+}

@@ -1,12 +1,16 @@
-import { Heading } from '@/components/Heading'
-import React from 'react'
+import { ProductClient } from "./_components/ProductClient";
+import { orpc } from "@/lib/orpc";
+import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
 
-const Page = () => {
+const Page = async () => {
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery(orpc.product.list.queryOptions());
   return (
-	<div>
-	  <Heading title='Product Management' description='Manage your product inventory and details' />
-	</div>
-  )
-}
+    <HydrateClient client={queryClient}>
+      <ProductClient />
+    </HydrateClient>
+  );
+};
 
-export default Page
+export default Page;
