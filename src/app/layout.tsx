@@ -1,7 +1,9 @@
+import "@/lib/orpc.server";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { QueryProviders } from "@/components/QueryProvider";
 import "./globals.css";
-import { Toaster } from '@/components/ui/sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +30,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster position='top-right' richColors />
+        <QueryProviders>{children}</QueryProviders>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

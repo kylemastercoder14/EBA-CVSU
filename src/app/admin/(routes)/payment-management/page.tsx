@@ -1,0 +1,158 @@
+"use client";
+
+import { Heading } from "@/components/Heading";
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IconCash, IconCircleCheckFilled, IconDeviceMobile } from '@tabler/icons-react';
+import { PaymentTabContent } from "./_components/PaymentTabContent";
+import { VerifyPaymentDialog } from "./_components/VerifyPaymentDialog";
+import { initialPayments } from "./_components/payments";
+import { Payment } from "./_components/types";
+
+const Page = () => {
+  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [activeTab, setActiveTab] = useState<"gcash" | "cash">("gcash");
+  const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  // Filter payments by method and search query
+  const filteredPayments = payments.filter((payment) => {
+    const matchesTab = activeTab === "gcash"
+      ? payment.paymentMethod === "GCash"
+      : payment.paymentMethod === "Cash";
+
+    const matchesSearch =
+      payment.orderNum.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.reference.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesTab && matchesSearch;
+  });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPayments = filteredPayments.slice(startIndex, endIndex);
+
+  // Reset to page 1 when items per page changes
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+  };
+
+  // Reset to page 1 when search query changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  // Reset to page 1 when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as "gcash" | "cash");
+    setCurrentPage(1);
+  };
+
+  const handleVerifyClick = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setIsVerifyDialogOpen(true);
+  };
+
+  const confirmVerify = () => {
+    if (selectedPayment) {
+      setPayments((prev) =>
+        prev.map((payment) =>
+          payment.id === selectedPayment.id
+            ? { ...payment, status: "Verified" }
+            : payment
+        )
+      );
+    }
+    setIsVerifyDialogOpen(false);
+    setSelectedPayment(null);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <Heading
+          title="Payment Management"
+          description="Verify and manage customer payments"
+        />
+      </div>
+
+      <div className="mt-10">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="w-full bg-[#E8E4DA] border-2 border-[#07484A] h-14! p-1">
+            <TabsTrigger
+              value="gcash"
+              className="flex-1 h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-base"
+            >
+              <IconDeviceMobile className='size-5' />
+              GCash Payment
+              <IconCircleCheckFilled className="ml-2 size-5 text-green-500" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="cash"
+              className="flex-1 h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-base"
+            >
+              <IconCash className='size-5' />
+              Cash Payments
+              <IconCircleCheckFilled className="ml-2 size-5 text-green-500" />
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="gcash" className="mt-6">
+            <PaymentTabContent
+              title="GCash Transactions"
+              description="Verify GCash reference numbers and approve payments"
+              payments={currentPayments}
+              paymentType="GCash"
+              searchQuery={searchQuery}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onSearchChange={handleSearchChange}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              onVerifyClick={handleVerifyClick}
+            />
+          </TabsContent>
+
+          <TabsContent value="cash" className="mt-6">
+            <PaymentTabContent
+              title="Cash Transactions"
+              description="Verify cash payments and approve transactions"
+              payments={currentPayments}
+              paymentType="Cash"
+              searchQuery={searchQuery}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              itemsPerPage={itemsPerPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onSearchChange={handleSearchChange}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              onVerifyClick={handleVerifyClick}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <VerifyPaymentDialog
+        isOpen={isVerifyDialogOpen}
+        payment={selectedPayment}
+        onOpenChange={setIsVerifyDialogOpen}
+        onConfirm={confirmVerify}
+      />
+    </div>
+  );
+};
+
+export default Page;
