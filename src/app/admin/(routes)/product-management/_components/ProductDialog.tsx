@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
@@ -35,14 +36,22 @@ import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 import { productFormSchema, ProductFormValues } from "@/validators/products";
 import { useEffect, useState } from "react";
+import { Product } from "./types";
 
 interface ProductDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  mode: "create" | "update";
+  product?: Product; // Optional, only for update mode
 }
 
-export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+export const ProductDialog = ({
+  isOpen,
+  onOpenChange,
+  mode,
+  product,
+}: ProductDialogProps) => {
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const form = useForm<ProductFormValues>({
@@ -50,6 +59,8 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
     defaultValues: {
       name: "",
       category: "",
+      isActive: true,
+      isVisitorOrderable: true,
       imageUrl: undefined,
       variants: [{ size: "", price: 0 }],
     },
@@ -60,6 +71,35 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
     name: "variants",
   });
 
+  // Derive image preview from props and state instead of using effect
+  const imagePreview = uploadedImagePreview || (mode === "update" && product?.image) || null;
+
+  // Set form values when editing
+  useEffect(() => {
+    if (mode === "update" && product && isOpen) {
+      form.reset({
+        name: product.name,
+        category: product.category,
+        isActive: product.isActive,
+        isVisitorOrderable: product.isVisitorOrderable,
+        imageUrl: undefined, // Will keep existing image unless changed
+        variants: product.variants.map((v) => ({
+          size: v.size,
+          price: v.price,
+        })),
+      });
+    } else if (mode === "create" && isOpen) {
+      form.reset({
+        name: "",
+        category: "",
+        isActive: true,
+        isVisitorOrderable: true,
+        imageUrl: undefined,
+        variants: [{ size: "", price: 0 }],
+      });
+    }
+  }, [mode, product, isOpen, form]);
+
   const createProductMutation = useMutation(
     orpc.product.create.mutationOptions({
       onSuccess: (newProduct) => {
@@ -69,11 +109,30 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
         });
         form.reset();
         onOpenChange(false);
-        setImagePreview(null)
+        setUploadedImagePreview(null);
       },
       onError: (error) => {
         toast.error(
           error.message || "Failed to create product. Please try again",
+        );
+      },
+    }),
+  );
+
+  const updateProductMutation = useMutation(
+    orpc.product.update.mutationOptions({
+      onSuccess: (updatedProduct) => {
+        toast.success(`Product "${updatedProduct.name}" updated successfully`);
+        queryClient.invalidateQueries({
+          queryKey: orpc.product.list.queryKey(),
+        });
+        form.reset();
+        onOpenChange(false);
+        setUploadedImagePreview(null);
+      },
+      onError: (error) => {
+        toast.error(
+          error.message || "Failed to update product. Please try again",
         );
       },
     }),
@@ -87,37 +146,44 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        setUploadedImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const onSubmit = (data: ProductFormValues) => {
-    createProductMutation.mutate(data);
+    if (mode === "create") {
+      createProductMutation.mutate(data);
+    } else {
+      // For update mode, include the product ID
+      updateProductMutation.mutate({
+        id: product!.id,
+        ...data,
+      });
+    }
   };
 
   const handleCancel = () => {
     form.reset();
+    setUploadedImagePreview(null);
     onOpenChange(false);
   };
 
-  // Reset form when dialog closes
-  useEffect(() => {
-    if (!isOpen) {
-      form.reset();
-    }
-  }, [isOpen, form]);
+  const isLoading =
+    createProductMutation.isPending || updateProductMutation.isPending;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl! bg-[#D3E9FF] max-h-[90vh]! overflow-y-auto! border-2 border-[#07484A]">
+      <DialogContent className="max-w-2xl! bg-[#D3E9FF] border-2 border-[#07484A]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#07484A]">
-            Add New Product
+            {mode === "create" ? "Add New Product" : "Update Product"}
           </DialogTitle>
           <DialogDescription className="text-[#07484A]/70">
-            Fill in the product details below to add a new item to your
-            inventory.
+            {mode === "create"
+              ? "Fill in the product details below to add a new item to your inventory."
+              : "Update the product details below."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -155,7 +221,7 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger className="bg-white w-full border-[#07484A]/30">
@@ -174,6 +240,44 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                 )}
               />
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="isVisitorOrderable"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border border-[#07484A]/20 bg-white/60 px-3 py-2">
+                      <FormLabel className="text-[#07484A] font-medium cursor-pointer">
+                        Visitor Orderable
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border border-[#07484A]/20 bg-white/60 px-3 py-2">
+                      <FormLabel className="text-[#07484A] font-medium cursor-pointer">
+                        Active Product
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {/* Variants Section */}
               <div className="grid gap-3">
                 <div className="flex items-center justify-between">
@@ -191,7 +295,7 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                   </Button>
                 </div>
 
-                <div className="space-y-3 max-h-75 overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-50 overflow-y-auto pr-2">
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
@@ -272,7 +376,7 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                 </p>
               </div>
 
-              {/* Image URL */}
+              {/* Image Upload */}
               <FormField
                 control={form.control}
                 name="imageUrl"
@@ -299,6 +403,11 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                             />
                           </div>
                         )}
+                        {mode === "update" && !imagePreview && product?.image && (
+                          <p className="text-xs text-[#07484A]/60">
+                            Current image will be kept if no new image is uploaded
+                          </p>
+                        )}
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -312,23 +421,25 @@ export const ProductDialog = ({ isOpen, onOpenChange }: ProductDialogProps) => {
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
-                disabled={createProductMutation.isPending}
+                disabled={isLoading}
                 className="border-[#07484A] text-[#07484A] hover:bg-[#07484A]/10"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={createProductMutation.isPending}
+                disabled={isLoading}
                 className="bg-[#07484A] hover:bg-[#07484A]/90 text-white"
               >
-                {createProductMutation.isPending ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
+                    {mode === "create" ? "Creating..." : "Updating..."}
                   </>
-                ) : (
+                ) : mode === "create" ? (
                   "Add Product"
+                ) : (
+                  "Update Product"
                 )}
               </Button>
             </DialogFooter>

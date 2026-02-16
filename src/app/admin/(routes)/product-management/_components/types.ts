@@ -8,5 +8,7 @@ export type Product = {
   image: string;
   name: string;
   category: string;
+  isActive: boolean;
+  isVisitorOrderable: boolean;
   variants: Variant[];
 };

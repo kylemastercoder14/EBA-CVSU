@@ -3,6 +3,8 @@ import z from "zod";
 export const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   category: z.string().min(1, "Category is required"),
+  isActive: z.boolean(),
+  isVisitorOrderable: z.boolean(),
   imageUrl: z.instanceof(File).optional(),
   variants: z
     .array(
