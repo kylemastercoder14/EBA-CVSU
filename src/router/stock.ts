@@ -1,14 +1,12 @@
 import { StockStatus } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { base } from "@/middlewares/base";
-import { z } from "zod";
-
-const updateStockSchema = z.object({
-  id: z.string().min(1, "Stock item ID is required"),
-  minStock: z.number().int().min(0, "Minimum stock must be 0 or greater"),
-  maxStock: z.number().int().min(0, "Maximum stock must be 0 or greater"),
-  currentStock: z.number().int().min(0, "Current stock must be 0 or greater"),
-});
+import {
+  listStocksInputSchema,
+  listStocksOutputSchema,
+  updateStockOutputSchema,
+  updateStockSchema,
+} from "@/validators/stock";
 
 const getStockStatus = (minStock: number, currentStock: number): StockStatus => {
   if (currentStock <= minStock * 0.5) {
@@ -27,23 +25,8 @@ export const listStocks = base
     summary: "list all stocks",
     tags: ["stocks"],
   })
-  .input(z.void())
-  .output(
-    z.object({
-      stocks: z.array(
-        z.object({
-          id: z.string(),
-          productId: z.string(),
-          productName: z.string(),
-          category: z.string(),
-          minStock: z.number(),
-          maxStock: z.number(),
-          currentStock: z.number(),
-          status: z.enum(StockStatus),
-        }),
-      ),
-    }),
-  )
+  .input(listStocksInputSchema)
+  .output(listStocksOutputSchema)
   .handler(async () => {
     const stockItems = await prisma.stockItem.findMany({
       include: {
@@ -79,18 +62,7 @@ export const updateStock = base
     tags: ["stocks"],
   })
   .input(updateStockSchema)
-  .output(
-    z.object({
-      id: z.string(),
-      productId: z.string(),
-      productName: z.string(),
-      category: z.string(),
-      minStock: z.number(),
-      maxStock: z.number(),
-      currentStock: z.number(),
-      status: z.enum(StockStatus),
-    }),
-  )
+  .output(updateStockOutputSchema)
   .handler(async ({ input, errors }) => {
     if (input.maxStock < input.minStock) {
       throw errors.BAD_REQUEST();

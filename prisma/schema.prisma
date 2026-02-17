@@ -62,6 +62,12 @@ enum LogStatus {
   WARNING
 }
 
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+}
+
 model User {
   id            String      @id
   type          UserType
@@ -224,4 +230,37 @@ model SystemLog {
   @@index([productId])
   @@index([stockItemId])
   @@map("system_logs")
+}
+
+model Staff {
+  id           String   @id
+  fullName     String
+  accessKey    String   @unique
+  mobileNumber String
+  role         String   @default("STAFF")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  notifications Notification[]
+
+  @@index([fullName])
+  @@index([accessKey])
+  @@map("staff")
+}
+
+model Notification {
+  id        String           @id
+  staffId   String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  staff     Staff            @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }

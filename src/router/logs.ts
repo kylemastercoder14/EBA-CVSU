@@ -1,7 +1,6 @@
-import { LogCategory, LogStatus, LogType } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { base } from "@/middlewares/base";
-import { z } from "zod";
+import { listLogsInputSchema, listLogsOutputSchema } from "@/validators/logs";
 
 export const listLogs = base
   .route({
@@ -10,23 +9,8 @@ export const listLogs = base
     summary: "list all logs",
     tags: ["logs"],
   })
-  .input(z.void())
-  .output(
-    z.object({
-      logs: z.array(
-        z.object({
-          id: z.string(),
-          logCode: z.string(),
-          type: z.enum(LogType),
-          category: z.enum(LogCategory),
-          description: z.string(),
-          actorName: z.string(),
-          status: z.enum(LogStatus),
-          createdAt: z.string(),
-        }),
-      ),
-    }),
-  )
+  .input(listLogsInputSchema)
+  .output(listLogsOutputSchema)
   .handler(async () => {
     const logs = await prisma.systemLog.findMany({
       orderBy: {

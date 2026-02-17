@@ -3,7 +3,7 @@
 import { Heading } from "@/components/Heading";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ProductTable } from "./ProductTable";
 import { ProductPagination } from "./ProductPagination";
@@ -36,7 +36,7 @@ type ProductSortOption = "name_asc" | "name_desc" | "id_asc" | "category_asc";
 export const ProductClient = () => {
   const queryClient = useQueryClient();
   const {
-    data: { products },
+    data: { products: rawProducts },
   } = useSuspenseQuery(orpc.product.list.queryOptions());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "update">("create");
@@ -47,30 +47,44 @@ export const ProductClient = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
+  // Memoize products to prevent dependency changes on every render
+  const products = useMemo(() => rawProducts, [rawProducts]);
+
   // Filter products based on search query
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [products, searchQuery],
   );
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "name_desc":
-        return b.name.localeCompare(a.name);
-      case "id_asc":
-        return a.id.localeCompare(b.id);
-      case "category_asc":
-        return a.category.localeCompare(b.category);
-      case "name_asc":
-      default:
-        return a.name.localeCompare(b.name);
-    }
-  });
+  const sortedProducts = useMemo(
+    () =>
+      [...filteredProducts].sort((a, b) => {
+        switch (sortBy) {
+          case "name_desc":
+            return b.name.localeCompare(a.name);
+          case "id_asc":
+            return a.id.localeCompare(b.id);
+          case "category_asc":
+            return a.category.localeCompare(b.category);
+          case "name_asc":
+          default:
+            return a.name.localeCompare(b.name);
+        }
+      }),
+    [filteredProducts, sortBy],
+  );
 
   // Calculate pagination
   const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentProducts = sortedProducts.slice(startIndex, endIndex);
+  const currentProducts = useMemo(
+    () => sortedProducts.slice(startIndex, endIndex),
+    [sortedProducts, startIndex, endIndex],
+  );
 
   // Reset to page 1 when items per page changes
   const handleItemsPerPageChange = (value: string) => {

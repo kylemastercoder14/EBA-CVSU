@@ -8,6 +8,7 @@ import {
   IconLogs,
   IconPackage,
   IconShoppingBag,
+  IconUsers,
   IconWallet,
 } from "@tabler/icons-react";
 
@@ -28,11 +29,6 @@ import {
 } from "@/components/ui/tooltip";
 
 const data = {
-  user: {
-    name: "Admin User",
-    email: "admin@eba.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -48,6 +44,11 @@ const data = {
       title: "Stock Management",
       url: "/admin/stock-management",
       icon: IconPackage,
+    },
+    {
+      title: "Staff Management",
+      url: "/admin/staff-management",
+      icon: IconUsers,
     },
     {
       title: "Payment Management",
@@ -74,6 +75,33 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { state } = useSidebar();
+  const [currentUser, setCurrentUser] = React.useState({
+    name: "Staff User",
+    email: "No session loaded",
+    avatar: "/avatars/shadcn.jpg",
+  });
+
+  React.useEffect(() => {
+    const rawSession = localStorage.getItem("eba_staff_session");
+    if (!rawSession) return;
+
+    try {
+      const session = JSON.parse(rawSession) as {
+        fullName?: string;
+        mobileNumber?: string;
+        role?: string;
+      };
+
+      setCurrentUser({
+        name: session.fullName || "Staff User",
+        email: `${session.role || "STAFF"} • ${session.mobileNumber || "No mobile"}`,
+        avatar: "/avatars/shadcn.jpg",
+      });
+    } catch {
+      // Keep fallback user data if session parsing fails.
+    }
+  }, []);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       {state !== "collapsed" && (
@@ -88,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter className="border-t">
-        <NavUser user={data.user} />
+        <NavUser user={currentUser} />
       </SidebarFooter>
       <Tooltip>
         <TooltipTrigger asChild>
