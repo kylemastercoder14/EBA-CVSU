@@ -1,4 +1,4 @@
-export type StockStatus = "Normal" | "Low" | "Critical";
+import { StockStatus } from "@/generated/prisma";
 
 export type StockItem = {
   id: string;

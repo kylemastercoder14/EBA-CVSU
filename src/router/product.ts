@@ -1,14 +1,17 @@
 import { saveFileLocally } from "@/lib/file-upload";
 import { prisma } from "@/lib/prisma";
 import { base } from "@/middlewares/base";
-import { productFormSchema } from "@/validators/products";
+import {
+  deleteProductInputSchema,
+  deleteProductOutputSchema,
+  listProductsInputSchema,
+  listProductsOutputSchema,
+  productFormSchema,
+  productMutationOutputSchema,
+  updateProductSchema,
+} from "@/validators/products";
 import { unlink } from "fs/promises";
 import { basename, join } from "path";
-import { z } from "zod";
-
-const updateProductSchema = productFormSchema.extend({
-  id: z.string().min(1, "Product ID is required"),
-});
 
 export const listProducts = base
   .route({
@@ -17,27 +20,8 @@ export const listProducts = base
     summary: "list all products",
     tags: ["products"],
   })
-  .input(z.void())
-  .output(
-    z.object({
-      products: z.array(
-        z.object({
-          id: z.string(),
-          image: z.string(),
-          name: z.string(),
-          category: z.string(),
-          isActive: z.boolean(),
-          isVisitorOrderable: z.boolean(),
-          variants: z.array(
-            z.object({
-              size: z.string(),
-              price: z.number(),
-            }),
-          ),
-        }),
-      ),
-    }),
-  )
+  .input(listProductsInputSchema)
+  .output(listProductsOutputSchema)
   .handler(async () => {
     const products = await prisma.product.findMany({
       include: {
@@ -69,21 +53,7 @@ export const createProduct = base
     tags: ["products"],
   })
   .input(productFormSchema)
-  .output(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      category: z.string(),
-      imageUrl: z.string().nullable(),
-      variants: z.array(
-        z.object({
-          id: z.string(),
-          size: z.string(),
-          price: z.number(),
-        }),
-      ),
-    }),
-  )
+  .output(productMutationOutputSchema)
   .handler(async ({ input, errors }) => {
     // Check for duplicate variant sizes
     const sizes = input.variants.map((v) => v.size);
@@ -220,7 +190,7 @@ export const createProduct = base
           minStock: 0,
           maxStock: 0,
           currentStock: 0,
-          status: "NORMAL",
+          status: "CRITICAL",
         },
       });
 
@@ -265,23 +235,7 @@ export const updateProduct = base
     tags: ["products"],
   })
   .input(updateProductSchema)
-  .output(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      category: z.string(),
-      imageUrl: z.string().nullable(),
-      isActive: z.boolean(),
-      isVisitorOrderable: z.boolean(),
-      variants: z.array(
-        z.object({
-          id: z.string(),
-          size: z.string(),
-          price: z.number(),
-        }),
-      ),
-    }),
-  )
+  .output(productMutationOutputSchema)
   .handler(async ({ input, errors }) => {
     const existingProduct = await prisma.product.findUnique({
       where: { id: input.id },
@@ -417,18 +371,8 @@ export const deleteProduct = base
     summary: "delete a product",
     tags: ["products"],
   })
-  .input(
-    z.object({
-      id: z.string().min(1, "Product ID is required"),
-    }),
-  )
-  .output(
-    z.object({
-      success: z.boolean(),
-      id: z.string(),
-      message: z.string(),
-    }),
-  )
+  .input(deleteProductInputSchema)
+  .output(deleteProductOutputSchema)
   .handler(async ({ input, errors }) => {
     const existingProduct = await prisma.product.findUnique({
       where: { id: input.id },

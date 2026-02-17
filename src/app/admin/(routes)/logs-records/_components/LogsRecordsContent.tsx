@@ -3,12 +3,18 @@ import { LogsFiltersCard } from "./LogsFiltersCard";
 import { LogsRecordsPagination } from "./LogsRecordsPagination";
 import { LogsRecordsTable } from "./LogsRecordsTable";
 import { LogRecord } from "./types";
+import { LogCategory, LogType } from "@/generated/prisma";
+
+type TypeFilter = LogType | "all";
+type CategoryFilter = LogCategory | "all";
+type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_asc";
 
 interface LogsRecordsContentProps {
   logs: LogRecord[];
   searchQuery: string;
-  typeFilter: string;
-  categoryFilter: string;
+  typeFilter: TypeFilter;
+  categoryFilter: CategoryFilter;
+  sortBy: SortOption;
   currentPage: number;
   totalPages: number;
   itemsPerPage: number;
@@ -18,6 +24,7 @@ interface LogsRecordsContentProps {
   onSearchChange: (value: string) => void;
   onTypeFilterChange: (value: string) => void;
   onCategoryFilterChange: (value: string) => void;
+  onSortChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
 }
@@ -27,6 +34,7 @@ export const LogsRecordsContent = ({
   searchQuery,
   typeFilter,
   categoryFilter,
+  sortBy,
   currentPage,
   totalPages,
   itemsPerPage,
@@ -36,6 +44,7 @@ export const LogsRecordsContent = ({
   onSearchChange,
   onTypeFilterChange,
   onCategoryFilterChange,
+  onSortChange,
   onPageChange,
   onItemsPerPageChange,
 }: LogsRecordsContentProps) => {
@@ -45,9 +54,11 @@ export const LogsRecordsContent = ({
         searchQuery={searchQuery}
         typeFilter={typeFilter}
         categoryFilter={categoryFilter}
+        sortBy={sortBy}
         onSearchChange={onSearchChange}
         onTypeFilterChange={onTypeFilterChange}
         onCategoryFilterChange={onCategoryFilterChange}
+        onSortChange={onSortChange}
       />
 
       <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">

@@ -4,6 +4,21 @@ import {
   listProducts,
   updateProduct,
 } from "@/router/product";
+import { listLogs } from "@/router/logs";
+import { listStocks, updateStock } from "@/router/stock";
+import { createStaff, deleteStaff, listStaff, updateStaff } from "@/router/staff";
+import {
+  getStaffSession,
+  loginStaff,
+  loginStudent,
+  registerStudent,
+} from "@/router/auth";
+import {
+  createNotification,
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/router/notifications";
 
 export const router = {
   product: {
@@ -11,5 +26,30 @@ export const router = {
     create: createProduct,
     update: updateProduct,
     delete: deleteProduct,
+  },
+  stock: {
+    list: listStocks,
+    update: updateStock,
+  },
+  logs: {
+    list: listLogs,
+  },
+  staff: {
+    list: listStaff,
+    create: createStaff,
+    update: updateStaff,
+    delete: deleteStaff,
+  },
+  auth: {
+    login: loginStaff,
+    session: getStaffSession,
+    registerStudent,
+    loginStudent,
+  },
+  notifications: {
+    list: listNotifications,
+    create: createNotification,
+    markRead: markNotificationRead,
+    markAllRead: markAllNotificationsRead,
   },
 };

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Edit2Icon, Trash2Icon } from "lucide-react";
+import { EditIcon, Trash2Icon } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,6 +11,11 @@ import {
 import { Product } from "./types";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ProductTableProps {
   products: Product[];
@@ -81,13 +86,13 @@ export const ProductTable = ({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="p-4 text-base font-medium">
+                <TableCell className="p-4 text-sm font-medium">
                   {product.name}
                 </TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">
                   {product.category}
                 </TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">
                   <div className="flex flex-wrap gap-1">
                     {product.variants.map((variant, idx) => (
                       <span
@@ -99,31 +104,51 @@ export const ProductTable = ({
                     ))}
                   </div>
                 </TableCell>
-                <TableCell className="p-4 text-base">{priceDisplay}</TableCell>
-                <TableCell className="p-4 text-base">
-                  <Badge variant={product.isVisitorOrderable ? "completed" : "destructive"}>{product.isVisitorOrderable ? "Yes" : "No"}</Badge>
+                <TableCell className="p-4 text-sm">{priceDisplay}</TableCell>
+                <TableCell className="p-4 text-sm">
+                  <Badge
+                    variant={
+                      product.isVisitorOrderable ? "completed" : "destructive"
+                    }
+                  >
+                    {product.isVisitorOrderable ? "Yes" : "No"}
+                  </Badge>
                 </TableCell>
-                <TableCell className="p-4 text-base">
-                  <Badge variant={product.isActive ? "completed" : "destructive"}>{product.isActive ? "Active" : "Inactive"}</Badge>
+                <TableCell className="p-4 text-sm">
+                  <Badge
+                    variant={product.isActive ? "completed" : "destructive"}
+                  >
+                    {product.isActive ? "Active" : "Inactive"}
+                  </Badge>
                 </TableCell>
                 <TableCell className="p-4">
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onEdit(product)}
-                      className="bg-white border-[#07484A] text-[#07484A] hover:bg-[#07484A] hover:text-white"
-                    >
-                      <Edit2Icon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onDelete(product)}
-                      className="bg-white border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
-                    >
-                      <Trash2Icon className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onEdit(product)}
+                          className="bg-white border-[#07484A] text-[#07484A] hover:bg-[#07484A] hover:text-white"
+                        >
+                          <EditIcon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit Product</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onDelete(product)}
+                          className="bg-white border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                        >
+                          <Trash2Icon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete Product</TooltipContent>
+                    </Tooltip>
                   </div>
                 </TableCell>
               </TableRow>

@@ -13,39 +13,70 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { orpc } from "@/lib/orpc";
 
 const Page = () => {
   const [open, setOpen] = useState(false);
   const [accessKey, setAccessKey] = useState("");
   const router = useRouter();
 
+  const loginMutation = useMutation(
+    orpc.auth.login.mutationOptions({
+      onSuccess: (result) => {
+        localStorage.setItem("eba_access_key", result.staff.accessKey);
+        localStorage.setItem("eba_staff_session", JSON.stringify(result.staff));
+        toast.success("Access granted!");
+        setOpen(false);
+        router.push("/admin/dashboard");
+      },
+      onError: () => {
+        localStorage.removeItem("eba_access_key");
+        localStorage.removeItem("eba_staff_session");
+        toast.error("Access key is invalid");
+      },
+    }),
+  );
+
   // Check if already authenticated
   useEffect(() => {
-    const storedKey = localStorage.getItem("eba_access_key");
-    if (storedKey === "EBA-2026-KIOSK") {
-      router.push("/admin/dashboard");
-    }
+    const checkSession = async () => {
+      const storedKey = localStorage.getItem("eba_access_key");
+      if (!storedKey) return;
+
+      try {
+        const session = await orpc.auth.session.call({
+          accessKey: storedKey,
+        });
+
+        if (session.loggedIn && session.staff) {
+          localStorage.setItem("eba_staff_session", JSON.stringify(session.staff));
+          router.push("/admin/dashboard");
+          return;
+        }
+      } catch {
+        // no-op, will clear local session below
+      }
+
+      localStorage.removeItem("eba_access_key");
+      localStorage.removeItem("eba_staff_session");
+    };
+
+    checkSession();
   }, [router]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accessKey) {
+    const normalizedKey = accessKey.trim().toUpperCase();
+
+    if (!normalizedKey) {
       toast.error("Please enter the access key");
       return;
     }
 
-    // Add your access key validation logic here
-    if (accessKey !== "EBA-2026-KIOSK") {
-      toast.error("Access key is invalid");
-      return;
-    } else {
-      // Store access key in localStorage
-      localStorage.setItem("eba_access_key", accessKey);
-      toast.success("Access granted!");
-      setOpen(false);
-      // If valid, navigate to dashboard
-      router.push("/admin/dashboard");
-    }
+    loginMutation.mutate({
+      accessKey: normalizedKey,
+    });
   };
 
   return (
@@ -80,7 +111,12 @@ const Page = () => {
               />
             </div>
 
-            <Button type="submit" size="lg" className="w-full text-lg h-12">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={loginMutation.isPending}
+              className="w-full text-lg h-12"
+            >
               Continue <ArrowRight className="size-5 ml-2" />
             </Button>
           </form>

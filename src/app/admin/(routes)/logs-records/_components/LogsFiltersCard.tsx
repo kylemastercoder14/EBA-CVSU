@@ -8,29 +8,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LogCategory, LogType } from "@/generated/prisma";
 import { SearchIcon } from "lucide-react";
+
+type TypeFilter = LogType | "all";
+type CategoryFilter = LogCategory | "all";
+type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_asc";
 
 interface LogsFiltersCardProps {
   searchQuery: string;
-  typeFilter: string;
-  categoryFilter: string;
+  typeFilter: TypeFilter;
+  categoryFilter: CategoryFilter;
+  sortBy: SortOption;
   onSearchChange: (value: string) => void;
   onTypeFilterChange: (value: string) => void;
   onCategoryFilterChange: (value: string) => void;
+  onSortChange: (value: string) => void;
 }
 
 export const LogsFiltersCard = ({
   searchQuery,
   typeFilter,
   categoryFilter,
+  sortBy,
   onSearchChange,
   onTypeFilterChange,
   onCategoryFilterChange,
+  onSortChange,
 }: LogsFiltersCardProps) => {
   return (
     <Card className="border-2 py-0! border-[#07484A] bg-[#B8D4D4] mb-6">
       <CardContent className="p-6">
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <div className="space-y-1">
             <Label className="text-sm font-medium text-[#07484A]">Search Logs</Label>
             <div className="relative">
@@ -54,10 +63,10 @@ export const LogsFiltersCard = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Order">Order</SelectItem>
-                <SelectItem value="Payment">Payment</SelectItem>
-                <SelectItem value="Activity">Activity</SelectItem>
-                <SelectItem value="System">System</SelectItem>
+                <SelectItem value="ORDER">Order</SelectItem>
+                <SelectItem value="PAYMENT">Payment</SelectItem>
+                <SelectItem value="ACTIVITY">Activity</SelectItem>
+                <SelectItem value="SYSTEM">System</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -70,12 +79,29 @@ export const LogsFiltersCard = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Order Created">Order Created</SelectItem>
-                <SelectItem value="Payment Verified">Payment Verified</SelectItem>
-                <SelectItem value="Stock Updated">Stock Updated</SelectItem>
-                <SelectItem value="Low Stock Alert">Low Stock Alert</SelectItem>
-                <SelectItem value="Order Released">Order Released</SelectItem>
-                <SelectItem value="Payment Pending">Payment Pending</SelectItem>
+                <SelectItem value="ORDER_CREATED">Order Created</SelectItem>
+                <SelectItem value="PAYMENT_VERIFIED">Payment Verified</SelectItem>
+                <SelectItem value="STOCK_UPDATED">Stock Updated</SelectItem>
+                <SelectItem value="LOW_STOCK_ALERT">Low Stock Alert</SelectItem>
+                <SelectItem value="ORDER_RELEASED">Order Released</SelectItem>
+                <SelectItem value="PAYMENT_PENDING">Payment Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-sm font-medium text-[#07484A]">Sort By</Label>
+            <Select value={sortBy} onValueChange={onSortChange}>
+              <SelectTrigger className="bg-white border-none w-full h-10!">
+                <SelectValue placeholder="Sort logs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt_desc">Newest First</SelectItem>
+                <SelectItem value="createdAt_asc">Oldest First</SelectItem>
+                <SelectItem value="id_asc">ID (A-Z)</SelectItem>
+                <SelectItem value="description_asc">
+                  Description (A-Z)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -3,7 +3,7 @@
 import { Heading } from "@/components/Heading";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ProductTable } from "./ProductTable";
 import { ProductPagination } from "./ProductPagination";
@@ -13,6 +13,13 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import { orpc } from "@/lib/orpc";
 import { Product } from "./types";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,29 +31,60 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+type ProductSortOption = "name_asc" | "name_desc" | "id_asc" | "category_asc";
+
 export const ProductClient = () => {
   const queryClient = useQueryClient();
   const {
-    data: { products },
+    data: { products: rawProducts },
   } = useSuspenseQuery(orpc.product.list.queryOptions());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "update">("create");
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
   const [productToDelete, setProductToDelete] = useState<Product | undefined>();
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<ProductSortOption>("name_asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
+  // Memoize products to prevent dependency changes on every render
+  const products = useMemo(() => rawProducts, [rawProducts]);
+
   // Filter products based on search query
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [products, searchQuery],
+  );
+
+  const sortedProducts = useMemo(
+    () =>
+      [...filteredProducts].sort((a, b) => {
+        switch (sortBy) {
+          case "name_desc":
+            return b.name.localeCompare(a.name);
+          case "id_asc":
+            return a.id.localeCompare(b.id);
+          case "category_asc":
+            return a.category.localeCompare(b.category);
+          case "name_asc":
+          default:
+            return a.name.localeCompare(b.name);
+        }
+      }),
+    [filteredProducts, sortBy],
   );
 
   // Calculate pagination
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+  const currentProducts = useMemo(
+    () => sortedProducts.slice(startIndex, endIndex),
+    [sortedProducts, startIndex, endIndex],
+  );
 
   // Reset to page 1 when items per page changes
   const handleItemsPerPageChange = (value: string) => {
@@ -57,6 +95,11 @@ export const ProductClient = () => {
   // Reset to page 1 when search query changes
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value as ProductSortOption);
     setCurrentPage(1);
   };
 
@@ -120,7 +163,20 @@ export const ProductClient = () => {
       <div className="mt-10">
         <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
           <CardHeader className="pb-4">
-            <SearchBar value={searchQuery} onChange={handleSearchChange} />
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+              <SearchBar value={searchQuery} onChange={handleSearchChange} />
+              <Select value={sortBy} onValueChange={handleSortChange}>
+                <SelectTrigger className="h-12! w-full bg-white border-none">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+                  <SelectItem value="id_asc">ID (A-Z)</SelectItem>
+                  <SelectItem value="category_asc">Category (A-Z)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <ProductTable

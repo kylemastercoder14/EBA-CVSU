@@ -1,22 +1,12 @@
-export type LogType = "Order" | "Payment" | "Activity" | "System";
-
-export type LogCategory =
-  | "Order Created"
-  | "Payment Verified"
-  | "Stock Updated"
-  | "Low Stock Alert"
-  | "Order Released"
-  | "Payment Pending";
-
-export type LogStatus = "Success" | "Info" | "Warning";
+import { LogCategory, LogStatus, LogType } from "@/generated/prisma";
 
 export type LogRecord = {
   id: string;
-  logId: string;
+  logCode: string;
   type: LogType;
   category: LogCategory;
   description: string;
-  user: string;
-  timestamp: string;
+  actorName: string;
   status: LogStatus;
+  createdAt: string;
 };
