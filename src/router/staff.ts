@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   createStaffOutputSchema,
@@ -90,6 +91,14 @@ export const createStaff = base
       },
     });
 
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Staff "${createdStaff.fullName}" was created.`,
+      status: "SUCCESS",
+      actorName: "Admin",
+    });
+
     return {
       id: createdStaff.id,
       fullName: createdStaff.fullName,
@@ -133,6 +142,14 @@ export const updateStaff = base
       },
     });
 
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Staff "${existingStaff.fullName}" updated to "${updatedStaff.fullName}".`,
+      status: "SUCCESS",
+      actorName: "Admin",
+    });
+
     return {
       id: updatedStaff.id,
       fullName: updatedStaff.fullName,
@@ -172,6 +189,14 @@ export const deleteStaff = base
       where: {
         id: input.id,
       },
+    });
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Staff "${existingStaff.fullName}" was deleted.`,
+      status: "SUCCESS",
+      actorName: "Admin",
     });
 
     return {

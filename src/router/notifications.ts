@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   createNotificationOutputSchema,
@@ -110,6 +111,14 @@ export const createNotification = base
       },
     });
 
+    await createSystemLog(prisma, {
+      type: "SYSTEM",
+      category: "PAYMENT_PENDING",
+      description: `Notification "${notification.title}" created for staff ${staff.id}.`,
+      status: "SUCCESS",
+      actorName: "System",
+    });
+
     return toNotificationPayload(notification);
   });
 
@@ -140,6 +149,14 @@ export const markNotificationRead = base
       data: {
         isRead: true,
       },
+    });
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Notification "${notification.id}" marked as read.`,
+      status: "SUCCESS",
+      actorName: "Staff",
     });
 
     return toNotificationPayload(notification);
@@ -176,6 +193,14 @@ export const markAllNotificationsRead = base
       data: {
         isRead: true,
       },
+    });
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `${result.count} notification(s) marked as read for staff ${staff.id}.`,
+      status: "SUCCESS",
+      actorName: "Staff",
     });
 
     return {

@@ -156,7 +156,7 @@ export function NavUser({
               </button>
             </div>
 
-            <div className="space-y-1 max-h-56 overflow-y-auto">
+            <div className="space-y-1 max-h-56 no-scrollbar overflow-y-auto">
               {notifications.length > 0 ? (
                 notifications.map((notification) => (
                   <button

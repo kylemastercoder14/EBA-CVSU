@@ -15,6 +15,7 @@ interface ReleaseOrderDialogProps {
   order: Order | null;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  isPending?: boolean;
 }
 
 export const ReleaseOrderDialog = ({
@@ -22,6 +23,7 @@ export const ReleaseOrderDialog = ({
   order,
   onOpenChange,
   onConfirm,
+  isPending = false,
 }: ReleaseOrderDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -67,6 +69,7 @@ export const ReleaseOrderDialog = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isPending}
             className="border-[#07484A] text-[#07484A] hover:bg-[#07484A]/10"
           >
             Cancel
@@ -74,10 +77,11 @@ export const ReleaseOrderDialog = ({
           <Button
             type="button"
             onClick={onConfirm}
+            disabled={isPending}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <PackageCheck className="mr-2 h-4 w-4" />
-            Release Order
+            {isPending ? "Releasing..." : "Release Order"}
           </Button>
         </DialogFooter>
       </DialogContent>

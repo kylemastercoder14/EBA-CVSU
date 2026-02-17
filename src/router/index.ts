@@ -12,6 +12,7 @@ import {
   loginStaff,
   loginStudent,
   registerStudent,
+  updateStudentProfile,
 } from "@/router/auth";
 import {
   createNotification,
@@ -19,7 +20,14 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/router/notifications";
-import { createOrder, listOrdersByUser } from "@/router/order";
+import {
+  createOrder,
+  listOrdersByUser,
+  listOrdersMonitoring,
+  listOrdersRelease,
+  updateOrderStatus,
+} from "@/router/order";
+import { listPayments, verifyPayment } from "@/router/payment";
 
 export const router = {
   product: {
@@ -46,6 +54,7 @@ export const router = {
     session: getStaffSession,
     registerStudent,
     loginStudent,
+    updateStudentProfile,
   },
   notifications: {
     list: listNotifications,
@@ -56,5 +65,12 @@ export const router = {
   order: {
     create: createOrder,
     listByUser: listOrdersByUser,
+    listMonitoring: listOrdersMonitoring,
+    listRelease: listOrdersRelease,
+    updateStatus: updateOrderStatus,
+  },
+  payment: {
+    list: listPayments,
+    verify: verifyPayment,
   },
 };

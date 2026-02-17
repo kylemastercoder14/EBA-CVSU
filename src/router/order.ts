@@ -1,10 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   createOrderInputSchema,
   createOrderOutputSchema,
+  listOrdersMonitoringInputSchema,
+  listOrdersMonitoringOutputSchema,
+  listOrdersReleaseInputSchema,
+  listOrdersReleaseOutputSchema,
   listOrdersByUserInputSchema,
   listOrdersByUserOutputSchema,
+  updateOrderStatusInputSchema,
+  updateOrderStatusOutputSchema,
 } from "@/validators/order";
 
 const getNextOrderNumber = async () => {
@@ -63,12 +70,239 @@ const getNextId = async (prefix: string, model: "order" | "payment" | "orderItem
   return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
 };
 
+type NotificationClient = {
+  staff: {
+    findMany: (args: {
+      where: { isActive: boolean };
+      select: { id: true };
+    }) => Promise<Array<{ id: string }>>;
+  };
+  notification: {
+    findFirst: (args: {
+      where: { id: { startsWith: string } };
+      orderBy: { id: "desc" };
+      select: { id: true };
+    }) => Promise<{ id: string } | null>;
+    createMany: (args: {
+      data: Array<{
+        id: string;
+        staffId: string;
+        title: string;
+        message: string;
+        type: "INFO" | "SUCCESS" | "WARNING";
+      }>;
+    }) => Promise<unknown>;
+  };
+};
+
+const createStaffNotifications = async (
+  client: NotificationClient,
+  input: {
+    title: string;
+    message: string;
+    type?: "INFO" | "SUCCESS" | "WARNING";
+  },
+) => {
+  const activeStaff = await client.staff.findMany({
+    where: { isActive: true },
+    select: { id: true },
+  });
+
+  if (activeStaff.length === 0) return;
+
+  const lastNotification = await client.notification.findFirst({
+    where: {
+      id: {
+        startsWith: "NOTIF",
+      },
+    },
+    orderBy: {
+      id: "desc",
+    },
+    select: { id: true },
+  });
+
+  let nextNumber = 1;
+  if (lastNotification?.id) {
+    const parsed = Number.parseInt(lastNotification.id.replace("NOTIF", ""), 10);
+    if (!Number.isNaN(parsed)) {
+      nextNumber = parsed + 1;
+    }
+  }
+
+  await client.notification.createMany({
+    data: activeStaff.map((staff, index) => ({
+      id: `NOTIF${(nextNumber + index).toString().padStart(3, "0")}`,
+      staffId: staff.id,
+      title: input.title,
+      message: input.message,
+      type: input.type ?? "INFO",
+    })),
+  });
+};
+
 const mapOrderStageToTrackStage = (stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED", releaseStatus: "READY" | "RELEASED") => {
   if (stage === "COMPLETED" || releaseStatus === "RELEASED") return "completed" as const;
   if (stage === "PAID" && releaseStatus === "READY") return "ready" as const;
   if (stage === "TO_PAY") return "preparing" as const;
   return "to-pay" as const;
 };
+
+const mapOrderStageToMonitoringStage = (
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED",
+) => {
+  if (stage === "TO_PAY") return "To Pay" as const;
+  if (stage === "PAID") return "Paid" as const;
+  if (stage === "COMPLETED") return "Completed" as const;
+  return "To Confirm" as const;
+};
+
+const formatOrderDate = (date: Date | null) => {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
+const mapOrderReleaseStatus = (
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED",
+  releaseStatus: "READY" | "RELEASED",
+) => {
+  if (releaseStatus === "RELEASED" || stage === "COMPLETED") {
+    return "Released" as const;
+  }
+  return "Ready" as const;
+};
+
+export const listOrdersMonitoring = base
+  .route({
+    method: "GET",
+    path: "/orders/admin/monitoring",
+    summary: "list orders for admin order monitoring page",
+    tags: ["orders"],
+  })
+  .input(listOrdersMonitoringInputSchema)
+  .output(listOrdersMonitoringOutputSchema)
+  .handler(async () => {
+    const orders = await prisma.order.findMany({
+      include: {
+        user: {
+          select: {
+            fullName: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        payment: {
+          select: {
+            method: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return {
+      orders: orders.map((order) => {
+        const itemsSummary =
+          order.itemsSummary?.trim() ||
+          order.orderItems.map((item) => item.product.name).join(", ") ||
+          "-";
+
+        const paymentMethod = order.paymentMethod ?? order.payment?.method ?? "CASH";
+
+        return {
+          id: order.id,
+          orderNum: order.orderNumber,
+          name: order.user.fullName,
+          items: itemsSummary,
+          quantity: order.totalQuantity,
+          paymentMethod: paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
+          paymentStatus:
+            order.paymentStatus === "VERIFIED" ? ("Verified" as const) : ("Pending" as const),
+          pickupDate: formatOrderDate(order.pickupDate),
+          stage: mapOrderStageToMonitoringStage(order.stage),
+        };
+      }),
+    };
+  });
+
+export const listOrdersRelease = base
+  .route({
+    method: "GET",
+    path: "/orders/admin/release",
+    summary: "list orders for admin order release page",
+    tags: ["orders"],
+  })
+  .input(listOrdersReleaseInputSchema)
+  .output(listOrdersReleaseOutputSchema)
+  .handler(async () => {
+    const orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          {
+            stage: "PAID",
+            releaseStatus: "READY",
+          },
+          {
+            releaseStatus: "RELEASED",
+          },
+          {
+            stage: "COMPLETED",
+          },
+        ],
+      },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return {
+      orders: orders.map((order) => {
+        const itemsSummary =
+          order.itemsSummary?.trim() ||
+          order.orderItems.map((item) => item.product.name).join(", ") ||
+          "-";
+
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          name: order.user.fullName,
+          items: itemsSummary,
+          quantity: order.totalQuantity,
+          pickupDate: formatOrderDate(order.pickupDate),
+          status: mapOrderReleaseStatus(order.stage, order.releaseStatus),
+        };
+      }),
+    };
+  });
 
 export const listOrdersByUser = base
   .route({
@@ -225,7 +459,7 @@ export const createOrder = base
         })),
       });
 
-      await tx.payment.create({
+      const createdPayment = await tx.payment.create({
         data: {
           id: paymentId,
           orderId: createdOrder.id,
@@ -234,6 +468,33 @@ export const createOrder = base
           method: input.paymentMethod,
           status: "PENDING",
         },
+      });
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_CREATED",
+        description: `Order "${createdOrder.orderNumber}" created with ${createdOrder.totalQuantity} item(s).`,
+        status: "SUCCESS",
+        actorName: "Student",
+        actorUserId: input.userId,
+        orderId: createdOrder.id,
+      });
+
+      await createSystemLog(tx, {
+        type: "PAYMENT",
+        category: "PAYMENT_PENDING",
+        description: `Payment pending for order "${createdOrder.orderNumber}" via ${input.paymentMethod}.`,
+        status: "INFO",
+        actorName: "System",
+        actorUserId: input.userId,
+        orderId: createdOrder.id,
+        paymentId: createdPayment.id,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "New Order Created",
+        message: `Order ${createdOrder.orderNumber} is now waiting for confirmation.`,
+        type: "INFO",
       });
 
       return createdOrder;
@@ -250,6 +511,79 @@ export const createOrder = base
         pickupDate: created.pickupDate ? created.pickupDate.toISOString() : null,
         createdAt: created.createdAt.toISOString(),
         paymentReference,
+      },
+    };
+  });
+
+export const updateOrderStatus = base
+  .route({
+    method: "PUT",
+    path: "/orders/{orderId}/status",
+    summary: "update order stage/release/payment status",
+    tags: ["orders"],
+  })
+  .input(updateOrderStatusInputSchema)
+  .output(updateOrderStatusOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const existingOrder = await prisma.order.findUnique({
+      where: {
+        id: input.orderId,
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        stage: true,
+        releaseStatus: true,
+        paymentStatus: true,
+        userId: true,
+      },
+    });
+
+    if (!existingOrder) {
+      throw errors.NOT_FOUND();
+    }
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id: input.orderId },
+        data: {
+          ...(input.stage ? { stage: input.stage } : {}),
+          ...(input.releaseStatus ? { releaseStatus: input.releaseStatus } : {}),
+          ...(input.paymentStatus ? { paymentStatus: input.paymentStatus } : {}),
+        },
+      });
+
+      const beforeText = `stage=${existingOrder.stage}, release=${existingOrder.releaseStatus}, payment=${existingOrder.paymentStatus}`;
+      const afterText = `stage=${order.stage}, release=${order.releaseStatus}, payment=${order.paymentStatus}`;
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_RELEASED",
+        description: `Order "${order.orderNumber}" status updated (${beforeText} -> ${afterText}).`,
+        status: "SUCCESS",
+        actorName: input.actorName ?? "System",
+        actorUserId: existingOrder.userId,
+        orderId: order.id,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "Order Status Updated",
+        message: `Order ${order.orderNumber} changed to ${order.stage}.`,
+        type: "INFO",
+      });
+
+      return order;
+    });
+
+    return {
+      success: true,
+      message: "Order status updated successfully",
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        stage: updatedOrder.stage,
+        releaseStatus: updatedOrder.releaseStatus,
+        paymentStatus: updatedOrder.paymentStatus,
       },
     };
   });

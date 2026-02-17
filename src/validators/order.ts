@@ -42,6 +42,40 @@ export const listOrdersByUserInputSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
 });
 
+export const listOrdersMonitoringInputSchema = z.void();
+
+export const listOrdersMonitoringOutputSchema = z.object({
+  orders: z.array(
+    z.object({
+      id: z.string(),
+      orderNum: z.string(),
+      name: z.string(),
+      items: z.string(),
+      quantity: z.number(),
+      paymentMethod: z.enum(["GCash", "Cash"]),
+      paymentStatus: z.enum(["Pending", "Verified"]),
+      pickupDate: z.string(),
+      stage: z.enum(["To Confirm", "To Pay", "Paid", "Completed"]),
+    }),
+  ),
+});
+
+export const listOrdersReleaseInputSchema = z.void();
+
+export const listOrdersReleaseOutputSchema = z.object({
+  orders: z.array(
+    z.object({
+      id: z.string(),
+      orderNumber: z.string(),
+      name: z.string(),
+      items: z.string(),
+      quantity: z.number(),
+      pickupDate: z.string(),
+      status: z.enum(["Ready", "Released"]),
+    }),
+  ),
+});
+
 export const listOrdersByUserOutputSchema = z.object({
   orders: z.array(
     z.object({
@@ -64,4 +98,33 @@ export const listOrdersByUserOutputSchema = z.object({
       ),
     }),
   ),
+});
+
+export const updateOrderStatusInputSchema = z
+  .object({
+    orderId: z.string().min(1, "Order ID is required"),
+    stage: z.enum(["TO_CONFIRM", "TO_PAY", "PAID", "COMPLETED"]).optional(),
+    releaseStatus: z.enum(["READY", "RELEASED"]).optional(),
+    paymentStatus: z.enum(["PENDING", "VERIFIED"]).optional(),
+    actorName: z.string().min(1).optional(),
+  })
+  .refine(
+    (value) =>
+      Boolean(value.stage || value.releaseStatus || value.paymentStatus),
+    {
+      message: "At least one status field is required",
+      path: ["stage"],
+    },
+  );
+
+export const updateOrderStatusOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  order: z.object({
+    id: z.string(),
+    orderNumber: z.string(),
+    stage: z.enum(["TO_CONFIRM", "TO_PAY", "PAID", "COMPLETED"]),
+    releaseStatus: z.enum(["READY", "RELEASED"]),
+    paymentStatus: z.enum(["PENDING", "VERIFIED"]),
+  }),
 });

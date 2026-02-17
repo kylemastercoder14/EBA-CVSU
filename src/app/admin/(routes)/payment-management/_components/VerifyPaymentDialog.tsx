@@ -14,6 +14,7 @@ interface VerifyPaymentDialogProps {
   payment: Payment | null;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  isPending?: boolean;
 }
 
 export const VerifyPaymentDialog = ({
@@ -21,6 +22,7 @@ export const VerifyPaymentDialog = ({
   payment,
   onOpenChange,
   onConfirm,
+  isPending = false,
 }: VerifyPaymentDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -62,6 +64,7 @@ export const VerifyPaymentDialog = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isPending}
             className="border-[#07484A] text-[#07484A] hover:bg-[#07484A]/10"
           >
             Cancel
@@ -69,9 +72,10 @@ export const VerifyPaymentDialog = ({
           <Button
             type="button"
             onClick={onConfirm}
+            disabled={isPending}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            Verify Payment
+            {isPending ? "Verifying..." : "Verify Payment"}
           </Button>
         </DialogFooter>
       </DialogContent>

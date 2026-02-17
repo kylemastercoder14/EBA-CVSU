@@ -14,6 +14,7 @@ interface ConfirmOrderDialogProps {
   order: Order | null;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  isPending?: boolean;
 }
 
 export const ConfirmOrderDialog = ({
@@ -21,6 +22,7 @@ export const ConfirmOrderDialog = ({
   order,
   onOpenChange,
   onConfirm,
+  isPending = false,
 }: ConfirmOrderDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -70,6 +72,7 @@ export const ConfirmOrderDialog = ({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isPending}
             className="border-[#07484A] text-[#07484A] hover:bg-[#07484A]/10"
           >
             Cancel
@@ -77,9 +80,10 @@ export const ConfirmOrderDialog = ({
           <Button
             type="button"
             onClick={onConfirm}
+            disabled={isPending}
             className="bg-[#07484A] hover:bg-[#07484A]/90 text-white"
           >
-            Confirm Order
+            {isPending ? "Confirming..." : "Confirm Order"}
           </Button>
         </DialogFooter>
       </DialogContent>

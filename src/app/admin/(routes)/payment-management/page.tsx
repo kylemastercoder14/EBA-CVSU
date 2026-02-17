@@ -1,22 +1,43 @@
 "use client";
 
 import { Heading } from "@/components/Heading";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IconCash, IconCircleCheckFilled, IconDeviceMobile } from '@tabler/icons-react';
 import { PaymentTabContent } from "./_components/PaymentTabContent";
 import { VerifyPaymentDialog } from "./_components/VerifyPaymentDialog";
-import { initialPayments } from "./_components/payments";
 import { Payment } from "./_components/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@/lib/orpc";
+import { toast } from "sonner";
 
 const Page = () => {
-  const [payments, setPayments] = useState<Payment[]>(initialPayments);
+  const queryClient = useQueryClient();
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [activeTab, setActiveTab] = useState<"gcash" | "cash">("gcash");
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  const { data, isLoading, isError } = useQuery(orpc.payment.list.queryOptions());
+  const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
+
+  const verifyPaymentMutation = useMutation(
+    orpc.payment.verify.mutationOptions({
+      onSuccess: (result) => {
+        toast.success(result.message || "Payment verified successfully");
+        queryClient.invalidateQueries({
+          queryKey: orpc.payment.list.queryKey(),
+        });
+        setIsVerifyDialogOpen(false);
+        setSelectedPayment(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to verify payment");
+      },
+    }),
+  );
 
   // Filter payments by method and search query
   const filteredPayments = payments.filter((payment) => {
@@ -62,17 +83,14 @@ const Page = () => {
   };
 
   const confirmVerify = () => {
-    if (selectedPayment) {
-      setPayments((prev) =>
-        prev.map((payment) =>
-          payment.id === selectedPayment.id
-            ? { ...payment, status: "Verified" }
-            : payment
-        )
-      );
+    if (!selectedPayment) {
+      return;
     }
-    setIsVerifyDialogOpen(false);
-    setSelectedPayment(null);
+
+    verifyPaymentMutation.mutate({
+      paymentId: selectedPayment.id,
+      actorName: "Admin",
+    });
   };
 
   return (
@@ -110,6 +128,7 @@ const Page = () => {
               title="GCash Transactions"
               description="Verify GCash reference numbers and approve payments"
               payments={currentPayments}
+              totalItems={filteredPayments.length}
               paymentType="GCash"
               searchQuery={searchQuery}
               currentPage={currentPage}
@@ -129,6 +148,7 @@ const Page = () => {
               title="Cash Transactions"
               description="Verify cash payments and approve transactions"
               payments={currentPayments}
+              totalItems={filteredPayments.length}
               paymentType="Cash"
               searchQuery={searchQuery}
               currentPage={currentPage}
@@ -145,11 +165,20 @@ const Page = () => {
         </Tabs>
       </div>
 
+      {isLoading && (
+        <p className="mt-4 text-sm text-[#07484A]">Loading payments...</p>
+      )}
+
+      {isError && (
+        <p className="mt-4 text-sm text-red-600">Unable to load payments right now.</p>
+      )}
+
       <VerifyPaymentDialog
         isOpen={isVerifyDialogOpen}
         payment={selectedPayment}
         onOpenChange={setIsVerifyDialogOpen}
         onConfirm={confirmVerify}
+        isPending={verifyPaymentMutation.isPending}
       />
     </div>
   );

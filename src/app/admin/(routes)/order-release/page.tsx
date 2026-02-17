@@ -1,14 +1,16 @@
 "use client";
 
 import { Heading } from "@/components/Heading";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { OrderReleaseSectionCard } from "./_components/OrderReleaseSectionCard";
-import { initialOrders } from "./_components/orders";
 import { ReleaseOrderDialog } from "./_components/ReleaseOrderDialog";
 import { Order } from "./_components/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@/lib/orpc";
+import { toast } from "sonner";
 
 const Page = () => {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const queryClient = useQueryClient();
   const [readySearchQuery, setReadySearchQuery] = useState("");
   const [releasedSearchQuery, setReleasedSearchQuery] = useState("");
   const [readyCurrentPage, setReadyCurrentPage] = useState(1);
@@ -17,6 +19,25 @@ const Page = () => {
   const [releasedItemsPerPage, setReleasedItemsPerPage] = useState(5);
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  const { data, isLoading, isError } = useQuery(orpc.order.listRelease.queryOptions());
+  const orders = useMemo(() => data?.orders ?? [], [data?.orders]);
+
+  const releaseOrderMutation = useMutation(
+    orpc.order.updateStatus.mutationOptions({
+      onSuccess: () => {
+        toast.success("Order released successfully");
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listRelease.queryKey(),
+        });
+        setIsReleaseDialogOpen(false);
+        setSelectedOrder(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to release order");
+      },
+    }),
+  );
 
   const readyOrders = orders.filter(
     (order) =>
@@ -73,15 +94,16 @@ const Page = () => {
   };
 
   const confirmRelease = () => {
-    if (selectedOrder) {
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === selectedOrder.id ? { ...order, status: "Released" } : order
-        )
-      );
+    if (!selectedOrder) {
+      return;
     }
-    setIsReleaseDialogOpen(false);
-    setSelectedOrder(null);
+
+    releaseOrderMutation.mutate({
+      orderId: selectedOrder.id,
+      releaseStatus: "RELEASED",
+      stage: "COMPLETED",
+      actorName: "Admin",
+    });
   };
 
   return (
@@ -137,7 +159,16 @@ const Page = () => {
         order={selectedOrder}
         onOpenChange={setIsReleaseDialogOpen}
         onConfirm={confirmRelease}
+        isPending={releaseOrderMutation.isPending}
       />
+
+      {isLoading && (
+        <p className="mt-4 text-sm text-[#07484A]">Loading orders...</p>
+      )}
+
+      {isError && (
+        <p className="mt-4 text-sm text-red-600">Unable to load orders right now.</p>
+      )}
     </div>
   );
 };

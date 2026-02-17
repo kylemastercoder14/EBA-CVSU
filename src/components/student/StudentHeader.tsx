@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeftRightIcon,
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sheet";
 
 type StudentSession = {
+  fullName?: string | null;
   cvsuEmail?: string;
   studentNumber?: string | null;
 };
@@ -63,6 +64,9 @@ const getDisplayNameFromSession = () => {
 
   try {
     const parsed = JSON.parse(rawSession) as StudentSession;
+    if (parsed.fullName?.trim()) {
+      return parsed.fullName.trim().toUpperCase();
+    }
     if (parsed.studentNumber) {
       return String(parsed.studentNumber).toUpperCase();
     }
@@ -79,8 +83,20 @@ const getDisplayNameFromSession = () => {
 export const StudentHeader = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const [displayName] = useState(() => getDisplayNameFromSession());
+  const [displayName, setDisplayName] = useState(() => getDisplayNameFromSession());
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const refreshDisplayName = () => setDisplayName(getDisplayNameFromSession());
+
+    window.addEventListener("focus", refreshDisplayName);
+    window.addEventListener("student-session-updated", refreshDisplayName);
+
+    return () => {
+      window.removeEventListener("focus", refreshDisplayName);
+      window.removeEventListener("student-session-updated", refreshDisplayName);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("eba_student_session");
@@ -110,7 +126,7 @@ export const StudentHeader = () => {
             asChild
             className="font-serif text-sm focus:bg-[#D9E8F4] focus:text-[#0B525B]"
           >
-            <Link href="#">Update Profile</Link>
+            <Link href="/profile">Update Profile</Link>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={handleLogout}
@@ -164,4 +180,3 @@ export const StudentHeader = () => {
     </header>
   );
 };
-

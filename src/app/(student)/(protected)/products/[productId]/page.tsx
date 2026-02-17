@@ -140,7 +140,7 @@ const Page = () => {
 
           <div className="mt-8">
             <p className="font-serif text-xl text-[#0B525B]">
-              Choose Size <span className="text-[#D05555]">*</span>
+              Choose Size/Variant <span className="text-[#D05555]">*</span>
             </p>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
               {product.variants.map((variant) => {

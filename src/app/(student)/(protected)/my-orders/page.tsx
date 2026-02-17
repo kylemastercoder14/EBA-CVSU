@@ -128,7 +128,7 @@ const Page = () => {
                     {item.productName}
                   </h2>
                   <p className="text-lg leading-tight text-[#2F6F79]">
-                    Size: {item.variant}
+                    Size/Variant: {item.variant}
                   </p>
                   <p className="text-lg leading-tight text-[#2F6F79]">
                     Quantity: {item.quantity}

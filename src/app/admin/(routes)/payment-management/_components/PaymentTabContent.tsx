@@ -8,6 +8,7 @@ interface PaymentTabContentProps {
   title: string;
   description: string;
   payments: Payment[];
+  totalItems: number;
   paymentType: "GCash" | "Cash";
   searchQuery: string;
   currentPage: number;
@@ -25,6 +26,7 @@ export const PaymentTabContent = ({
   title,
   description,
   payments,
+  totalItems,
   paymentType,
   searchQuery,
   currentPage,
@@ -58,7 +60,7 @@ export const PaymentTabContent = ({
           currentPage={currentPage}
           totalPages={totalPages}
           itemsPerPage={itemsPerPage}
-          totalItems={payments.length}
+          totalItems={totalItems}
           startIndex={startIndex}
           endIndex={endIndex}
           onPageChange={onPageChange}

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   authInputSchema,
@@ -8,6 +9,8 @@ import {
   registerStudentInputSchema,
   registerStudentOutputSchema,
   studentLoginInputSchema,
+  updateStudentProfileInputSchema,
+  updateStudentProfileOutputSchema,
 } from "@/validators/auth";
 import { createHash } from "crypto";
 
@@ -31,8 +34,23 @@ export const loginStaff = base
     });
 
     if (!staff || !staff.isActive) {
+      await createSystemLog(prisma, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Failed staff login attempt for access key "${input.accessKey}".`,
+        status: "WARNING",
+        actorName: "System",
+      });
       throw errors.UNAUTHORIZED();
     }
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Staff "${staff.fullName}" logged in successfully.`,
+      status: "SUCCESS",
+      actorName: staff.fullName,
+    });
 
     return {
       loggedIn: true,
@@ -102,6 +120,15 @@ export const registerStudent = base
       },
     });
 
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Student account registered for "${student.fullName}" (${student.cvsuEmail ?? "no-email"}).`,
+      status: "SUCCESS",
+      actorName: student.fullName,
+      actorUserId: student.id,
+    });
+
     return {
       success: true,
       message: "Student account registered successfully",
@@ -139,6 +166,13 @@ export const loginStudent = base
     });
 
     if (!student || !student.password) {
+      await createSystemLog(prisma, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Failed student login attempt for identifier "${normalizedIdentifier}".`,
+        status: "WARNING",
+        actorName: "System",
+      });
       throw errors.UNAUTHORIZED();
     }
 
@@ -148,8 +182,25 @@ export const loginStudent = base
       student.password === input.password;
 
     if (!passwordMatches) {
+      await createSystemLog(prisma, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Failed student login password check for identifier "${normalizedIdentifier}".`,
+        status: "WARNING",
+        actorName: student.fullName,
+        actorUserId: student.id,
+      });
       throw errors.UNAUTHORIZED();
     }
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Student "${student.fullName}" logged in successfully.`,
+      status: "SUCCESS",
+      actorName: student.fullName,
+      actorUserId: student.id,
+    });
 
     return {
       loggedIn: true,
@@ -197,6 +248,65 @@ export const getStaffSession = base
         mobileNumber: staff.mobileNumber,
         role: "STAFF" as const,
         isActive: staff.isActive,
+      },
+    };
+  });
+
+export const updateStudentProfile = base
+  .route({
+    method: "PUT",
+    path: "/auth/student/profile",
+    summary: "update student profile fields (full name, mobile, password)",
+    tags: ["auth"],
+  })
+  .input(updateStudentProfileInputSchema)
+  .output(updateStudentProfileOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const existingStudent = await prisma.user.findFirst({
+      where: {
+        id: input.userId,
+        type: "STUDENT",
+      },
+    });
+
+    if (!existingStudent) {
+      throw errors.NOT_FOUND();
+    }
+
+    const updatedStudent = await prisma.user.update({
+      where: {
+        id: input.userId,
+      },
+      data: {
+        ...(input.fullName?.trim() ? { fullName: input.fullName.trim() } : {}),
+        ...(input.mobileNumber?.trim()
+          ? { mobileNumber: input.mobileNumber.trim() }
+          : {}),
+        ...(input.password?.trim()
+          ? { password: hashPassword(input.password.trim()) }
+          : {}),
+      },
+    });
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Student "${updatedStudent.fullName}" updated profile information.`,
+      status: "SUCCESS",
+      actorName: updatedStudent.fullName,
+      actorUserId: updatedStudent.id,
+    });
+
+    return {
+      success: true,
+      message: "Student profile updated successfully",
+      student: {
+        id: updatedStudent.id,
+        fullName: updatedStudent.fullName,
+        mobileNumber: updatedStudent.mobileNumber,
+        studentNumber: updatedStudent.studentNumber,
+        cvsuEmail: updatedStudent.cvsuEmail,
+        type: "STUDENT" as const,
       },
     };
   });

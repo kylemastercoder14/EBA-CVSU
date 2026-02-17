@@ -62,3 +62,27 @@ export const loginStudentOutputSchema = z.object({
   message: z.string(),
   student: studentSessionSchema,
 });
+
+export const updateStudentProfileInputSchema = z
+  .object({
+    userId: z.string().min(1, "User ID is required"),
+    fullName: z.string().min(1, "Full name is required").optional(),
+    mobileNumber: z.string().min(1, "Mobile number is required").optional(),
+    password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  })
+  .refine(
+    (value) =>
+      Boolean(
+        value.fullName?.trim() || value.mobileNumber?.trim() || value.password?.trim(),
+      ),
+    {
+      message: "At least one profile field is required",
+      path: ["fullName"],
+    },
+  );
+
+export const updateStudentProfileOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  student: studentSessionSchema,
+});

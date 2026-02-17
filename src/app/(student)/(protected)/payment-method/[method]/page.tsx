@@ -601,7 +601,7 @@ const Page = () => {
                   <p className="font-bold">{paymentMethodLabel}</p>
                 </div>
 
-                <div className="mt-2 border-t h-[16vh] no-scrollbar overflow-y-auto border-[#A8A8AA] pt-2 text-xl leading-tight">
+                <div className="mt-2 border-t max-h-[16vh] no-scrollbar overflow-y-auto border-[#A8A8AA] pt-2 text-xl leading-tight">
                   <p className="text-[#E2E2E2]">Order Items</p>
                   {displayItems.map((item) => (
                     <div key={`${item.productId}-${item.variant}-${item.pickupDate}`} className="mt-1">
