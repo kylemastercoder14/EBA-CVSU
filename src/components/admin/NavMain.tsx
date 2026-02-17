@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -22,13 +23,27 @@ export function NavMain({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleNavigate = (url: string) => {
+    router.push(url);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu className='space-y-2 mt-5 px-2'>
+        <SidebarMenu className='mt-4 space-y-1.5 px-2'>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton onClick={() => router.push(item.url)} className='text-white text-base gap-3 p-3 hover:bg-[#25E42C]' isActive={pathname === item.url} tooltip={item.title}>
+              <SidebarMenuButton
+                onClick={() => handleNavigate(item.url)}
+                className='h-11 rounded-xl text-sm text-white/90 gap-3 px-3 hover:bg-white/12 hover:text-white data-[active=true]:bg-[#25E42C] data-[active=true]:text-black'
+                isActive={pathname === item.url}
+                tooltip={item.title}
+              >
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
               </SidebarMenuButton>

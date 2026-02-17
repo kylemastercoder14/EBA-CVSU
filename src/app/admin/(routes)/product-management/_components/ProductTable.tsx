@@ -64,8 +64,8 @@ export const ProductTable = ({
             const maxPrice = Math.max(...prices);
             const priceDisplay =
               minPrice === maxPrice
-                ? `₱ ${minPrice.toFixed(2)}`
-                : `₱ ${minPrice.toFixed(2)} - ₱ ${maxPrice.toFixed(2)}`;
+                ? `₱${minPrice.toFixed(2)}`
+                : `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
 
             return (
               <TableRow key={product.id} className="hover:bg-[#C5E3FF]">

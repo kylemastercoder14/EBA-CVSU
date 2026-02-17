@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
+import { type StockStatus } from "@/generated/prisma";
 import {
   createOrderInputSchema,
   createOrderOutputSchema,
@@ -174,6 +175,16 @@ const mapOrderReleaseStatus = (
     return "Released" as const;
   }
   return "Ready" as const;
+};
+
+const getStockStatus = (minStock: number, currentStock: number): StockStatus => {
+  if (currentStock <= minStock * 0.5) {
+    return "CRITICAL";
+  }
+  if (currentStock <= minStock) {
+    return "LOW";
+  }
+  return "NORMAL";
 };
 
 export const listOrdersMonitoring = base
@@ -543,7 +554,86 @@ export const updateOrderStatus = base
       throw errors.NOT_FOUND();
     }
 
+    const nextStage = input.stage ?? existingOrder.stage;
+    const shouldDeductStock =
+      existingOrder.stage !== "COMPLETED" && nextStage === "COMPLETED";
+
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      if (shouldDeductStock) {
+        const orderItems = await tx.orderItem.findMany({
+          where: { orderId: existingOrder.id },
+          select: {
+            productId: true,
+            quantity: true,
+          },
+        });
+
+        const quantityByProductId = new Map<string, number>();
+        for (const item of orderItems) {
+          quantityByProductId.set(
+            item.productId,
+            (quantityByProductId.get(item.productId) ?? 0) + item.quantity,
+          );
+        }
+
+        const productIds = Array.from(quantityByProductId.keys());
+        if (productIds.length > 0) {
+          const stockItems = await tx.stockItem.findMany({
+            where: {
+              productId: { in: productIds },
+            },
+            include: {
+              product: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          });
+
+          if (stockItems.length !== productIds.length) {
+            throw errors.BAD_REQUEST();
+          }
+
+          const stockByProductId = new Map(
+            stockItems.map((stock) => [stock.productId, stock]),
+          );
+
+          for (const [productId, deductQuantity] of quantityByProductId.entries()) {
+            const stock = stockByProductId.get(productId);
+            if (!stock) {
+              throw errors.BAD_REQUEST();
+            }
+
+            const nextStock = stock.currentStock - deductQuantity;
+            if (nextStock < 0) {
+              throw errors.BAD_REQUEST();
+            }
+
+            const nextStockStatus = getStockStatus(stock.minStock, nextStock);
+            await tx.stockItem.update({
+              where: { id: stock.id },
+              data: {
+                currentStock: nextStock,
+                status: nextStockStatus,
+              },
+            });
+
+            await createSystemLog(tx, {
+              type: "SYSTEM",
+              category: "STOCK_UPDATED",
+              description: `Stock deducted by ${deductQuantity} for "${stock.product.name}" from order "${existingOrder.orderNumber}" (current: ${nextStock}).`,
+              status: "SUCCESS",
+              actorName: input.actorName ?? "System",
+              actorUserId: existingOrder.userId,
+              orderId: existingOrder.id,
+              productId: stock.productId,
+              stockItemId: stock.id,
+            });
+          }
+        }
+      }
+
       const order = await tx.order.update({
         where: { id: input.orderId },
         data: {

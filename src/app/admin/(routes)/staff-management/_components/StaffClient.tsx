@@ -244,7 +244,7 @@ export const StaffClient = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center flex-wrap gap-5 justify-between">
         <Heading
           title="Staff Management"
           description="Manage staff accounts, system access keys, and status"

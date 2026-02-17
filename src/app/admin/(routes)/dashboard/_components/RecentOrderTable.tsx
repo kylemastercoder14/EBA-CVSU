@@ -14,7 +14,33 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
-export const RecentOrderTable = () => {
+interface RecentOrderItem {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  schedule: string;
+  items: number;
+  amount: number;
+  status: "Pending" | "Preparing" | "Completed";
+}
+
+interface RecentOrderTableProps {
+  orders: RecentOrderItem[];
+}
+
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const getBadgeVariant = (status: RecentOrderItem["status"]) => {
+  if (status === "Completed") return "completed" as const;
+  if (status === "Preparing") return "preparing" as const;
+  return "pending" as const;
+};
+
+export const RecentOrderTable = ({ orders }: RecentOrderTableProps) => {
   return (
     <div className="mt-10">
       <Card className="border-3 border-[#07484A] bg-[#D3E9FF]">
@@ -38,38 +64,26 @@ export const RecentOrderTable = () => {
             </TableHeader>
 
             <TableBody>
-              <TableRow>
-                <TableCell className="p-4">ORD-123456</TableCell>
-                <TableCell className="p-4">Maria Santos</TableCell>
-                <TableCell className="p-4">December 02, 2025</TableCell>
-                <TableCell className="p-4">1</TableCell>
-                <TableCell className="p-4">₱2,450</TableCell>
-                <TableCell>
-                  <Badge variant="preparing">Preparing</Badge>
-                </TableCell>
-              </TableRow>
-
-              <TableRow>
-                <TableCell className="p-4">ORD-654321</TableCell>
-                <TableCell className="p-4">Juan Dela Cruz</TableCell>
-                <TableCell className="p-4">November 26, 2025</TableCell>
-                <TableCell className="p-4">2</TableCell>
-                <TableCell className="p-4">₱1,890</TableCell>
-                <TableCell>
-                  <Badge variant="pending">Pending</Badge>
-                </TableCell>
-              </TableRow>
-
-              <TableRow>
-                <TableCell className="p-4">ORD-789123</TableCell>
-                <TableCell className="p-4">Ana Reyes</TableCell>
-                <TableCell className="p-4">December 15, 2025</TableCell>
-                <TableCell className="p-4">2</TableCell>
-                <TableCell className="p-4">₱400</TableCell>
-                <TableCell>
-                  <Badge variant="completed">Completed</Badge>
-                </TableCell>
-              </TableRow>
+              {orders.length > 0 ? (
+                orders.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="p-4">{order.orderNumber}</TableCell>
+                    <TableCell className="p-4">{order.customerName}</TableCell>
+                    <TableCell className="p-4">{order.schedule}</TableCell>
+                    <TableCell className="p-4">{order.items}</TableCell>
+                    <TableCell className="p-4">PHP {formatMoney(order.amount)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getBadgeVariant(order.status)}>{order.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-[#07484A]/70">
+                    No recent orders found
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

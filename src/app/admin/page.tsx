@@ -122,7 +122,7 @@ const Page = () => {
           </form>
         </DialogContent>
       </Dialog>
-      <div className="bg-[#1A1A1A] p-20 border border-[#E6E6E6] rounded-md w-200 flex flex-col items-center justify-center">
+      <div className="bg-[#1A1A1A] p-20 border border-[#E6E6E6] rounded-md w-200 flex flex-col text-center items-center justify-center">
         <div className="bg-[#07484A] size-25 rounded-full flex items-center justify-center">
           <ShoppingBag className="size-12 text-white" />
         </div>
@@ -136,7 +136,7 @@ const Page = () => {
         <Button
           onClick={() => setOpen(true)}
           size="lg"
-          className="text-xl h-16 mt-10 w-[30%]"
+          className="text-xl h-16 mt-10 lg:w-[30%]"
         >
           Dashboard <ArrowRight className="size-5.5" />
         </Button>

@@ -94,7 +94,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       setCurrentUser({
         name: session.fullName || "Staff User",
-        email: `${session.role || "STAFF"} • ${session.mobileNumber || "No mobile"}`,
+        email: `${session.role || "STAFF"} | ${session.mobileNumber || "No mobile"}`,
         avatar: "/avatars/shadcn.jpg",
       });
     } catch {
@@ -103,24 +103,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, []);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar
+      collapsible="icon"
+      className="bg-[#07484A] text-white"
+      {...props}
+    >
       {state !== "collapsed" && (
-        <SidebarHeader className="border-b">
+        <SidebarHeader className="border-b border-white/15">
           <div className="p-3 text-white">
             <h3 className="text-xl font-semibold font-serif">EBA System</h3>
-            <p className="text-base">Management Dashboard</p>
+            <p className="text-sm text-white/80">Management Dashboard</p>
           </div>
         </SidebarHeader>
       )}
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t border-white/15">
         <NavUser user={currentUser} />
       </SidebarFooter>
       <Tooltip>
         <TooltipTrigger asChild>
-          <SidebarTrigger className="-ml-1 bg-[#07484A] rounded-full absolute bottom-50 text-white -right-5 hover:bg-[#07484A] shadow-xl hover:text-white" />
+          <SidebarTrigger className="hidden md:flex bg-[#07484A] rounded-full absolute top-1/2 -translate-y-1/2 text-white -right-5 hover:bg-[#07484A] shadow-xl hover:text-white border border-[#0a5f62]" />
         </TooltipTrigger>
         <TooltipContent>{state === "expanded" ? "Hide" : "Show"} Sidebar</TooltipContent>
       </Tooltip>

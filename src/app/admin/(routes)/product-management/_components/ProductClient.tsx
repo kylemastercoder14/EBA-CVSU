@@ -145,7 +145,7 @@ export const ProductClient = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center flex-wrap gap-5 justify-between">
         <Heading
           title="Product Management"
           description="Manage your product inventory and details"

@@ -52,8 +52,8 @@ export const OrderStagesTabs = ({
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
           <IconClipboardCheck className="size-5" />
-          To Confirm
-          <Badge className="ml-2 bg-blue-500 hover:bg-blue-500 text-white text-xs">
+          <span className="lg:block hidden">To Confirm</span>
+          <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs">
             {stageCounts["To Confirm"]}
           </Badge>
         </TabsTrigger>
@@ -62,8 +62,8 @@ export const OrderStagesTabs = ({
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
           <IconCreditCard className="size-5" />
-          To Pay
-          <Badge className="ml-2 bg-orange-500 hover:bg-orange-500 text-white text-xs">
+          <span className="lg:block hidden">To Pay</span>
+          <Badge className="bg-orange-500 hover:bg-orange-500 text-white text-xs">
             {stageCounts["To Pay"]}
           </Badge>
         </TabsTrigger>
@@ -72,8 +72,8 @@ export const OrderStagesTabs = ({
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
           <IconCircleCheck className="size-5" />
-          Paid
-          <Badge className="ml-2 bg-purple-500 hover:bg-purple-500 text-white text-xs">
+          <span className="lg:block hidden">Paid</span>
+          <Badge className="bg-purple-500 hover:bg-purple-500 text-white text-xs">
             {stageCounts["Paid"]}
           </Badge>
         </TabsTrigger>
@@ -82,8 +82,8 @@ export const OrderStagesTabs = ({
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
           <IconPackage className="size-5" />
-          Completed
-          <Badge className="ml-2 bg-green-600 hover:bg-green-600 text-white text-xs">
+          <span className="lg:block hidden">Completed</span>
+          <Badge className="bg-green-600 hover:bg-green-600 text-white text-xs">
             {stageCounts["Completed"]}
           </Badge>
         </TabsTrigger>

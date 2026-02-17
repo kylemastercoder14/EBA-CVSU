@@ -90,7 +90,7 @@ export function NavUser({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <div className='flex items-center hover:bg-muted hover:text-black text-white cursor-pointer gap-3 p-3'>
+        <div className='flex items-center rounded-md text-white hover:bg-white/10 cursor-pointer gap-3 p-3'>
           <Avatar className="size-10">
             <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback className="rounded-full text-black bg-[#25E42C]">
@@ -108,7 +108,7 @@ export function NavUser({
               {unreadCount}
             </span>
           )}
-          <IconDotsVertical className="ml-auto size-4" />
+          <IconDotsVertical className="ml-auto size-4 text-white/80" />
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent

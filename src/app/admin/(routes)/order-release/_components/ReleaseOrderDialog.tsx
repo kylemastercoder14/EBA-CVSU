@@ -80,7 +80,7 @@ export const ReleaseOrderDialog = ({
             disabled={isPending}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            <PackageCheck className="mr-2 h-4 w-4" />
+            <PackageCheck className="h-4 w-4" />
             {isPending ? "Releasing..." : "Release Order"}
           </Button>
         </DialogFooter>

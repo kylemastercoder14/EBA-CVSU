@@ -2,6 +2,7 @@
 
 import { AppSidebar } from "@/components/admin/AppSidebar";
 import {
+  SidebarTrigger,
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
@@ -21,6 +22,10 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
     >
       <AppSidebar variant="sidebar" />
       <SidebarInset>
+        <header className="sticky top-0 z-30 flex h-14 items-center border-b border-[#07484A]/15 bg-white/95 px-4 backdrop-blur md:hidden">
+          <SidebarTrigger className="text-[#07484A] hover:bg-[#07484A]/10 hover:text-[#07484A]" />
+          <p className="ml-2 text-sm font-semibold text-[#07484A]">EBA System</p>
+        </header>
         <main className='lg:px-20 lg:py-15 p-5'>
           {children}
         </main>

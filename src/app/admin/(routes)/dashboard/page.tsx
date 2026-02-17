@@ -1,18 +1,15 @@
-import { Heading } from "@/components/Heading";
-import { RecentOrderTable } from './_components/RecentOrderTable';
-import { StatsSection } from './_components/StatsSection';
+import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
+import { orpc } from "@/lib/orpc";
+import { DashboardClient } from "./_components/DashboardClient";
 
-const Page = () => {
+const Page = async () => {
+  const queryClient = getQueryClient();
+  await queryClient.prefetchQuery(orpc.dashboard.summary.queryOptions());
+
   return (
-    <div>
-      <Heading
-        title="Dashboard Overview"
-        description="Management Dashboard"
-      />
-
-      <StatsSection />
-      <RecentOrderTable />
-    </div>
+    <HydrateClient client={queryClient}>
+      <DashboardClient />
+    </HydrateClient>
   );
 };
 

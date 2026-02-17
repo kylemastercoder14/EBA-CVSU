@@ -30,7 +30,7 @@ export const PaymentPagination = ({
   onItemsPerPageChange,
 }: PaymentPaginationProps) => {
   return (
-    <div className="flex items-center justify-between px-4 py-4 border-t border-gray-200">
+    <div className="flex items-center flex-wrap gap-4 justify-between px-4 py-4 border-t border-gray-200">
       <div className="flex items-center gap-2">
         <span className="text-sm text-[#07484A]">Show</span>
         <Select value={itemsPerPage.toString()} onValueChange={onItemsPerPageChange}>

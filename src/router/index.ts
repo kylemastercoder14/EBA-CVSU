@@ -28,6 +28,7 @@ import {
   updateOrderStatus,
 } from "@/router/order";
 import { listPayments, verifyPayment } from "@/router/payment";
+import { listDashboardSummary } from "@/router/dashboard";
 
 export const router = {
   product: {
@@ -72,5 +73,8 @@ export const router = {
   payment: {
     list: listPayments,
     verify: verifyPayment,
+  },
+  dashboard: {
+    summary: listDashboardSummary,
   },
 };
