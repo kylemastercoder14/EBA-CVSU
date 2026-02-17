@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Minus, PlusIcon } from "lucide-react";
+import { Loader2, Minus, PlusIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { StockItem } from "./types";
 interface EditStockDialogProps {
   isOpen: boolean;
   editingItem: StockItem | null;
+  isPending?: boolean;
   editValues: {
     minStock: number;
     maxStock: number;
@@ -29,6 +30,7 @@ export const EditStockDialog = ({
   isOpen,
   editingItem,
   editValues,
+  isPending,
   onOpenChange,
   onUpdateValue,
   onSave,
@@ -158,9 +160,11 @@ export const EditStockDialog = ({
           <Button
             type="button"
             onClick={onSave}
+            disabled={isPending}
             className="bg-[#07484A] hover:bg-[#07484A]/90 text-white"
           >
-            Save Changes
+            {isPending && <Loader2 className='animate-spin size-4' />}
+            {isPending ? "Saving changes..." : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

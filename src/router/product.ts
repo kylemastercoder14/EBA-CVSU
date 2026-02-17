@@ -220,7 +220,7 @@ export const createProduct = base
           minStock: 0,
           maxStock: 0,
           currentStock: 0,
-          status: "NORMAL",
+          status: "CRITICAL",
         },
       });
 
