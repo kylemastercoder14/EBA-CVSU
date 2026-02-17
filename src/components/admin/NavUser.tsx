@@ -22,7 +22,7 @@ import {
 import { useAuth } from '@/hooks/use-admin-auth';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -38,15 +38,16 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const { logout } = useAuth();
   const queryClient = useQueryClient();
-  const [accessKey, setAccessKey] = useState<string | null>(null);
-
-  useEffect(() => {
-    setAccessKey(localStorage.getItem("eba_access_key"));
-  }, []);
+  const [accessKey] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("eba_access_key");
+  });
 
   const notificationsQuery = useQuery({
     ...orpc.notifications.list.queryOptions({
-      accessKey: accessKey || "",
+      input: {
+        accessKey: accessKey || "",
+      },
     }),
     enabled: Boolean(accessKey),
   });
@@ -56,7 +57,9 @@ export function NavUser({
       onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: orpc.notifications.list.queryKey({
-            accessKey: accessKey || "",
+            input: {
+              accessKey: accessKey || "",
+            },
           }),
         });
       },
@@ -68,7 +71,9 @@ export function NavUser({
       onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: orpc.notifications.list.queryKey({
-            accessKey: accessKey || "",
+            input: {
+              accessKey: accessKey || "",
+            },
           }),
         });
       },
