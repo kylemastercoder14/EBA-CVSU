@@ -13,6 +13,15 @@ import { StockItem } from "./types";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type StockSortOption = "product_asc" | "id_asc" | "stock_desc" | "stock_asc";
 
 export const StockClient = () => {
   const queryClient = useQueryClient();
@@ -21,6 +30,7 @@ export const StockClient = () => {
   } = useSuspenseQuery(orpc.stock.list.queryOptions());
   const [stockData, setStockData] = useState<StockItem[]>(stocks);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<StockSortOption>("product_asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -60,11 +70,25 @@ export const StockClient = () => {
       item.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const sortedStockData = [...filteredStockData].sort((a, b) => {
+    switch (sortBy) {
+      case "id_asc":
+        return a.productId.localeCompare(b.productId);
+      case "stock_desc":
+        return b.currentStock - a.currentStock;
+      case "stock_asc":
+        return a.currentStock - b.currentStock;
+      case "product_asc":
+      default:
+        return a.productName.localeCompare(b.productName);
+    }
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(filteredStockData.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedStockData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentStockData = filteredStockData.slice(startIndex, endIndex);
+  const currentStockData = sortedStockData.slice(startIndex, endIndex);
 
   // Calculate low stock alerts
   const lowStockItems = stockData.filter(
@@ -81,6 +105,11 @@ export const StockClient = () => {
   // Reset to page 1 when search query changes
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value as StockSortOption);
     setCurrentPage(1);
   };
 
@@ -137,7 +166,20 @@ export const StockClient = () => {
       <div className="mt-6">
         <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
           <CardHeader className="pb-4">
-            <StockSearchBar value={searchQuery} onChange={handleSearchChange} />
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-3">
+              <StockSearchBar value={searchQuery} onChange={handleSearchChange} />
+              <Select value={sortBy} onValueChange={handleSortChange}>
+                <SelectTrigger className="h-12! w-full bg-white border-none">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="product_asc">Product (A-Z)</SelectItem>
+                  <SelectItem value="id_asc">Product ID (A-Z)</SelectItem>
+                  <SelectItem value="stock_desc">Stock (High-Low)</SelectItem>
+                  <SelectItem value="stock_asc">Stock (Low-High)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <StockTable

@@ -86,13 +86,13 @@ export const ProductTable = ({
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="p-4 text-base font-medium">
+                <TableCell className="p-4 text-sm font-medium">
                   {product.name}
                 </TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">
                   {product.category}
                 </TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">
                   <div className="flex flex-wrap gap-1">
                     {product.variants.map((variant, idx) => (
                       <span
@@ -104,8 +104,8 @@ export const ProductTable = ({
                     ))}
                   </div>
                 </TableCell>
-                <TableCell className="p-4 text-base">{priceDisplay}</TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">{priceDisplay}</TableCell>
+                <TableCell className="p-4 text-sm">
                   <Badge
                     variant={
                       product.isVisitorOrderable ? "completed" : "destructive"
@@ -114,7 +114,7 @@ export const ProductTable = ({
                     {product.isVisitorOrderable ? "Yes" : "No"}
                   </Badge>
                 </TableCell>
-                <TableCell className="p-4 text-base">
+                <TableCell className="p-4 text-sm">
                   <Badge
                     variant={product.isActive ? "completed" : "destructive"}
                   >

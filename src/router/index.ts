@@ -4,6 +4,7 @@ import {
   listProducts,
   updateProduct,
 } from "@/router/product";
+import { listLogs } from "@/router/logs";
 import { listStocks, updateStock } from "@/router/stock";
 
 export const router = {
@@ -16,5 +17,8 @@ export const router = {
   stock: {
     list: listStocks,
     update: updateStock,
+  },
+  logs: {
+    list: listLogs,
   },
 };

@@ -51,15 +51,15 @@ export const StockTable = ({ stockData, onEdit }: StockTableProps) => {
         {stockData.length > 0 ? (
           stockData.map((item) => (
             <TableRow key={item.id} className="hover:bg-[#C5E3FF]">
-              <TableCell className="p-4 text-base">{item.productId}</TableCell>
-              <TableCell className="p-4 text-base font-medium">
+              <TableCell className="p-4 text-sm">{item.productId}</TableCell>
+              <TableCell className="p-4 text-sm font-medium">
                 {item.productName}
               </TableCell>
-              <TableCell className="p-4 text-base">{item.category}</TableCell>
-              <TableCell className="p-4 text-base">
+              <TableCell className="p-4 text-sm">{item.category}</TableCell>
+              <TableCell className="p-4 text-sm">
                 {item.minStock} / {item.maxStock}
               </TableCell>
-              <TableCell className="p-4 text-base">
+              <TableCell className="p-4 text-sm">
                 {item.currentStock}
               </TableCell>
               <TableCell className="p-4">

@@ -60,6 +60,10 @@ export const EditStockDialog = ({
                 {editingItem?.productId}
               </p>
               <p className="text-sm text-[#07484A]">
+                <span className="font-semibold">Product Name:</span>{" "}
+                {editingItem?.productName}
+              </p>
+              <p className="text-sm text-[#07484A]">
                 <span className="font-semibold">Category:</span>{" "}
                 {editingItem?.category}
               </p>
