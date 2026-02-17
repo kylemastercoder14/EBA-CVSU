@@ -19,6 +19,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/router/notifications";
+import { createOrder, listOrdersByUser } from "@/router/order";
 
 export const router = {
   product: {
@@ -51,5 +52,9 @@ export const router = {
     create: createNotification,
     markRead: markNotificationRead,
     markAllRead: markAllNotificationsRead,
+  },
+  order: {
+    create: createOrder,
+    listByUser: listOrdersByUser,
   },
 };

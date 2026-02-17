@@ -12,6 +12,7 @@ import {
   PlusIcon,
   ShoppingCartIcon,
 } from "lucide-react";
+import { useCart } from "@/hooks/use-cart";
 import { orpc } from "@/lib/orpc";
 
 type ProductVariant = {
@@ -42,7 +43,9 @@ const Page = () => {
 
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [pickupDate, setPickupDate] = useState("");
-  const [quantity, setQuantity] = useState(2);
+  const [quantity, setQuantity] = useState(1);
+  const addItem = useCart((state) => state.addItem);
+  const getItemCount = useCart((state) => state.getItemCount);
 
   const {
     data,
@@ -75,9 +78,15 @@ const Page = () => {
       return;
     }
 
-    toast.success(
-      `${quantity} x ${product.name} (${activeSize}) added. Pickup on ${pickupDate}.`,
-    );
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      variant: activeSize,
+      quantity,
+      pickupDate,
+    });
+
+    toast.success(`${product.name} (${activeSize}) added to cart. Total items: ${getItemCount()}.`);
   };
 
   return (
