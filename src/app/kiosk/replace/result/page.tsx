@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,11 +9,21 @@ const COUNTDOWN_SEC = 8;
 
 const ReturnResultPage = () => {
   const { navigate } = useTransitionNav();
-  const searchParams = useSearchParams();
+  const [params] = useState(() => {
+    if (typeof window === "undefined") {
+      return { status: "success", order: "", message: "" };
+    }
+    const search = new URLSearchParams(window.location.search);
+    return {
+      status: search.get("status") ?? "success",
+      order: search.get("order") ?? "",
+      message: search.get("message") ?? "",
+    };
+  });
 
-  const status  = searchParams.get("status")  ?? "success"; // "success" | "error"
-  const order   = searchParams.get("order")   ?? "";
-  const message = searchParams.get("message") ?? "";
+  const status = params.status; // "success" | "error"
+  const order = params.order;
+  const message = params.message;
 
   const isSuccess = status === "success";
 

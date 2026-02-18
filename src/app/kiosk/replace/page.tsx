@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import { ArrowLeft, AlertCircle, X } from "lucide-react";
@@ -62,8 +61,14 @@ const ErrorBanner = ({
 // ── Page ──────────────────────────────────────────────────────────────────────
 const OrderNumberPage = () => {
   const { navigate } = useTransitionNav();
-  const searchParams = useSearchParams();
-  const errorCode = searchParams.get("error");
+  const [errorCode] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+
+    const fromQuery = new URLSearchParams(window.location.search).get("error");
+    const fromStorage = localStorage.getItem(kioskReplaceErrorStorageKey);
+    localStorage.removeItem(kioskReplaceErrorStorageKey);
+    return fromQuery ?? fromStorage;
+  });
 
   const [value, setValue] = useState("");
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -92,9 +97,6 @@ const OrderNumberPage = () => {
       showError("Please enter and validate your order number first.");
     }
 
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(kioskReplaceErrorStorageKey);
-    }
   }, [errorCode, showError]);
 
   const handleKeyboardPress = (key: string) => {

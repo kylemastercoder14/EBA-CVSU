@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
 import { Button } from "@/components/ui/button";
@@ -33,12 +32,13 @@ const reasonKeyToEnum: Record<string, "WRONG_ITEM" | "DEFECTIVE_ITEM" | "WRONG_S
 
 const ReturnReasonPage = () => {
   const { navigate } = useTransitionNav();
-  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<string | null>(null);
   const createReplaceMutation = useMutation(orpc.replace.create.mutationOptions());
-  const orderNumber = useMemo(() => {
-    const fromQuery = searchParams.get("order");
-    if (fromQuery?.trim()) return fromQuery.trim().toUpperCase();
+  const [orderNumber] = useState(() => {
+    if (typeof window !== "undefined") {
+      const fromQuery = new URLSearchParams(window.location.search).get("order");
+      if (fromQuery?.trim()) return fromQuery.trim().toUpperCase();
+    }
 
     if (typeof window !== "undefined") {
       const raw = localStorage.getItem("kiosk-replace-order");
@@ -55,7 +55,7 @@ const ReturnReasonPage = () => {
     }
 
     return "-";
-  }, [searchParams]);
+  });
   const needsValidation = orderNumber !== "-";
   const { data: existsData, isLoading: isValidating } = useQuery({
     ...orpc.order.checkExists.queryOptions({

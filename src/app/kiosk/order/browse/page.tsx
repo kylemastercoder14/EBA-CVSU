@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
 import { ShoppingCart, ShoppingBag, ArrowLeft } from "lucide-react";
 import Image from "next/image";
@@ -82,7 +81,18 @@ const ProductCard = ({
 // ── Browse Page ───────────────────────────────────────────────────────────────
 const BrowsePage = () => {
   const { navigate } = useTransitionNav();
-  const searchParams = useSearchParams();
+  const [type] = useState<UserType>(() => {
+    if (typeof window === "undefined") return "student";
+
+    const fromQuery = new URLSearchParams(window.location.search).get("type");
+    if (fromQuery === "visitor") return "visitor";
+    if (fromQuery === "student") return "student";
+
+    const fromStorage =
+      localStorage.getItem(kioskUserTypeStorageKey) ??
+      sessionStorage.getItem(kioskUserTypeStorageKey);
+    return fromStorage === "visitor" ? "visitor" : "student";
+  });
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     ...orpc.product.list.queryOptions(),
     refetchInterval: kioskAutoRefreshMs,
@@ -95,21 +105,6 @@ const BrowsePage = () => {
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
-  const type = useMemo<UserType>(() => {
-    const fromQuery = searchParams.get("type");
-    if (fromQuery === "visitor") return "visitor";
-    if (fromQuery === "student") return "student";
-
-    if (typeof window !== "undefined") {
-      const fromStorage =
-        localStorage.getItem(kioskUserTypeStorageKey) ??
-        sessionStorage.getItem(kioskUserTypeStorageKey);
-      if (fromStorage === "visitor") return "visitor";
-    }
-
-    return "student";
-  }, [searchParams]);
-
   useEffect(() => {
     sessionStorage.setItem(kioskUserTypeStorageKey, type);
     localStorage.setItem(kioskUserTypeStorageKey, type);
