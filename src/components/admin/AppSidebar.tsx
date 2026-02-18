@@ -7,6 +7,7 @@ import {
   IconLayoutDashboard,
   IconLogs,
   IconPackage,
+  IconRefresh,
   IconShoppingBag,
   IconUsers,
   IconWallet,
@@ -64,6 +65,11 @@ const data = {
       title: "Order Release",
       url: "/admin/order-release",
       icon: IconCar,
+    },
+    {
+      title: "Replace Requests",
+      url: "/admin/replace-management",
+      icon: IconRefresh,
     },
     {
       title: "Logs & Records",

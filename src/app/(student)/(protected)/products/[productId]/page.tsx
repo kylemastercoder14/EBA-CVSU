@@ -52,9 +52,18 @@ const Page = () => {
     isLoading,
     isError,
   } = useQuery(orpc.product.list.queryOptions());
+  const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
 
   const products = data?.products ?? [];
   const product = products.find((item) => item.id === productId) as ProductItem | undefined;
+  const stockByProductId = useMemo<Map<string, number>>(() => {
+    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map((stock) => [
+      stock.productId,
+      Number(stock.currentStock ?? 0),
+    ]);
+    return new Map<string, number>(entries);
+  }, [stockData]);
+  const currentStock = product ? (stockByProductId.get(product.id) ?? 0) : 0;
 
   const activeSize = selectedSize ?? product?.variants[0]?.size ?? "";
   const selectedVariant = useMemo(() => {
@@ -62,7 +71,7 @@ const Page = () => {
     return product.variants.find((variant) => variant.size === activeSize);
   }, [product, activeSize]);
 
-  const available = Boolean(product?.isActive);
+  const available = Boolean(product?.isActive) && currentStock > 0;
   const unitPrice = selectedVariant?.price ?? product?.variants[0]?.price ?? 0;
 
   const handleAddOrder = () => {
@@ -196,6 +205,11 @@ const Page = () => {
             <ShoppingCartIcon className="size-7" />
             {available ? "Add Order" : "Not Available"}
           </button>
+          {product && !available && (
+            <p className="mt-3 text-sm text-[#7D2D2D]">
+              This product is currently out of stock.
+            </p>
+          )}
         </div>
       )}
     </main>

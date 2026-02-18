@@ -3,13 +3,10 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  SearchIcon,
-} from "lucide-react";
+import { ArrowRight, SearchIcon } from "lucide-react";
 import { orpc } from "@/lib/orpc";
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 type ProductVariant = {
   size: string;
@@ -25,7 +22,10 @@ const formatPrice = (price: number) => {
 
 const getLowestPrice = (variants: ProductVariant[]) => {
   if (variants.length === 0) return 0;
-  return variants.reduce((lowest, variant) => Math.min(lowest, variant.price), variants[0].price);
+  return variants.reduce(
+    (lowest, variant) => Math.min(lowest, variant.price),
+    variants[0].price,
+  );
 };
 
 const normalizeCategory = (category: string) => {
@@ -42,13 +42,17 @@ const Page = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useQuery(orpc.product.list.queryOptions());
+  const { data, isLoading, isError } = useQuery(orpc.product.list.queryOptions());
+  const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
 
   const products = useMemo(() => data?.products ?? [], [data?.products]);
+  const stockByProductId = useMemo<Map<string, number>>(() => {
+    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map((stock) => [
+      stock.productId,
+      Number(stock.currentStock ?? 0),
+    ]);
+    return new Map<string, number>(entries);
+  }, [stockData]);
 
   const categories = useMemo(() => {
     const uniqueCategories = Array.from(
@@ -103,10 +107,11 @@ const Page = () => {
                 key={category}
                 type="button"
                 onClick={() => setSelectedCategory(category)}
-                className={`h-12 rounded-full px-4 text-center font-serif text-lg transition-colors ${selectedCategory === category
-                  ? "bg-[#075A5C] text-white"
-                  : "bg-[#BFD9EB] text-[#195568] hover:bg-[#D2E7F3]"
-                  }`}
+                className={`h-12 rounded-full px-4 text-center font-serif text-lg transition-colors ${
+                  selectedCategory === category
+                    ? "bg-[#075A5C] text-white"
+                    : "bg-[#BFD9EB] text-[#195568] hover:bg-[#D2E7F3]"
+                }`}
               >
                 {category}
               </button>
@@ -133,20 +138,22 @@ const Page = () => {
         {!isLoading && !isError && filteredProducts.length > 0 && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {filteredProducts.map((product) => {
-              const available = product.isActive;
+              const stockCount = stockByProductId.get(product.id) ?? 0;
+              const available = product.isActive && stockCount > 0;
               const category = normalizeCategory(product.category);
               const price = getLowestPrice(product.variants);
 
               return (
                 <div
                   key={product.id}
-                  className="rounded-[34px] border-4 relative border-[#A5BACB] bg-linear-to-b from-[#C5D3DF] to-[#4C8CC9] p-4 shadow-sm transition-transform hover:-translate-y-0.5"
+                  className="relative rounded-[34px] border-4 border-[#A5BACB] bg-linear-to-b from-[#C5D3DF] to-[#4C8CC9] p-4 shadow-sm transition-transform hover:-translate-y-0.5"
                 >
                   <span
-                    className={`rounded-full px-4 absolute top-3 right-4 z-10 py-1 text-base font-semibold ${available
-                      ? "bg-[#075A5C] text-[#DDFFFE]"
-                      : "bg-[#8E2C1B] text-[#FFF2ED]"
-                      }`}
+                    className={`absolute top-3 right-4 z-10 rounded-full px-4 py-1 text-base font-semibold ${
+                      available
+                        ? "bg-[#075A5C] text-[#DDFFFE]"
+                        : "bg-[#8E2C1B] text-[#FFF2ED]"
+                    }`}
                   >
                     {available ? "Available" : "Not Available"}
                   </span>
@@ -169,8 +176,16 @@ const Page = () => {
                   <h2 className="mt-1 line-clamp-1 font-sans text-2xl leading-tight text-white">
                     {product.name}
                   </h2>
-                  <p className="text-2xl mb-3 text-[#D3E8FF]">₱{formatPrice(price)}</p>
-                  <Button onClick={() => router.push(`/products/${product.id}`)} className='flex bg-[#063c66] hover:bg-[#063c66]/90 justify-end ml-auto rounded-full'>View Details <ArrowRight className='size-4' /></Button>
+                  <p className="mt-1 text-sm text-[#D3E8FF]">
+                    Stock: {stockCount} | Variants: {product.variants.length}
+                  </p>
+                  <p className="mb-3 text-2xl text-[#D3E8FF]">PHP {formatPrice(price)}</p>
+                  <Button
+                    onClick={() => router.push(`/products/${product.id}`)}
+                    className="ml-auto flex justify-end rounded-full bg-[#063c66] hover:bg-[#063c66]/90"
+                  >
+                    View Details <ArrowRight className="size-4" />
+                  </Button>
                 </div>
               );
             })}

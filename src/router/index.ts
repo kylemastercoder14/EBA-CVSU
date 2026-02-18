@@ -21,6 +21,8 @@ import {
   markNotificationRead,
 } from "@/router/notifications";
 import {
+  checkOrderNumberExists,
+  createKioskOrder,
   createOrder,
   listOrdersByUser,
   listOrdersMonitoring,
@@ -29,6 +31,11 @@ import {
 } from "@/router/order";
 import { listPayments, verifyPayment } from "@/router/payment";
 import { listDashboardSummary } from "@/router/dashboard";
+import {
+  createReplaceRequest,
+  listReplaceRequests,
+  updateReplaceRequestStatus,
+} from "@/router/replace";
 
 export const router = {
   product: {
@@ -64,7 +71,9 @@ export const router = {
     markAllRead: markAllNotificationsRead,
   },
   order: {
+    checkExists: checkOrderNumberExists,
     create: createOrder,
+    createKiosk: createKioskOrder,
     listByUser: listOrdersByUser,
     listMonitoring: listOrdersMonitoring,
     listRelease: listOrdersRelease,
@@ -76,5 +85,10 @@ export const router = {
   },
   dashboard: {
     summary: listDashboardSummary,
+  },
+  replace: {
+    create: createReplaceRequest,
+    list: listReplaceRequests,
+    updateStatus: updateReplaceRequestStatus,
   },
 };

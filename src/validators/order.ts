@@ -24,6 +24,28 @@ export const createOrderInputSchema = z
     }
   });
 
+export const createKioskOrderInputSchema = z
+  .object({
+    customer: z.object({
+      fullName: z.string().min(1, "Full name is required"),
+      mobileNumber: z.string().min(1, "Mobile number is required"),
+      studentNumber: z.string().optional(),
+      userType: z.enum(["STUDENT", "VISITOR"]),
+    }),
+    paymentMethod: z.enum(["GCASH", "CASH"]),
+    paymentReference: z.string().optional(),
+    items: z.array(createOrderItemInputSchema).min(1, "At least one item is required"),
+  })
+  .superRefine((value, ctx) => {
+    if (value.paymentMethod === "GCASH" && !value.paymentReference?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Payment reference is required for GCash",
+        path: ["paymentReference"],
+      });
+    }
+  });
+
 export const createOrderOutputSchema = z.object({
   order: z.object({
     id: z.string(),
@@ -38,8 +60,39 @@ export const createOrderOutputSchema = z.object({
   }),
 });
 
+export const createKioskOrderOutputSchema = z.object({
+  order: z.object({
+    id: z.string(),
+    orderNumber: z.string(),
+    userId: z.string(),
+    paymentMethod: z.enum(["GCASH", "CASH"]),
+    paymentStatus: z.enum(["PENDING", "VERIFIED"]),
+    totalQuantity: z.number(),
+    totalAmount: z.number(),
+    pickupDate: z.string().nullable(),
+    createdAt: z.string(),
+    paymentReference: z.string(),
+  }),
+});
+
 export const listOrdersByUserInputSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
+});
+
+export const checkOrderNumberExistsInputSchema = z.object({
+  orderNumber: z.string().min(1, "Order number is required"),
+});
+
+export const checkOrderNumberExistsOutputSchema = z.object({
+  exists: z.boolean(),
+  normalizedOrderNumber: z.string(),
+  order: z
+    .object({
+      id: z.string(),
+      orderNumber: z.string(),
+      stage: z.enum(["TO_CONFIRM", "TO_PAY", "PAID", "COMPLETED"]),
+    })
+    .nullable(),
 });
 
 export const listOrdersMonitoringInputSchema = z.void();

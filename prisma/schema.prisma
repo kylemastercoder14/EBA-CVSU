@@ -68,6 +68,19 @@ enum NotificationType {
   WARNING
 }
 
+enum ReplaceReason {
+  WRONG_ITEM
+  DEFECTIVE_ITEM
+  WRONG_SIZE
+  CHANGE_OF_MIND
+}
+
+enum ReplaceRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id            String      @id
   type          UserType
@@ -152,6 +165,7 @@ model Order {
   updatedAt     DateTime           @updatedAt
   user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   orderItems    OrderItem[]
+  replaceRequests ReplaceRequest[]
   payment       Payment?
   systemLogs    SystemLog[]
 
@@ -160,6 +174,20 @@ model Order {
   @@index([releaseStatus])
   @@index([paymentStatus])
   @@map("orders")
+}
+
+model ReplaceRequest {
+  id          String               @id
+  orderId     String
+  reason      ReplaceReason
+  status      ReplaceRequestStatus @default(PENDING)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  order       Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@map("replace_requests")
 }
 
 model OrderItem {

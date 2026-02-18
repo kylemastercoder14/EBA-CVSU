@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
-import { type StockStatus } from "@/generated/prisma";
+import { type StockStatus, type UserType } from "@/generated/prisma";
 import {
+  checkOrderNumberExistsInputSchema,
+  checkOrderNumberExistsOutputSchema,
+  createKioskOrderInputSchema,
+  createKioskOrderOutputSchema,
   createOrderInputSchema,
   createOrderOutputSchema,
   listOrdersMonitoringInputSchema,
@@ -63,6 +67,16 @@ const getNextId = async (prefix: string, model: "order" | "payment" | "orderItem
   }
 
   const last = await prisma.orderItem.findFirst({
+    where: { id: { startsWith: prefix } },
+    orderBy: { id: "desc" },
+    select: { id: true },
+  });
+  const numericValue = last ? Number.parseInt(last.id.replace(prefix, ""), 10) : 0;
+  return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
+};
+
+const getNextUserId = async (prefix: "KSTU" | "KVIS") => {
+  const last = await prisma.user.findFirst({
     where: { id: { startsWith: prefix } },
     orderBy: { id: "desc" },
     select: { id: true },
@@ -370,6 +384,43 @@ export const listOrdersByUser = base
     };
   });
 
+export const checkOrderNumberExists = base
+  .route({
+    method: "GET",
+    path: "/orders/exists",
+    summary: "check if an order number exists",
+    tags: ["orders"],
+  })
+  .input(checkOrderNumberExistsInputSchema)
+  .output(checkOrderNumberExistsOutputSchema)
+  .handler(async ({ input }) => {
+    const raw = input.orderNumber.trim().toUpperCase();
+    const normalizedOrderNumber = raw.startsWith("ORD-") ? raw : `ORD-${raw}`;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        orderNumber: normalizedOrderNumber,
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        stage: true,
+      },
+    });
+
+    return {
+      exists: Boolean(order),
+      normalizedOrderNumber: order?.orderNumber ?? normalizedOrderNumber,
+      order: order
+        ? {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            stage: order.stage,
+          }
+        : null,
+    };
+  });
+
 export const createOrder = base
   .route({
     method: "POST",
@@ -515,6 +566,244 @@ export const createOrder = base
       order: {
         id: created.id,
         orderNumber: created.orderNumber,
+        paymentMethod: created.paymentMethod ?? input.paymentMethod,
+        paymentStatus: created.paymentStatus,
+        totalQuantity: created.totalQuantity,
+        totalAmount,
+        pickupDate: created.pickupDate ? created.pickupDate.toISOString() : null,
+        createdAt: created.createdAt.toISOString(),
+        paymentReference,
+      },
+    };
+  });
+
+export const createKioskOrder = base
+  .route({
+    method: "POST",
+    path: "/orders/kiosk",
+    summary: "create kiosk order from local cart + kiosk sign-in data",
+    tags: ["orders"],
+  })
+  .input(createKioskOrderInputSchema)
+  .output(createKioskOrderOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const normalizedName = input.customer.fullName.trim();
+    const normalizedMobile = input.customer.mobileNumber.trim();
+    const normalizedStudentNumber = input.customer.studentNumber?.trim() || null;
+    const customerType: UserType = input.customer.userType;
+
+    if (!normalizedName || !normalizedMobile) {
+      throw errors.BAD_REQUEST();
+    }
+
+    let user = null as null | { id: string; fullName: string; mobileNumber: string; studentNumber: string | null };
+    if (customerType === "STUDENT" && normalizedStudentNumber) {
+      user = await prisma.user.findFirst({
+        where: {
+          type: "STUDENT",
+          studentNumber: normalizedStudentNumber,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          mobileNumber: true,
+          studentNumber: true,
+        },
+      });
+    }
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: {
+          type: customerType,
+          fullName: normalizedName,
+          mobileNumber: normalizedMobile,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          mobileNumber: true,
+          studentNumber: true,
+        },
+      });
+    }
+
+    if (!user) {
+      const nextUserId = await getNextUserId(customerType === "STUDENT" ? "KSTU" : "KVIS");
+      user = await prisma.user.create({
+        data: {
+          id: nextUserId,
+          type: customerType,
+          fullName: normalizedName,
+          mobileNumber: normalizedMobile,
+          studentNumber: customerType === "STUDENT" ? normalizedStudentNumber : null,
+          cvsuEmail: null,
+          password: null,
+        },
+        select: {
+          id: true,
+          fullName: true,
+          mobileNumber: true,
+          studentNumber: true,
+        },
+      });
+    } else {
+      const shouldUpdateStudentNumber =
+        customerType === "STUDENT" &&
+        normalizedStudentNumber &&
+        user.studentNumber !== normalizedStudentNumber;
+
+      if (
+        user.fullName !== normalizedName ||
+        user.mobileNumber !== normalizedMobile ||
+        shouldUpdateStudentNumber
+      ) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            fullName: normalizedName,
+            mobileNumber: normalizedMobile,
+            ...(customerType === "STUDENT" && normalizedStudentNumber
+              ? { studentNumber: normalizedStudentNumber }
+              : {}),
+          },
+          select: {
+            id: true,
+            fullName: true,
+            mobileNumber: true,
+            studentNumber: true,
+          },
+        });
+      }
+    }
+
+    const itemsWithPricing = await Promise.all(
+      input.items.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId },
+          include: {
+            variants: true,
+          },
+        });
+
+        if (!product) {
+          throw errors.NOT_FOUND();
+        }
+
+        const selectedVariant = product.variants.find((variant) => variant.size === item.variant);
+        if (!selectedVariant) {
+          throw errors.BAD_REQUEST();
+        }
+
+        return {
+          ...item,
+          productName: product.name,
+          productVariantId: selectedVariant.id,
+          unitPrice: Number(selectedVariant.price),
+        };
+      }),
+    );
+
+    const totalQuantity = itemsWithPricing.reduce((sum, item) => sum + item.quantity, 0);
+    const totalAmount = itemsWithPricing.reduce(
+      (sum, item) => sum + item.quantity * item.unitPrice,
+      0,
+    );
+
+    const pickupDateIso = input.items[0]?.pickupDate
+      ? new Date(`${input.items[0].pickupDate}T00:00:00.000Z`).toISOString()
+      : null;
+
+    const itemsSummary = itemsWithPricing
+      .map((item) => `${item.productName} (${item.variant}) x${item.quantity}`)
+      .join(", ");
+
+    const [orderId, paymentId, firstOrderItemId, orderNumber] = await Promise.all([
+      getNextId("ORDR", "order"),
+      getNextId("PAY", "payment"),
+      getNextId("OI", "orderItem"),
+      getNextOrderNumber(),
+    ]);
+
+    const paymentReference =
+      input.paymentMethod === "GCASH"
+        ? input.paymentReference?.trim() ?? ""
+        : `CASH-${orderNumber}`;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          id: orderId,
+          orderNumber,
+          userId: user.id,
+          itemsSummary,
+          totalQuantity,
+          pickupDate: pickupDateIso ? new Date(pickupDateIso) : null,
+          stage: "TO_CONFIRM",
+          paymentMethod: input.paymentMethod,
+          paymentStatus: "PENDING",
+        },
+      });
+
+      await tx.orderItem.createMany({
+        data: itemsWithPricing.map((item, index) => ({
+          id: `OI${(Number.parseInt(firstOrderItemId.replace("OI", ""), 10) + index)
+            .toString()
+            .padStart(4, "0")}`,
+          orderId: createdOrder.id,
+          productId: item.productId,
+          productVariantId: item.productVariantId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      });
+
+      const createdPayment = await tx.payment.create({
+        data: {
+          id: paymentId,
+          orderId: createdOrder.id,
+          amount: totalAmount,
+          reference: paymentReference,
+          method: input.paymentMethod,
+          status: "PENDING",
+        },
+      });
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_CREATED",
+        description: `Kiosk order "${createdOrder.orderNumber}" created with ${createdOrder.totalQuantity} item(s).`,
+        status: "SUCCESS",
+        actorName: "Kiosk",
+        actorUserId: user.id,
+        orderId: createdOrder.id,
+      });
+
+      await createSystemLog(tx, {
+        type: "PAYMENT",
+        category: "PAYMENT_PENDING",
+        description: `Kiosk payment pending for order "${createdOrder.orderNumber}" via ${input.paymentMethod}.`,
+        status: "INFO",
+        actorName: "Kiosk",
+        actorUserId: user.id,
+        orderId: createdOrder.id,
+        paymentId: createdPayment.id,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "New Kiosk Order",
+        message: `Order ${createdOrder.orderNumber} is now waiting for confirmation.`,
+        type: "INFO",
+      });
+
+      return createdOrder;
+    });
+
+    return {
+      order: {
+        id: created.id,
+        orderNumber: created.orderNumber,
+        userId: created.userId,
         paymentMethod: created.paymentMethod ?? input.paymentMethod,
         paymentStatus: created.paymentStatus,
         totalQuantity: created.totalQuantity,
