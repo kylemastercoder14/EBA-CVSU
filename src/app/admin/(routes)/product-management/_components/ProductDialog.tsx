@@ -34,7 +34,11 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
-import { productFormSchema, ProductFormValues } from "@/validators/products";
+import {
+  NO_VARIANT_SIZE,
+  productFormSchema,
+  ProductFormValues,
+} from "@/validators/products";
 import { useEffect, useState } from "react";
 import { Product } from "./types";
 
@@ -62,7 +66,8 @@ export const ProductDialog = ({
       isActive: true,
       isVisitorOrderable: true,
       imageUrl: undefined,
-      variants: [{ size: "", price: 0 }],
+      basePrice: undefined,
+      variants: [],
     },
   });
 
@@ -77,13 +82,22 @@ export const ProductDialog = ({
   // Set form values when editing
   useEffect(() => {
     if (mode === "update" && product && isOpen) {
+      const realVariants = product.variants.filter(
+        (variant) => variant.size !== NO_VARIANT_SIZE,
+      );
+      const fallbackVariant = product.variants.find(
+        (variant) => variant.size === NO_VARIANT_SIZE,
+      );
+
       form.reset({
         name: product.name,
         category: product.category,
         isActive: product.isActive,
         isVisitorOrderable: product.isVisitorOrderable,
         imageUrl: undefined, // Will keep existing image unless changed
-        variants: product.variants.map((v) => ({
+        basePrice:
+          realVariants.length === 0 ? (fallbackVariant?.price ?? undefined) : undefined,
+        variants: realVariants.map((v) => ({
           size: v.size,
           price: v.price,
         })),
@@ -95,7 +109,8 @@ export const ProductDialog = ({
         isActive: true,
         isVisitorOrderable: true,
         imageUrl: undefined,
-        variants: [{ size: "", price: 0 }],
+        basePrice: undefined,
+        variants: [],
       });
     }
   }, [mode, product, isOpen, form]);
@@ -282,12 +297,15 @@ export const ProductDialog = ({
               <div className="grid gap-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-[#07484A] font-medium">
-                    Product Variants (Sizes & Prices)
+                    Product Variants (Optional)
                   </Label>
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => append({ size: "", price: 0 })}
+                    onClick={() => {
+                      form.setValue("basePrice", undefined);
+                      append({ size: "", price: 0 });
+                    }}
                     className="bg-[#07484A] hover:bg-[#07484A]/90 text-white"
                   >
                     <PlusIcon className="h-4 w-4 mr-1" />
@@ -296,6 +314,11 @@ export const ProductDialog = ({
                 </div>
 
                 <div className="space-y-3 max-h-50 overflow-y-auto pr-2">
+                  {fields.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-[#07484A]/30 bg-white/40 p-3 text-sm text-[#07484A]/70">
+                      No variants yet. Add one if this product has size options.
+                    </div>
+                  )}
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
@@ -349,17 +372,15 @@ export const ProductDialog = ({
                           )}
                         />
                       </div>
-                      {fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => remove(index)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 mt-6"
-                        >
-                          <XIcon className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 h-9 w-9 mt-6"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -370,9 +391,37 @@ export const ProductDialog = ({
                   </p>
                 )}
 
+                {fields.length === 0 && (
+                  <FormField
+                    control={form.control}
+                    name="basePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[#07484A] font-medium">
+                          Product Price (No Size Variants)
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            className="bg-white border-[#07484A]/30"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              field.onChange(raw === "" ? undefined : parseFloat(raw));
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 <p className="text-xs text-[#07484A]/60">
-                  Note: Stock levels will be managed separately for each variant
-                  in the Stock Management section.
+                  Note: Variants are optional. For non-size products, you can
+                  leave this section empty.
                 </p>
               </div>
 

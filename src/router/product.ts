@@ -6,6 +6,7 @@ import {
   deleteProductOutputSchema,
   listProductsInputSchema,
   listProductsOutputSchema,
+  NO_VARIANT_SIZE,
   productFormSchema,
   productMutationOutputSchema,
   updateProductSchema,
@@ -55,8 +56,13 @@ export const createProduct = base
   .input(productFormSchema)
   .output(productMutationOutputSchema)
   .handler(async ({ input, errors }) => {
+    const normalizedVariants =
+      input.variants.length > 0
+        ? input.variants
+        : [{ size: NO_VARIANT_SIZE, price: input.basePrice ?? 0 }];
+
     // Check for duplicate variant sizes
-    const sizes = input.variants.map((v) => v.size);
+    const sizes = normalizedVariants.map((v) => v.size);
     const duplicateSizes = sizes.filter(
       (size, index) => sizes.indexOf(size) !== index,
     );
@@ -160,6 +166,12 @@ export const createProduct = base
 
     // Create product with variants, stock item, and log in a transaction
     const product = await prisma.$transaction(async (tx) => {
+      const variantCreateData = normalizedVariants.map((variant, index) => ({
+        id: `PV${(nextVariantNumber + index).toString().padStart(3, "0")}`,
+        size: variant.size,
+        price: variant.price,
+      }));
+
       // Create product with variants
       const newProduct = await tx.product.create({
         data: {
@@ -169,13 +181,13 @@ export const createProduct = base
           imageUrl: imageUrl, // Use uploaded image URL
           isActive: input.isActive,
           isVisitorOrderable: input.isVisitorOrderable,
-          variants: {
-            create: input.variants.map((variant, index) => ({
-              id: `PV${(nextVariantNumber + index).toString().padStart(3, "0")}`,
-              size: variant.size,
-              price: variant.price,
-            })),
-          },
+          ...(variantCreateData.length > 0
+            ? {
+                variants: {
+                  create: variantCreateData,
+                },
+              }
+            : {}),
         },
         include: {
           variants: true,
@@ -237,6 +249,11 @@ export const updateProduct = base
   .input(updateProductSchema)
   .output(productMutationOutputSchema)
   .handler(async ({ input, errors }) => {
+    const normalizedVariants =
+      input.variants.length > 0
+        ? input.variants
+        : [{ size: NO_VARIANT_SIZE, price: input.basePrice ?? 0 }];
+
     const existingProduct = await prisma.product.findUnique({
       where: { id: input.id },
       include: { variants: true },
@@ -247,7 +264,7 @@ export const updateProduct = base
     }
 
     // Check for duplicate variant sizes
-    const sizes = input.variants.map((v) => v.size);
+    const sizes = normalizedVariants.map((v) => v.size);
     const duplicateSizes = sizes.filter(
       (size, index) => sizes.indexOf(size) !== index,
     );
@@ -311,6 +328,12 @@ export const updateProduct = base
     const logCode = `${logId}-${timestamp}`;
 
     const updatedProduct = await prisma.$transaction(async (tx) => {
+      const variantCreateData = normalizedVariants.map((variant, index) => ({
+        id: `PV${(nextVariantNumber + index).toString().padStart(3, "0")}`,
+        size: variant.size,
+        price: variant.price,
+      }));
+
       const product = await tx.product.update({
         where: { id: input.id },
         data: {
@@ -321,11 +344,11 @@ export const updateProduct = base
           isVisitorOrderable: input.isVisitorOrderable,
           variants: {
             deleteMany: {},
-            create: input.variants.map((variant, index) => ({
-              id: `PV${(nextVariantNumber + index).toString().padStart(3, "0")}`,
-              size: variant.size,
-              price: variant.price,
-            })),
+            ...(variantCreateData.length > 0
+              ? {
+                  create: variantCreateData,
+                }
+              : {}),
           },
         },
         include: {
@@ -376,7 +399,16 @@ export const deleteProduct = base
   .handler(async ({ input, errors }) => {
     const existingProduct = await prisma.product.findUnique({
       where: { id: input.id },
-      select: { id: true, name: true, imageUrl: true },
+      select: {
+        id: true,
+        name: true,
+        imageUrl: true,
+        _count: {
+          select: {
+            orderItems: true,
+          },
+        },
+      },
     });
 
     if (!existingProduct) {
@@ -408,7 +440,41 @@ export const deleteProduct = base
       .slice(0, 14);
     const logCode = `${logId}-${timestamp}`;
 
+    const hasOrderHistory = existingProduct._count.orderItems > 0;
+
     try {
+      if (hasOrderHistory) {
+        await prisma.$transaction(async (tx) => {
+          await tx.product.update({
+            where: { id: input.id },
+            data: {
+              isActive: false,
+              isVisitorOrderable: false,
+            },
+          });
+
+          await tx.systemLog.create({
+            data: {
+              id: logId,
+              logCode,
+              type: "SYSTEM",
+              category: "STOCK_UPDATED",
+              description: `Product "${existingProduct.name}" is linked to existing orders and was archived (set inactive and not visitor orderable).`,
+              status: "SUCCESS",
+              actorName: "System",
+              productId: input.id,
+            },
+          });
+        });
+
+        return {
+          success: true,
+          id: input.id,
+          message:
+            `Product "${existingProduct.name}" has existing orders, so it was archived instead of deleted.`,
+        };
+      }
+
       await prisma.$transaction(async (tx) => {
         await tx.product.delete({
           where: { id: input.id },
@@ -443,14 +509,14 @@ export const deleteProduct = base
           console.error("Failed to delete product image file:", error);
         }
       }
+
+      return {
+        success: true,
+        id: input.id,
+        message: `Product "${existingProduct.name}" deleted successfully`,
+      };
     } catch (error) {
       console.error("Error deleting product:", error);
       throw errors.BAD_REQUEST();
     }
-
-    return {
-      success: true,
-      id: input.id,
-      message: `Product "${existingProduct.name}" deleted successfully`,
-    };
   });

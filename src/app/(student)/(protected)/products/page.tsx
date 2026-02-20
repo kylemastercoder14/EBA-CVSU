@@ -7,6 +7,7 @@ import { ArrowRight, SearchIcon } from "lucide-react";
 import { orpc } from "@/lib/orpc";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type ProductVariant = {
   size: string;
@@ -142,6 +143,9 @@ const Page = () => {
               const available = product.isActive && stockCount > 0;
               const category = normalizeCategory(product.category);
               const price = getLowestPrice(product.variants);
+              const visibleVariantCount = product.variants.filter(
+                (variant) => variant.size !== NO_VARIANT_SIZE,
+              ).length;
 
               return (
                 <div
@@ -177,7 +181,7 @@ const Page = () => {
                     {product.name}
                   </h2>
                   <p className="mt-1 text-sm text-[#D3E8FF]">
-                    Stock: {stockCount} | Variants: {product.variants.length}
+                    Stock: {stockCount} | Variants: {visibleVariantCount}
                   </p>
                   <p className="mb-3 text-2xl text-[#D3E8FF]">PHP {formatPrice(price)}</p>
                   <Button

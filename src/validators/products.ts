@@ -1,20 +1,31 @@
 import z from "zod";
 
+export const NO_VARIANT_SIZE = "No Size";
+
 export const productVariantSchema = z.object({
   size: z.string().min(1, "Size is required"),
   price: z.number().positive("Price must be greater than 0"),
 });
 
-export const productFormSchema = z.object({
-  name: z.string().min(1, "Product name is required"),
-  category: z.string().min(1, "Category is required"),
-  isActive: z.boolean(),
-  isVisitorOrderable: z.boolean(),
-  imageUrl: z.instanceof(File).optional(),
-  variants: z
-    .array(productVariantSchema)
-    .min(1, "At least one variant is required"),
-});
+export const productFormSchema = z
+  .object({
+    name: z.string().min(1, "Product name is required"),
+    category: z.string().min(1, "Category is required"),
+    isActive: z.boolean(),
+    isVisitorOrderable: z.boolean(),
+    imageUrl: z.instanceof(File).optional(),
+    basePrice: z.number().positive("Price must be greater than 0").optional(),
+    variants: z.array(productVariantSchema),
+  })
+  .superRefine((data, ctx) => {
+    if (data.variants.length === 0 && (!data.basePrice || data.basePrice <= 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["basePrice"],
+        message: "Price is required when no variants are added",
+      });
+    }
+  });
 
 export const updateProductSchema = productFormSchema.extend({
   id: z.string().min(1, "Product ID is required"),

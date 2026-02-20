@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { orpc } from "@/lib/orpc";
 import { useCart } from "@/hooks/use-cart";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type ProductVariant = { size: string; price: number };
 
@@ -82,26 +83,36 @@ const ProductDetailPage = () => {
     };
   }, [backendId, productsData, stockByProductId]);
 
+  const realVariants = useMemo(
+    () => product?.variants.filter((variant) => variant.size !== NO_VARIANT_SIZE) ?? [],
+    [product],
+  );
+  const fallbackVariant = useMemo(
+    () => product?.variants.find((variant) => variant.size === NO_VARIANT_SIZE),
+    [product],
+  );
+  const hasVariants = realVariants.length > 0;
+
   const minPrice = useMemo(() => {
-    if (!product || product.variants.length === 0) return 0;
-    return Math.min(...product.variants.map((variant) => variant.price));
-  }, [product]);
+    if (hasVariants) return Math.min(...realVariants.map((variant) => variant.price));
+    return fallbackVariant?.price ?? 0;
+  }, [fallbackVariant?.price, hasVariants, realVariants]);
 
   const activeSize =
-    product && product.variants.length > 0
+    hasVariants
       ? selectedSize &&
-        product.variants.some((variant) => variant.size === selectedSize)
+        realVariants.some((variant) => variant.size === selectedSize)
         ? selectedSize
-        : product.variants[0].size
+        : realVariants[0].size
       : undefined;
   const activeVariant = useMemo(() => {
-    if (!product || !activeSize) return undefined;
-    return product.variants.find((variant) => variant.size === activeSize);
-  }, [activeSize, product]);
+    if (!activeSize) return undefined;
+    return realVariants.find((variant) => variant.size === activeSize);
+  }, [activeSize, realVariants]);
   const activePrice = activeVariant?.price ?? minPrice;
   const canAdd =
     Boolean(product?.available) &&
-    (product?.variants.length === 0 || !!activeSize);
+    (!hasVariants || !!activeSize);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -110,7 +121,7 @@ const ProductDetailPage = () => {
     addItem({
       productId: product.id,
       productName: product.name,
-      variant: activeSize ?? "DEFAULT",
+      variant: hasVariants ? activeSize ?? NO_VARIANT_SIZE : NO_VARIANT_SIZE,
       pickupDate,
       quantity: qty,
     });
@@ -245,13 +256,13 @@ const ProductDetailPage = () => {
               <div className="h-px flex-1 bg-white/30" />
             </div>
 
-            {product.variants.length > 0 && (
+            {hasVariants && (
               <div className="mb-6">
                 <span className="font-serif text-sm uppercase tracking-[0.2em] text-[#07484A]/60">
                   Choose Size/Variant
                 </span>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {product.variants.map((variant) => (
+                  {realVariants.map((variant) => (
                     <button
                       key={variant.size}
                       onClick={() => setSelectedSize(variant.size)}
@@ -266,6 +277,11 @@ const ProductDetailPage = () => {
                   ))}
                 </div>
               </div>
+            )}
+            {!hasVariants && (
+              <p className="mb-6 font-serif text-sm italic text-[#07484A]/60">
+                No size selection required for this item.
+              </p>
             )}
 
             <div className="mb-8 flex items-center gap-5">

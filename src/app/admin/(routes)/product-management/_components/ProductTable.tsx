@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 interface ProductTableProps {
   products: Product[];
@@ -59,13 +60,27 @@ export const ProductTable = ({
       <TableBody>
         {products.length > 0 ? (
           products.map((product) => {
-            const prices = product.variants.map((v) => v.price);
-            const minPrice = Math.min(...prices);
-            const maxPrice = Math.max(...prices);
-            const priceDisplay =
-              minPrice === maxPrice
-                ? `₱${minPrice.toFixed(2)}`
-                : `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
+            const realVariants = product.variants.filter(
+              (variant) => variant.size !== NO_VARIANT_SIZE,
+            );
+            const fallbackVariant = product.variants.find(
+              (variant) => variant.size === NO_VARIANT_SIZE,
+            );
+            const priceVariants =
+              realVariants.length > 0
+                ? realVariants
+                : fallbackVariant
+                  ? [fallbackVariant]
+                  : [];
+            const hasVariants = realVariants.length > 0;
+            const prices = priceVariants.map((v) => v.price);
+            const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+            const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+            const priceDisplay = prices.length > 0
+              ? minPrice === maxPrice
+                ? `PHP ${minPrice.toFixed(2)}`
+                : `PHP ${minPrice.toFixed(2)} - PHP ${maxPrice.toFixed(2)}`
+              : "No price";
 
             return (
               <TableRow key={product.id} className="hover:bg-[#C5E3FF]">
@@ -94,14 +109,20 @@ export const ProductTable = ({
                 </TableCell>
                 <TableCell className="p-4 text-sm">
                   <div className="flex flex-wrap gap-1">
-                    {product.variants.map((variant, idx) => (
-                      <span
-                        key={idx}
-                        className="text-xs bg-white px-2 py-1 rounded border border-[#07484A]/20"
-                      >
-                        {variant.size}
+                    {hasVariants ? (
+                      realVariants.map((variant, idx) => (
+                        <span
+                          key={idx}
+                          className="text-xs bg-white px-2 py-1 rounded border border-[#07484A]/20"
+                        >
+                          {variant.size}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs italic text-[#07484A]/70">
+                        No variants
                       </span>
-                    ))}
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="p-4 text-sm">{priceDisplay}</TableCell>

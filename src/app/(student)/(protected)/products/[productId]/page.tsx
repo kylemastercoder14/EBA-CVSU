@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { orpc } from "@/lib/orpc";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type ProductVariant = {
   size: string;
@@ -64,15 +65,26 @@ const Page = () => {
     return new Map<string, number>(entries);
   }, [stockData]);
   const currentStock = product ? (stockByProductId.get(product.id) ?? 0) : 0;
+  const realVariants = useMemo(
+    () => product?.variants.filter((variant) => variant.size !== NO_VARIANT_SIZE) ?? [],
+    [product],
+  );
+  const fallbackVariant = useMemo(
+    () => product?.variants.find((variant) => variant.size === NO_VARIANT_SIZE),
+    [product],
+  );
+  const hasVariants = realVariants.length > 0;
 
-  const activeSize = selectedSize ?? product?.variants[0]?.size ?? "";
+  const activeSize = hasVariants ? selectedSize ?? realVariants[0]?.size ?? "" : "";
   const selectedVariant = useMemo(() => {
-    if (!product || !activeSize) return undefined;
-    return product.variants.find((variant) => variant.size === activeSize);
-  }, [product, activeSize]);
+    if (!activeSize) return undefined;
+    return realVariants.find((variant) => variant.size === activeSize);
+  }, [activeSize, realVariants]);
 
   const available = Boolean(product?.isActive) && currentStock > 0;
-  const unitPrice = selectedVariant?.price ?? product?.variants[0]?.price ?? 0;
+  const unitPrice =
+    selectedVariant?.price ??
+    (hasVariants ? realVariants[0]?.price ?? 0 : fallbackVariant?.price ?? 0);
 
   const handleAddOrder = () => {
     if (!product) return;
@@ -82,20 +94,21 @@ const Page = () => {
       return;
     }
 
-    if (!activeSize) {
+    if (hasVariants && !activeSize) {
       toast.error("Please choose a size");
       return;
     }
 
+    const variantLabel = hasVariants ? activeSize : NO_VARIANT_SIZE;
     addItem({
       productId: product.id,
       productName: product.name,
-      variant: activeSize,
+      variant: variantLabel,
       quantity,
       pickupDate,
     });
 
-    toast.success(`${product.name} (${activeSize}) added to cart. Total items: ${getItemCount()}.`);
+    toast.success(`${product.name} (${variantLabel}) added to cart. Total items: ${getItemCount()}.`);
   };
 
   return (
@@ -147,29 +160,35 @@ const Page = () => {
             </label>
           </div>
 
-          <div className="mt-8">
-            <p className="font-serif text-xl text-[#0B525B]">
-              Choose Size/Variant <span className="text-[#D05555]">*</span>
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-              {product.variants.map((variant) => {
-                const active = variant.size === activeSize;
-                return (
-                  <button
-                    key={variant.size}
-                    type="button"
-                    onClick={() => setSelectedSize(variant.size)}
-                    className={`rounded-full px-4 py-2 text-xl transition-colors ${active
-                        ? "bg-[#075A5C] text-white"
-                        : "bg-[#DDE5EC] text-[#0B525B] hover:bg-[#EAF1F6]"
-                      }`}
-                  >
-                    {variant.size}
-                  </button>
-                );
-              })}
+          {hasVariants ? (
+            <div className="mt-8">
+              <p className="font-serif text-xl text-[#0B525B]">
+                Choose Size/Variant <span className="text-[#D05555]">*</span>
+              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+                {realVariants.map((variant) => {
+                  const active = variant.size === activeSize;
+                  return (
+                    <button
+                      key={variant.size}
+                      type="button"
+                      onClick={() => setSelectedSize(variant.size)}
+                      className={`rounded-full px-4 py-2 text-xl transition-colors ${active
+                          ? "bg-[#075A5C] text-white"
+                          : "bg-[#DDE5EC] text-[#0B525B] hover:bg-[#EAF1F6]"
+                        }`}
+                    >
+                      {variant.size}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="mt-8 text-center text-sm italic text-[#0B525B]/70">
+              No size selection required for this product.
+            </p>
+          )}
 
           <div className="mt-8 flex items-center justify-center">
             <div className="inline-flex items-center gap-6 rounded-full bg-[#F2F3F4] px-7 py-2 text-xl text-[#0B525B]">
