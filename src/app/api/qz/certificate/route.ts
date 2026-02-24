@@ -1,4 +1,3 @@
-// app/api/qz/certificate/route.ts
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
