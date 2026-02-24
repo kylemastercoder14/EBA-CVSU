@@ -17,7 +17,7 @@ import type {
 
 type Stage = "success" | "print-prompt" | "order-confirmed" | "receipt-printed";
 type PrintDecision = "yes" | "no";
-type PrintChannel = "qz" | "browser" | "failed" | null;
+type PrintChannel = "qz" | "failed" | null;
 
 type ReceiptMeta = {
   decision: PrintDecision;
@@ -52,25 +52,6 @@ const formatMoney = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
-const escapeHtml = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-
-const formatPickupDate = (dateText: string) => {
-  if (!dateText) return "-";
-  const parsed = new Date(`${dateText}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return dateText;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(parsed);
-};
-
 const parseJson = <T,>(raw: string | null): T | null => {
   if (!raw) return null;
   try {
@@ -86,210 +67,6 @@ const getOrCreateOrderNumber = () => {
   const next = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
   localStorage.setItem(kioskOrderNumberStorageKey, next);
   return next;
-};
-
-// Replace your existing printReceiptWithBrowser function with this one.
-// Everything else in your page.tsx stays the same.
-
-const printReceiptWithBrowser = (receipt: KioskReceiptPayload) => {
-  const receiptWindow = window.open(
-    window.location.href,
-    "_blank",
-    "width=400,height=900",
-  );
-  if (!receiptWindow) return false;
-
-  const issuedAt = new Intl.DateTimeFormat("en-PH", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(receipt.issuedAt));
-
-  const firstPickup = receipt.items[0]?.pickupDate
-    ? formatPickupDate(receipt.items[0].pickupDate)
-    : "-";
-
-  const itemRows = receipt.items
-    .map(
-      (item) => `
-        <div class="mt2">
-          <div class="row">
-            <span class="desc">${escapeHtml(item.productName)}${item.variant ? ` (${escapeHtml(item.variant)})` : ""}</span>
-            <span class="amt">PHP ${formatMoney(item.lineTotal)}</span>
-          </div>
-          <div class="sub">${item.quantity} x PHP ${formatMoney(item.unitPrice)}</div>
-        </div>
-      `,
-    )
-    .join("");
-
-  receiptWindow.document.write(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Receipt ${escapeHtml(receipt.orderNumber)}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-
-          body {
-            font-family: 'Courier New', Courier, monospace;
-            background: #fff;
-            color: #000;
-            /* center on screen for preview */
-            display: flex;
-            justify-content: center;
-            padding: 16px;
-          }
-
-          .receipt {
-            width: 48mm;
-            font-size: 7.5pt;
-            line-height: 1.4;
-            word-break: break-word;
-            overflow: hidden;
-          }
-
-          /* ── Typography ── */
-          .center { text-align: center; }
-          .right  { text-align: right; }
-          .bold   { font-weight: bold; }
-          .xl     { font-size: 10pt; letter-spacing: 1px; }
-          .lg     { font-size: 9pt; }
-          .sm     { font-size: 7pt; }
-          .mt2    { margin-top: 2px; }
-          .mt4    { margin-top: 4px; }
-          .mt6    { margin-top: 6px; }
-
-          /* ── Dividers ── */
-          .dashed {
-            border: none;
-            border-top: 1px dashed #777;
-            margin: 5px 0;
-          }
-          .solid {
-            border: none;
-            border-top: 1px solid #000;
-            margin: 5px 0;
-          }
-
-          /* ── Rows ── */
-          .row {
-            display: flex;
-            justify-content: space-between;
-            gap: 2px;
-            width: 100%;
-          }
-          .row .desc { flex: 1; }
-          .row .amt  { white-space: nowrap; text-align: right; min-width: 48px; }
-
-          .sub {
-            font-size: 7pt;
-            color: #555;
-            padding-left: 4px;
-          }
-
-          /* ── Totals ── */
-          .totals-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 2px;
-            width: 100%;
-          }
-          .totals-row .tlabel { flex: 1; }
-          .totals-row .tval   { white-space: nowrap; text-align: right; min-width: 48px; }
-          .totals-row.grand {
-            font-weight: bold;
-            font-size: 9pt;
-            margin-top: 3px;
-          }
-
-          /* ── Print ── */
-          @media print {
-            body { padding: 0; }
-            .receipt {
-              width: 48mm;
-              font-size: 7.5pt;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="receipt">
-
-          <!-- HEADER -->
-          <div class="center">
-            <div class="xl bold">EBA ORDERING</div>
-            <div class="sm mt2">External and Business Affairs</div>
-            <div class="sm">Ordering System</div>
-          </div>
-
-          <hr class="dashed mt6" />
-
-          <!-- TRANSACTION INFO -->
-          <div class="row sm">
-            <span>${escapeHtml(issuedAt)}</span>
-          </div>
-          <div class="row sm mt2">
-            <span>OR No: ${escapeHtml(receipt.orderNumber)}</span>
-          </div>
-          <div class="sm mt2">Customer: <strong>${escapeHtml(receipt.customerName)}</strong></div>
-          <div class="sm">Mobile: ${escapeHtml(receipt.mobileNumber)}</div>
-          <div class="sm">Pickup: ${escapeHtml(firstPickup)}</div>
-          <div class="sm">Payment: <strong>${escapeHtml(receipt.paymentMethod.toUpperCase())}</strong></div>
-          ${
-            receipt.paymentReference
-              ? `<div class="sm">Ref No: ${escapeHtml(receipt.paymentReference)}</div>`
-              : ""
-          }
-
-          <hr class="solid mt6" />
-
-          <!-- ITEMS HEADER -->
-          <div class="row bold sm">
-            <span class="desc">ITEM</span>
-            <span class="amt">AMOUNT</span>
-          </div>
-          <hr class="dashed" />
-
-          <!-- ITEMS -->
-          ${itemRows}
-
-          <hr class="dashed mt6" />
-
-          <!-- TOTAL -->
-          <div class="totals-row grand">
-            <span class="tlabel">TOTAL</span>
-            <span class="tval">PHP ${formatMoney(receipt.total)}</span>
-          </div>
-
-          <hr class="dashed mt6" />
-
-          <!-- FOOTER -->
-          <div class="center sm mt4">
-            This serves as your<br />
-            <strong>OFFICIAL RECEIPT</strong>
-          </div>
-          <div class="center sm mt4">
-            Thank you for your order!<br />
-            Please come again :)
-          </div>
-          <div class="center sm mt6" style="color:#666;">
-            ${escapeHtml(receipt.orderNumber)}
-          </div>
-
-        </div>
-      </body>
-    </html>
-  `);
-
-  receiptWindow.document.close();
-  receiptWindow.focus();
-  window.setTimeout(() => receiptWindow.print(), 300);
-  return true;
 };
 
 const PrintReceiptDialog = ({
@@ -401,10 +178,8 @@ const OrderConfirmedDialog = ({
           <p className="text-center font-serif text-sm italic text-white/60">
             {printChannel === "qz" &&
               "Receipt sent to thermal printer via QZ Tray."}
-            {printChannel === "browser" &&
-              "QZ unavailable. Used browser print dialog fallback."}
             {printChannel === "failed" &&
-              "Printing failed. You may continue without printed receipt."}
+              "Thermal printing failed (QZ Tray). You may continue without printed receipt."}
             {printChannel === null && "No receipt print requested."}
           </p>
         </div>
@@ -642,16 +417,8 @@ const Page = () => {
       setIsPrinting(true);
       setPrintStatusText("Trying thermal printer via QZ Tray...");
 
-      let printed = await printReceiptViaQz(receiptForPrint);
-      let channel: PrintChannel = printed ? "qz" : "failed";
-
-      if (!printed) {
-        setPrintStatusText(
-          "QZ not available. Opening browser print fallback...",
-        );
-        printed = printReceiptWithBrowser(receiptForPrint);
-        channel = printed ? "browser" : "failed";
-      }
+      const printed = await printReceiptViaQz(receiptForPrint);
+      const channel: PrintChannel = printed ? "qz" : "failed";
 
       saveReceipt(receiptForPrint, { decision: "yes", printed, decidedAt });
       setPrintChannel(channel);
