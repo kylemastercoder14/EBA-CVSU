@@ -1,3 +1,4 @@
+// app/api/qz/certificate/route.ts
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -10,36 +11,44 @@ const CANDIDATE_CERT_PATHS = [
   "certs/qz/digital-certificate.txt",
 ];
 
-const resolveCertPath = () => {
-  const configured = process.env.QZ_CERT_PATH;
-  if (configured) return path.resolve(process.cwd(), configured);
-  return path.resolve(process.cwd(), CANDIDATE_CERT_PATHS[0]);
-};
-
 export async function GET() {
-  const attempts = configuredPaths(resolveCertPath(), CANDIDATE_CERT_PATHS);
+  // ✅ Priority 1: Use environment variable (works on Vercel)
+  const envCert = process.env.QZ_CERTIFICATE;
+  if (envCert) {
+    // Restore newlines if stored as single line (Vercel sometimes strips them)
+    const normalized = envCert.includes("-----")
+      ? envCert.replace(/\\n/g, "\n")
+      : `-----BEGIN CERTIFICATE-----\n${envCert.replace(/\\n/g, "\n")}\n-----END CERTIFICATE-----`;
 
-  for (const certPath of attempts) {
+    return new NextResponse(normalized, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  // ✅ Priority 2: Read from file (works locally)
+  const paths = [
+    process.env.QZ_CERT_PATH
+      ? path.resolve(process.cwd(), process.env.QZ_CERT_PATH)
+      : null,
+    ...CANDIDATE_CERT_PATHS.map((p) => path.resolve(process.cwd(), p)),
+  ].filter(Boolean) as string[];
+
+  for (const certPath of paths) {
     try {
       const cert = await readFile(certPath, "utf8");
       return new NextResponse(cert, {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     } catch {
-      // Try next candidate path.
+      // Try next path
     }
   }
 
   return NextResponse.json(
     {
       error:
-        "QZ certificate file not found. Set QZ_CERT_PATH or place digital-certificate.txt in /certs.",
+        "QZ certificate not found. Set QZ_CERTIFICATE env var or place digital-certificate.txt in /certs.",
     },
     { status: 500 },
   );
-}
-
-function configuredPaths(primary: string, defaults: string[]) {
-  const base = [primary, ...defaults.map((p) => path.resolve(process.cwd(), p))];
-  return Array.from(new Set(base));
 }

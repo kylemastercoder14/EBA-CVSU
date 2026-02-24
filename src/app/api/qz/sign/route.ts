@@ -6,16 +6,13 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const CANDIDATE_KEY_PATHS = ["certs/private-key.pem", "certs/qz/private-key.pem"];
+const CANDIDATE_KEY_PATHS = [
+  "certs/private-key.pem",
+  "certs/qz/private-key.pem",
+];
 
 type SignBody = {
   request?: string;
-};
-
-const resolveKeyPath = () => {
-  const configured = process.env.QZ_PRIVATE_KEY_PATH;
-  if (configured) return path.resolve(process.cwd(), configured);
-  return path.resolve(process.cwd(), CANDIDATE_KEY_PATHS[0]);
 };
 
 export async function POST(request: Request) {
@@ -24,18 +21,47 @@ export async function POST(request: Request) {
   const toSign = parsed?.request;
 
   if (!toSign) {
-    return NextResponse.json({ error: "Missing request payload to sign." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing request payload to sign." },
+      { status: 400 },
+    );
   }
 
-  const attempts = configuredPaths(resolveKeyPath(), CANDIDATE_KEY_PATHS);
-  let privateKey: string | null = null;
+  // ✅ Priority 1: Use environment variable (works on Vercel)
+  const envKey = process.env.QZ_PRIVATE_KEY;
+  if (envKey) {
+    try {
+      // Restore newlines if Vercel flattened them
+      const normalized = envKey.includes("-----")
+        ? envKey.replace(/\\n/g, "\n")
+        : `-----BEGIN PRIVATE KEY-----\n${envKey.replace(/\\n/g, "\n")}\n-----END PRIVATE KEY-----`;
 
-  for (const keyPath of attempts) {
+      const signer = createSign("RSA-SHA512");
+      signer.update(toSign);
+      signer.end();
+      const signature = signer.sign(normalized, "base64");
+      return NextResponse.json({ signature });
+    } catch (err) {
+      console.error("[QZ Sign] Failed to sign with env key:", err);
+      // Fall through to file-based approach
+    }
+  }
+
+  // ✅ Priority 2: Read from file (works locally)
+  const paths = [
+    process.env.QZ_PRIVATE_KEY_PATH
+      ? path.resolve(process.cwd(), process.env.QZ_PRIVATE_KEY_PATH)
+      : null,
+    ...CANDIDATE_KEY_PATHS.map((p) => path.resolve(process.cwd(), p)),
+  ].filter(Boolean) as string[];
+
+  let privateKey: string | null = null;
+  for (const keyPath of paths) {
     try {
       privateKey = await readFile(keyPath, "utf8");
       break;
     } catch {
-      // Try next candidate path.
+      // Try next path
     }
   }
 
@@ -43,18 +69,22 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "QZ private key not found. Set QZ_PRIVATE_KEY_PATH or place private-key.pem in /certs.",
+          "QZ private key not found. Set QZ_PRIVATE_KEY env var or place private-key.pem in /certs.",
       },
       { status: 500 },
     );
   }
 
-  const signer = createSign("RSA-SHA512");
-  signer.update(toSign);
-  signer.end();
-  const signature = signer.sign(privateKey, "base64");
-
-  return NextResponse.json({ signature });
+  try {
+    const signer = createSign("RSA-SHA512");
+    signer.update(toSign);
+    signer.end();
+    const signature = signer.sign(privateKey, "base64");
+    return NextResponse.json({ signature });
+  } catch (err) {
+    console.error("[QZ Sign] Signing error:", err);
+    return NextResponse.json({ error: "Signing failed." }, { status: 500 });
+  }
 }
 
 function parseSignBody(raw: string): SignBody | null {
@@ -64,9 +94,4 @@ function parseSignBody(raw: string): SignBody | null {
   } catch {
     return null;
   }
-}
-
-function configuredPaths(primary: string, defaults: string[]) {
-  const base = [primary, ...defaults.map((p) => path.resolve(process.cwd(), p))];
-  return Array.from(new Set(base));
 }
