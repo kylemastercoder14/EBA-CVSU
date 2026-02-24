@@ -10,7 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { printReceiptViaQz } from "@/lib/qz-print";
 import { orpc } from "@/lib/orpc";
-import type { KioskPaymentMethod, KioskReceiptPayload } from "@/types/kiosk-receipt";
+import type {
+  KioskPaymentMethod,
+  KioskReceiptPayload,
+} from "@/types/kiosk-receipt";
 
 type Stage = "success" | "print-prompt" | "order-confirmed" | "receipt-printed";
 type PrintDecision = "yes" | "no";
@@ -85,35 +88,43 @@ const getOrCreateOrderNumber = () => {
   return next;
 };
 
+// Replace your existing printReceiptWithBrowser function with this one.
+// Everything else in your page.tsx stays the same.
+
 const printReceiptWithBrowser = (receipt: KioskReceiptPayload) => {
-  const receiptWindow = window.open(window.location.href, "_blank", "width=900,height=1100");
+  const receiptWindow = window.open(
+    window.location.href,
+    "_blank",
+    "width=400,height=900",
+  );
   if (!receiptWindow) return false;
 
-  const issuedAtShort = new Intl.DateTimeFormat("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
+  const issuedAt = new Intl.DateTimeFormat("en-PH", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   }).format(new Date(receipt.issuedAt));
-
-  const itemRows = receipt.items
-    .map(
-      (item) => `
-        <tr>
-          <td>${escapeHtml(item.productName)}</td>
-          <td>${escapeHtml(item.variant)}</td>
-          <td>${item.quantity}</td>
-          <td>PHP ${formatMoney(item.unitPrice)}</td>
-          <td>PHP ${formatMoney(item.lineTotal)}</td>
-        </tr>
-      `,
-    )
-    .join("");
 
   const firstPickup = receipt.items[0]?.pickupDate
     ? formatPickupDate(receipt.items[0].pickupDate)
     : "-";
+
+  const itemRows = receipt.items
+    .map(
+      (item) => `
+        <div class="mt2">
+          <div class="row">
+            <span class="desc">${escapeHtml(item.productName)}${item.variant ? ` (${escapeHtml(item.variant)})` : ""}</span>
+            <span class="amt">PHP ${formatMoney(item.lineTotal)}</span>
+          </div>
+          <div class="sub">${item.quantity} x PHP ${formatMoney(item.unitPrice)}</div>
+        </div>
+      `,
+    )
+    .join("");
 
   receiptWindow.document.write(`
     <!doctype html>
@@ -122,121 +133,162 @@ const printReceiptWithBrowser = (receipt: KioskReceiptPayload) => {
         <meta charset="utf-8" />
         <title>Receipt ${escapeHtml(receipt.orderNumber)}</title>
         <style>
-          * { box-sizing: border-box; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+
           body {
-            margin: 0;
-            padding: 24px;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #000;
+            font-family: 'Courier New', Courier, monospace;
             background: #fff;
+            color: #000;
+            /* center on screen for preview */
+            display: flex;
+            justify-content: center;
+            padding: 16px;
           }
+
           .receipt {
-            max-width: 820px;
-            margin: 0 auto;
-            border: 2px solid #000;
-            padding: 24px;
+            width: 48mm;
+            font-size: 7.5pt;
+            line-height: 1.4;
+            word-break: break-word;
+            overflow: hidden;
           }
-          .header {
-            border-bottom: 1px solid #000;
-            padding-bottom: 12px;
-            margin-bottom: 14px;
+
+          /* ── Typography ── */
+          .center { text-align: center; }
+          .right  { text-align: right; }
+          .bold   { font-weight: bold; }
+          .xl     { font-size: 10pt; letter-spacing: 1px; }
+          .lg     { font-size: 9pt; }
+          .sm     { font-size: 7pt; }
+          .mt2    { margin-top: 2px; }
+          .mt4    { margin-top: 4px; }
+          .mt6    { margin-top: 6px; }
+
+          /* ── Dividers ── */
+          .dashed {
+            border: none;
+            border-top: 1px dashed #777;
+            margin: 5px 0;
           }
-          .title {
-            font-size: 26px;
-            font-weight: 700;
-            margin: 0;
+          .solid {
+            border: none;
+            border-top: 1px solid #000;
+            margin: 5px 0;
           }
-          .subtitle {
-            margin: 4px 0 0;
-            font-size: 14px;
-          }
-          .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px 18px;
-            margin: 14px 0;
-            font-size: 14px;
-          }
-          .label { font-weight: 700; }
-          table {
+
+          /* ── Rows ── */
+          .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 2px;
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
           }
-          th, td {
-            border: 1px solid #000;
-            padding: 8px;
-            text-align: left;
-            font-size: 13px;
+          .row .desc { flex: 1; }
+          .row .amt  { white-space: nowrap; text-align: right; min-width: 48px; }
+
+          .sub {
+            font-size: 7pt;
+            color: #555;
+            padding-left: 4px;
           }
-          th { font-weight: 700; background: #fff; }
-          .totals {
-            margin-top: 14px;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-            text-align: right;
-            font-size: 16px;
-            font-weight: 700;
+
+          /* ── Totals ── */
+          .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+            width: 100%;
           }
-          .footer {
-            margin-top: 18px;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-            font-size: 12px;
+          .totals-row .tlabel { flex: 1; }
+          .totals-row .tval   { white-space: nowrap; text-align: right; min-width: 48px; }
+          .totals-row.grand {
+            font-weight: bold;
+            font-size: 9pt;
+            margin-top: 3px;
           }
+
+          /* ── Print ── */
           @media print {
             body { padding: 0; }
             .receipt {
-              max-width: 100%;
-              border: none;
-              padding: 16px;
+              width: 48mm;
+              font-size: 7.5pt;
             }
           }
         </style>
       </head>
       <body>
-        <section class="receipt">
-          <header class="header">
-            <div style="display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-bottom:8px;">
-              <span>${escapeHtml(issuedAtShort)}</span>
-              <span>Receipt ${escapeHtml(receipt.orderNumber)}</span>
-            </div>
-            <h1 class="title">EBA ORDER RECEIPT</h1>
-            <p class="subtitle">External and Business Affair Ordering System</p>
-          </header>
+        <div class="receipt">
 
-          <div class="grid">
-            <div><span class="label">Order Number:</span> ${escapeHtml(receipt.orderNumber)}</div>
-            <div><span class="label">Customer:</span> ${escapeHtml(receipt.customerName)}</div>
-            <div><span class="label">Mobile:</span> ${escapeHtml(receipt.mobileNumber)}</div>
-            <div><span class="label">Payment Method:</span> ${escapeHtml(receipt.paymentMethod.toUpperCase())}</div>
-            <div><span class="label">Pickup Date:</span> ${escapeHtml(firstPickup)}</div>
-            <div><span class="label">Reference:</span> ${escapeHtml(receipt.paymentReference ?? "-")}</div>
+          <!-- HEADER -->
+          <div class="center">
+            <div class="xl bold">EBA ORDERING</div>
+            <div class="sm mt2">External and Business Affairs</div>
+            <div class="sm">Ordering System</div>
           </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Variant</th>
-                <th>Qty</th>
-                <th>Unit Price</th>
-                <th>Line Total</th>
-              </tr>
-            </thead>
-            <tbody>${itemRows}</tbody>
-          </table>
+          <hr class="dashed mt6" />
 
-          <div class="totals">TOTAL: PHP ${formatMoney(receipt.total)}</div>
-          <div class="footer">This receipt serves as proof of order and payment confirmation.</div>
-        </section>
+          <!-- TRANSACTION INFO -->
+          <div class="row sm">
+            <span>${escapeHtml(issuedAt)}</span>
+          </div>
+          <div class="row sm mt2">
+            <span>OR No: ${escapeHtml(receipt.orderNumber)}</span>
+          </div>
+          <div class="sm mt2">Customer: <strong>${escapeHtml(receipt.customerName)}</strong></div>
+          <div class="sm">Mobile: ${escapeHtml(receipt.mobileNumber)}</div>
+          <div class="sm">Pickup: ${escapeHtml(firstPickup)}</div>
+          <div class="sm">Payment: <strong>${escapeHtml(receipt.paymentMethod.toUpperCase())}</strong></div>
+          ${
+            receipt.paymentReference
+              ? `<div class="sm">Ref No: ${escapeHtml(receipt.paymentReference)}</div>`
+              : ""
+          }
+
+          <hr class="solid mt6" />
+
+          <!-- ITEMS HEADER -->
+          <div class="row bold sm">
+            <span class="desc">ITEM</span>
+            <span class="amt">AMOUNT</span>
+          </div>
+          <hr class="dashed" />
+
+          <!-- ITEMS -->
+          ${itemRows}
+
+          <hr class="dashed mt6" />
+
+          <!-- TOTAL -->
+          <div class="totals-row grand">
+            <span class="tlabel">TOTAL</span>
+            <span class="tval">PHP ${formatMoney(receipt.total)}</span>
+          </div>
+
+          <hr class="dashed mt6" />
+
+          <!-- FOOTER -->
+          <div class="center sm mt4">
+            This serves as your<br />
+            <strong>OFFICIAL RECEIPT</strong>
+          </div>
+          <div class="center sm mt4">
+            Thank you for your order!<br />
+            Please come again :)
+          </div>
+          <div class="center sm mt6" style="color:#666;">
+            ${escapeHtml(receipt.orderNumber)}
+          </div>
+
+        </div>
       </body>
     </html>
   `);
 
   receiptWindow.document.close();
   receiptWindow.focus();
-  window.setTimeout(() => receiptWindow.print(), 250);
+  window.setTimeout(() => receiptWindow.print(), 300);
   return true;
 };
 
@@ -259,7 +311,9 @@ const PrintReceiptDialog = ({
         Do you want to print a receipt?
       </p>
       {statusText && (
-        <p className="mb-4 text-center font-serif text-sm text-emerald-300">{statusText}</p>
+        <p className="mb-4 text-center font-serif text-sm text-emerald-300">
+          {statusText}
+        </p>
       )}
       <div className="flex gap-3">
         <button
@@ -292,7 +346,8 @@ const OrderConfirmedDialog = ({
   receipt: KioskReceiptPayload | null;
   printChannel: PrintChannel;
 }) => {
-  const itemsText = receipt?.items.map((item) => item.productName).join(", ") || "-";
+  const itemsText =
+    receipt?.items.map((item) => item.productName).join(", ") || "-";
 
   return (
     <Dialog open={open}>
@@ -301,8 +356,12 @@ const OrderConfirmedDialog = ({
           <div className="mb-4 flex size-17 items-center justify-center rounded-full bg-emerald-500 shadow-[0_6px_24px_rgba(16,185,129,0.45)] animate-[popIn_0.5s_cubic-bezier(0.34,1.56,0.64,1)_both]">
             <CheckCircle2 className="size-10 text-white" />
           </div>
-          <h2 className="font-serif text-3xl font-extrabold tracking-tight text-white">Order Confirmed!</h2>
-          <p className="mt-1 font-serif text-base italic text-white/50">Your order has been successfully placed.</p>
+          <h2 className="font-serif text-3xl font-extrabold tracking-tight text-white">
+            Order Confirmed!
+          </h2>
+          <p className="mt-1 font-serif text-base italic text-white/50">
+            Your order has been successfully placed.
+          </p>
         </div>
 
         <div className="space-y-4 px-7 py-5">
@@ -314,26 +373,38 @@ const OrderConfirmedDialog = ({
             {[
               { label: "Name", value: receipt?.customerName ?? "-" },
               { label: "Mobile Number", value: receipt?.mobileNumber ?? "-" },
-              { label: "Payment Method", value: receipt?.paymentMethod?.toUpperCase() ?? "-" },
+              {
+                label: "Payment Method",
+                value: receipt?.paymentMethod?.toUpperCase() ?? "-",
+              },
               { label: "Order Items", value: itemsText },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p className="font-serif text-sm uppercase text-white/40">{label}</p>
-                <p className="mt-0.5 font-serif text-lg font-semibold text-white/90">{value}</p>
+                <p className="font-serif text-sm uppercase text-white/40">
+                  {label}
+                </p>
+                <p className="mt-0.5 font-serif text-lg font-semibold text-white/90">
+                  {value}
+                </p>
               </div>
             ))}
           </div>
 
           <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <span className="font-serif text-base font-bold text-white/70">Total:</span>
+            <span className="font-serif text-base font-bold text-white/70">
+              Total:
+            </span>
             <span className="font-serif text-2xl font-extrabold text-emerald-400">
               PHP {formatMoney(receipt?.total ?? 0)}
             </span>
           </div>
           <p className="text-center font-serif text-sm italic text-white/60">
-            {printChannel === "qz" && "Receipt sent to thermal printer via QZ Tray."}
-            {printChannel === "browser" && "QZ unavailable. Used browser print dialog fallback."}
-            {printChannel === "failed" && "Printing failed. You may continue without printed receipt."}
+            {printChannel === "qz" &&
+              "Receipt sent to thermal printer via QZ Tray."}
+            {printChannel === "browser" &&
+              "QZ unavailable. Used browser print dialog fallback."}
+            {printChannel === "failed" &&
+              "Printing failed. You may continue without printed receipt."}
             {printChannel === null && "No receipt print requested."}
           </p>
         </div>
@@ -387,30 +458,42 @@ const Page = () => {
   const [issuedAt] = useState(() => new Date().toISOString());
   const [signIn] = useState<SignInData>(() => {
     if (typeof window === "undefined") return {};
-    return parseJson<SignInData>(localStorage.getItem(kioskSignInStorageKey)) ?? {};
+    return (
+      parseJson<SignInData>(localStorage.getItem(kioskSignInStorageKey)) ?? {}
+    );
   });
   const [paymentMethod] = useState<KioskPaymentMethod>(() => {
     if (typeof window === "undefined") return "cash";
-    return localStorage.getItem(kioskPaymentMethodStorageKey) === "gcash" ? "gcash" : "cash";
+    return localStorage.getItem(kioskPaymentMethodStorageKey) === "gcash"
+      ? "gcash"
+      : "cash";
   });
-  const [paymentReference, setPaymentReference] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const parsed = parseJson<PaymentReferenceData>(localStorage.getItem(kioskPaymentReferenceStorageKey));
-    return parsed?.referenceNumber ?? null;
-  });
+  const [paymentReference, setPaymentReference] = useState<string | null>(
+    () => {
+      if (typeof window === "undefined") return null;
+      const parsed = parseJson<PaymentReferenceData>(
+        localStorage.getItem(kioskPaymentReferenceStorageKey),
+      );
+      return parsed?.referenceNumber ?? null;
+    },
+  );
   const [persistedOrder, setPersistedOrder] = useState<{
     id: string;
     orderNumber: string;
     paymentReference: string;
   } | null>(() => {
     if (typeof window === "undefined") return null;
-    return parseJson<{ id: string; orderNumber: string; paymentReference: string }>(
-      localStorage.getItem(kioskCreatedOrderStorageKey),
-    );
+    return parseJson<{
+      id: string;
+      orderNumber: string;
+      paymentReference: string;
+    }>(localStorage.getItem(kioskCreatedOrderStorageKey));
   });
 
   const { data: productData } = useQuery(orpc.product.list.queryOptions());
-  const createKioskOrderMutation = useMutation(orpc.order.createKiosk.mutationOptions());
+  const createKioskOrderMutation = useMutation(
+    orpc.order.createKiosk.mutationOptions(),
+  );
 
   const receipt = useMemo<KioskReceiptPayload | null>(() => {
     if (!orderNumber) return null;
@@ -441,7 +524,15 @@ const Page = () => {
       items: mappedItems,
       total: mappedItems.reduce((sum, item) => sum + item.lineTotal, 0),
     };
-  }, [cartItems, productData?.products, orderNumber, issuedAt, signIn, paymentMethod, paymentReference]);
+  }, [
+    cartItems,
+    productData?.products,
+    orderNumber,
+    issuedAt,
+    signIn,
+    paymentMethod,
+    paymentReference,
+  ]);
 
   useEffect(() => {
     if (stage !== "success") return;
@@ -454,12 +545,19 @@ const Page = () => {
     localStorage.setItem(kioskReceiptMetaStorageKey, JSON.stringify(meta));
 
     const existing =
-      parseJson<KioskReceiptPayload[]>(localStorage.getItem(kioskReceiptHistoryStorageKey)) ?? [];
+      parseJson<KioskReceiptPayload[]>(
+        localStorage.getItem(kioskReceiptHistoryStorageKey),
+      ) ?? [];
     const updated = [payload, ...existing].slice(0, 20);
-    localStorage.setItem(kioskReceiptHistoryStorageKey, JSON.stringify(updated));
+    localStorage.setItem(
+      kioskReceiptHistoryStorageKey,
+      JSON.stringify(updated),
+    );
   };
 
-  const ensureOrderSaved = async (currentReceipt: KioskReceiptPayload | null) => {
+  const ensureOrderSaved = async (
+    currentReceipt: KioskReceiptPayload | null,
+  ) => {
     if (persistedOrder) {
       return persistedOrder;
     }
@@ -476,8 +574,8 @@ const Page = () => {
         signIn.userType ??
         (typeof window === "undefined"
           ? null
-          : localStorage.getItem(kioskUserTypeStorageKey) ??
-            sessionStorage.getItem(kioskUserTypeStorageKey));
+          : (localStorage.getItem(kioskUserTypeStorageKey) ??
+            sessionStorage.getItem(kioskUserTypeStorageKey)));
 
       const userType = rawType === "visitor" ? "VISITOR" : "STUDENT";
       const result = await createKioskOrderMutation.mutateAsync({
@@ -487,7 +585,8 @@ const Page = () => {
           studentNumber: signIn.studentNumber ?? undefined,
           userType,
         },
-        paymentMethod: currentReceipt.paymentMethod === "gcash" ? "GCASH" : "CASH",
+        paymentMethod:
+          currentReceipt.paymentMethod === "gcash" ? "GCASH" : "CASH",
         paymentReference: currentReceipt.paymentReference ?? undefined,
         items: currentReceipt.items.map((item) => ({
           productId: item.productId,
@@ -508,7 +607,10 @@ const Page = () => {
       if (currentReceipt.paymentMethod === "gcash") {
         setPaymentReference(savedOrder.paymentReference);
       }
-      localStorage.setItem(kioskCreatedOrderStorageKey, JSON.stringify(savedOrder));
+      localStorage.setItem(
+        kioskCreatedOrderStorageKey,
+        JSON.stringify(savedOrder),
+      );
       return savedOrder;
     } catch {
       setPrintStatusText("Failed to save order. Please try again.");
@@ -544,7 +646,9 @@ const Page = () => {
       let channel: PrintChannel = printed ? "qz" : "failed";
 
       if (!printed) {
-        setPrintStatusText("QZ not available. Opening browser print fallback...");
+        setPrintStatusText(
+          "QZ not available. Opening browser print fallback...",
+        );
         printed = printReceiptWithBrowser(receiptForPrint);
         channel = printed ? "browser" : "failed";
       }
@@ -627,7 +731,9 @@ const Page = () => {
           <h2 className="text-center font-serif text-3xl font-extrabold tracking-tight text-white">
             Payment Successful
           </h2>
-          <p className="font-serif text-base italic text-white/60">Processing your order...</p>
+          <p className="font-serif text-base italic text-white/60">
+            Processing your order...
+          </p>
         </div>
       </main>
 

@@ -79,6 +79,18 @@ const ProductCard = ({
 };
 
 // ── Browse Page ───────────────────────────────────────────────────────────────
+const ProductCardSkeleton = () => (
+  <div className="flex flex-col overflow-hidden rounded-2xl border-2 border-white/30 bg-white/25 shadow-[0_4px_20px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+    <div className="h-65 w-full animate-pulse bg-white/45" />
+    <div className="space-y-2 p-3">
+      <div className="h-3 w-20 animate-pulse rounded bg-white/50" />
+      <div className="h-4 w-32 animate-pulse rounded bg-white/60" />
+      <div className="h-4 w-24 animate-pulse rounded bg-white/55" />
+      <div className="mt-1.5 h-8 w-full animate-pulse rounded-lg bg-[#07484A]/35" />
+    </div>
+  </div>
+);
+
 const BrowsePage = () => {
   const { navigate } = useTransitionNav();
   const [type] = useState<UserType>(() => {
@@ -175,11 +187,14 @@ const BrowsePage = () => {
   const productsSource: DisplayProduct[] =
     backendProducts.length > 0
       ? backendProducts
-      : PRODUCTS.map((product) => ({ ...product, backendId: product.id }));
+      : isProductsLoading && !productsData
+        ? []
+        : PRODUCTS.map((product) => ({ ...product, backendId: product.id }));
   const products =
     type === "visitor"
       ? productsSource.filter((p) => p.visitorAccess)
       : productsSource;
+  const showSkeleton = isProductsLoading && products.length === 0;
 
   return (
     <>
@@ -224,12 +239,13 @@ const BrowsePage = () => {
 
         {/* ── Product grid ── */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-8 animate-[fadeUp_0.7s_ease_0.2s_both]">
-          {isProductsLoading && (
-            <p className="mb-3 font-serif text-sm italic text-[#07484A]/55">
-              Loading products...
-            </p>
-          )}
-          {products.length > 0 ? (
+          {showSkeleton ? (
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ProductCardSkeleton key={`product-skeleton-${index}`} />
+              ))}
+            </div>
+          ) : products.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               {products.map((p) => (
                 <ProductCard
