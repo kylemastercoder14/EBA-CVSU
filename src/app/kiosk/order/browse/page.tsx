@@ -81,10 +81,67 @@ type VoiceOrderDraft = {
 };
 
 const splitVoiceCommandIntoSegments = (transcript: string) => {
-  return transcript
+  const primarySegments = transcript
     .split(/\s*,\s*|\b(?:and then|then|and)\b/gi)
     .map((segment) => segment.trim())
     .filter(Boolean);
+
+  if (primarySegments.length > 1) {
+    return primarySegments;
+  }
+
+  // Fallback: speech recognition often drops commas/"and" in long commands.
+  const tokens = tokenizeVoiceText(transcript);
+  const quantityCues = new Set([
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "to",
+    "too",
+    "for",
+  ]);
+
+  const segments: string[] = [];
+  let current: string[] = [];
+  let seenQuantityCue = false;
+  let hasMeaningfulAfterQuantity = false;
+
+  for (const token of tokens) {
+    const isQuantityCue =
+      /^\d{1,2}$/.test(token) || quantityCues.has(token);
+
+    if (isQuantityCue && seenQuantityCue && hasMeaningfulAfterQuantity) {
+      segments.push(current.join(" ").trim());
+      current = [];
+      seenQuantityCue = false;
+      hasMeaningfulAfterQuantity = false;
+    }
+
+    current.push(token);
+
+    if (isQuantityCue) {
+      seenQuantityCue = true;
+      hasMeaningfulAfterQuantity = false;
+      continue;
+    }
+
+    if (seenQuantityCue && !fillerTokens.has(token)) {
+      hasMeaningfulAfterQuantity = true;
+    }
+  }
+
+  if (current.length > 0) {
+    segments.push(current.join(" ").trim());
+  }
+
+  return segments.filter(Boolean);
 };
 
 const normalizeVoiceText = (value: string) =>
@@ -110,13 +167,25 @@ const numberWordMap: Record<string, number> = {
 };
 
 const parseVoiceQuantity = (normalizedTranscript: string) => {
-  const numericMatch = normalizedTranscript.match(/\b(\d{1,2})\b/);
-  if (numericMatch) return Math.max(1, Math.min(99, Number(numericMatch[1])));
+  const tokens = tokenizeVoiceText(normalizedTranscript);
+  const quantityAliases: Record<string, number> = {
+    ...numberWordMap,
+    to: 2,
+    too: 2,
+    won: 1,
+    for: 4,
+  };
 
-  for (const [word, value] of Object.entries(numberWordMap)) {
-    if (new RegExp(`\\b${word}\\b`, "i").test(normalizedTranscript)) {
-      return value;
+  for (const token of tokens) {
+    if (fillerTokens.has(token)) continue;
+    if (/^\d{1,2}$/.test(token)) {
+      return Math.max(1, Math.min(99, Number(token)));
     }
+    if (quantityAliases[token] != null) {
+      return quantityAliases[token];
+    }
+    // If the first meaningful token is not a quantity (e.g., "booklet"), default to 1.
+    break;
   }
 
   return 1;
@@ -151,6 +220,18 @@ const tokenizeVoiceText = (value: string) =>
     .filter(Boolean);
 
 const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
+  const tokenMatch = normalizedTranscript.match(
+    /\b(5xl|4xl|3xl|2xl|xxxl|xxl|xl|small|medium|large|sm|md|lg)\b/i,
+  )?.[1]?.toLowerCase();
+  if (tokenMatch) {
+    if (tokenMatch === "sm") return "small";
+    if (tokenMatch === "md") return "medium";
+    if (tokenMatch === "lg") return "large";
+    if (tokenMatch === "xxl") return "2xl";
+    if (tokenMatch === "xxxl") return "3xl";
+    return tokenMatch;
+  }
+
   const compact = normalizedTranscript.replace(/[\s-]/g, "");
   const phrasePatterns: Array<[RegExp, string]> = [
     [/\bsmall\b/, "small"],
@@ -166,7 +247,7 @@ const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
     if (pattern.test(normalizedTranscript)) return key;
   }
 
-  const compactMatch = compact.match(/\b([1-5]?x{0,4}l|[1-5]xl)\b/i);
+  const compactMatch = compact.match(/([1-5]?x{1,5}l|[1-5]xl)/i);
   if (compactMatch) {
     const raw = compactMatch[1].toLowerCase();
     if (raw === "xl" || raw === "1xl") return "xl";
