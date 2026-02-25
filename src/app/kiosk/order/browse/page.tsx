@@ -17,6 +17,15 @@ import { orpc } from "@/lib/orpc";
 import { useCart } from "@/hooks/use-cart";
 import { toast } from "sonner";
 import { NO_VARIANT_SIZE } from "@/validators/products";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type UserType = "student" | "visitor";
 type DisplayProduct = Product & { stockCount?: number; backendId: string };
@@ -55,9 +64,20 @@ type SpeechCapableWindow = Window & {
 
 type ParsedVoiceOrder = {
   quantity: number;
-  size: string | null;
   product: DisplayProduct | null;
+  requestedSize: string | null;
   transcript: string;
+};
+
+type VoiceOrderDraft = {
+  transcript: string;
+  quantity: number;
+  product: DisplayProduct | null;
+  requestedSize: string | null;
+  resolvedVariant: string;
+  availableSizes: string[];
+  canConfirm: boolean;
+  message: string;
 };
 
 const normalizeVoiceText = (value: string) =>
@@ -65,6 +85,7 @@ const normalizeVoiceText = (value: string) =>
     .toLowerCase()
     .replace(/[^\w\s-]/g, " ")
     .replace(/\b(p)\s+(e)\b/g, "pe")
+    .replace(/\bsize\s+/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -94,71 +115,188 @@ const parseVoiceQuantity = (normalizedTranscript: string) => {
   return 1;
 };
 
-const sizeAliasMap: Array<{ canonical: string; aliases: string[] }> = [
-  { canonical: "Small", aliases: ["small", "sm"] },
-  { canonical: "Medium", aliases: ["medium", "med", "md"] },
-  { canonical: "Large", aliases: ["large", "lg"] },
-  { canonical: "X-Large", aliases: ["x large", "xl", "extra large", "x-large"] },
-  {
-    canonical: "XX-Large",
-    aliases: ["xx large", "2xl", "double extra large", "xxl", "xx-large"],
-  },
-];
+const fillerTokens = new Set([
+  "i",
+  "want",
+  "to",
+  "order",
+  "please",
+  "pa",
+  "po",
+  "the",
+  "a",
+  "an",
+  "me",
+  "for",
+  "and",
+  "size",
+  "pcs",
+  "pc",
+  "piece",
+  "pieces",
+]);
 
-const parseVoiceSize = (normalizedTranscript: string) => {
-  for (const option of sizeAliasMap) {
-    if (option.aliases.some((alias) => normalizedTranscript.includes(alias))) {
-      return option.canonical;
-    }
+const genericProductTokens = new Set(["school", "official", "item"]);
+
+const tokenizeVoiceText = (value: string) =>
+  normalizeVoiceText(value)
+    .split(" ")
+    .filter(Boolean);
+
+const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
+  const compact = normalizedTranscript.replace(/[\s-]/g, "");
+  const phrasePatterns: Array<[RegExp, string]> = [
+    [/\bsmall\b/, "small"],
+    [/\bmedium\b/, "medium"],
+    [/\blarge\b/, "large"],
+    [/\bextra large\b/, "xl"],
+    [/\bx ?large\b/, "xl"],
+    [/\bdouble extra large\b/, "2xl"],
+    [/\btriple extra large\b/, "3xl"],
+  ];
+
+  for (const [pattern, key] of phrasePatterns) {
+    if (pattern.test(normalizedTranscript)) return key;
   }
+
+  const compactMatch = compact.match(/\b([1-5]?x{0,4}l|[1-5]xl)\b/i);
+  if (compactMatch) {
+    const raw = compactMatch[1].toLowerCase();
+    if (raw === "xl" || raw === "1xl") return "xl";
+    if (raw === "xxl" || raw === "2xl") return "2xl";
+    if (raw === "xxxl" || raw === "3xl") return "3xl";
+    if (raw === "xxxxl" || raw === "4xl") return "4xl";
+    if (raw === "xxxxxl" || raw === "5xl") return "5xl";
+    return raw;
+  }
+
+  const shortMatch = normalizedTranscript.match(/\b(xs|sm|md|lg)\b/i)?.[1]?.toLowerCase();
+  if (shortMatch) {
+    if (shortMatch === "sm") return "small";
+    if (shortMatch === "md") return "medium";
+    if (shortMatch === "lg") return "large";
+    return shortMatch;
+  }
+
   return null;
 };
 
-const buildProductVoiceAliases = (product: DisplayProduct) => {
-  const normalizedName = normalizeVoiceText(product.name);
-  const aliases = new Set<string>([normalizedName]);
-  const withoutSchool = normalizedName.replace(/\bschool\b/g, "").replace(/\s+/g, " ").trim();
-  if (withoutSchool) aliases.add(withoutSchool);
+const buildSizeAliasKeys = (size: string) => {
+  const normalized = normalizeVoiceText(size);
+  const aliases = new Set<string>([normalized, normalized.replace(/\s+/g, "")]);
 
-  if (/booklet/i.test(product.name)) aliases.add("booklet");
-  if (/id lace/i.test(product.name)) {
-    aliases.add("id lace");
-    aliases.add("lace");
-    aliases.add("lanyard");
-  }
-  if (/p\.?e/i.test(product.name)) {
-    aliases.add("pe uniform");
-    aliases.add("p e uniform");
-    aliases.add("pe uniform set");
-  }
-  if (/school uniform set/i.test(product.name)) {
-    aliases.add("school uniform");
-    aliases.add("uniform set");
-  }
-  if (/rotc/i.test(product.name)) {
-    aliases.add("rotc uniform");
-    aliases.add("nstp rotc");
-  }
-  if (/cwts/i.test(product.name)) {
-    aliases.add("cwts uniform");
-    aliases.add("nstp cwts");
+  if (/\bsmall\b/.test(normalized)) aliases.add("small");
+  if (/\bmedium\b/.test(normalized)) aliases.add("medium");
+  if (/\blarge\b/.test(normalized) && !/\bextra\b/.test(normalized)) aliases.add("large");
+
+  const compact = normalized.replace(/[\s-]/g, "");
+  const compactToKey: Record<string, string> = {
+    xl: "xl",
+    xxl: "2xl",
+    xxxl: "3xl",
+    xxxxl: "4xl",
+    xxxxxl: "5xl",
+    "1xl": "xl",
+    "2xl": "2xl",
+    "3xl": "3xl",
+    "4xl": "4xl",
+    "5xl": "5xl",
+  };
+
+  if (compactToKey[compact]) aliases.add(compactToKey[compact]);
+  if (compact === "m") aliases.add("medium");
+  if (compact === "s") aliases.add("small");
+  if (compact === "l") aliases.add("large");
+
+  return aliases;
+};
+
+const resolveProductSizeFromTranscript = (product: DisplayProduct, normalizedTranscript: string) => {
+  const availableSizes = (product.sizes ?? []).filter((size) => size !== NO_VARIANT_SIZE);
+  if (availableSizes.length === 0) {
+    return {
+      requestedSize: null as string | null,
+      resolvedVariant: NO_VARIANT_SIZE,
+      availableSizes,
+    };
   }
 
-  return Array.from(aliases);
+  const requestedSize = extractRequestedSizeFromTranscript(normalizedTranscript);
+  if (!requestedSize) {
+    return {
+      requestedSize: null,
+      resolvedVariant: "",
+      availableSizes,
+    };
+  }
+
+  const matchedSize = availableSizes.find((size) => buildSizeAliasKeys(size).has(requestedSize));
+  return {
+    requestedSize,
+    resolvedVariant: matchedSize ?? "",
+    availableSizes,
+  };
+};
+
+const scoreProductMatch = (product: DisplayProduct, normalizedTranscript: string) => {
+  const transcriptTokens = tokenizeVoiceText(normalizedTranscript).filter(
+    (token) =>
+      !fillerTokens.has(token) &&
+      !Object.prototype.hasOwnProperty.call(numberWordMap, token) &&
+      !/^\d+$/.test(token),
+  );
+
+  const transcriptTokenSet = new Set(transcriptTokens);
+  const productNameNormalized = normalizeVoiceText(product.name);
+  const categoryNormalized = normalizeVoiceText(product.category);
+
+  if (normalizedTranscript.includes(productNameNormalized)) {
+    return 1000 + productNameNormalized.length;
+  }
+
+  const trimmedName = productNameNormalized
+    .split(" ")
+    .filter((token) => !genericProductTokens.has(token))
+    .join(" ");
+  if (trimmedName && normalizedTranscript.includes(trimmedName)) {
+    return 800 + trimmedName.length;
+  }
+
+  const productTokens = new Set(
+    [...tokenizeVoiceText(product.name), ...tokenizeVoiceText(product.category)].filter(
+      (token) => !fillerTokens.has(token) && !genericProductTokens.has(token),
+    ),
+  );
+
+  let overlap = 0;
+  for (const token of productTokens) {
+    if (transcriptTokenSet.has(token)) overlap += 1;
+  }
+
+  if (overlap === 0) return 0;
+
+  const tokenCount = productTokens.size || 1;
+  const hasUniformHint =
+    productTokens.has("uniform") && normalizedTranscript.includes("uniform");
+  const hasPoloHint = productTokens.has("polo") && normalizedTranscript.includes("polo");
+  const hasCategoryHint = categoryNormalized && normalizedTranscript.includes(categoryNormalized);
+
+  return overlap * 100 + Math.round((overlap / tokenCount) * 10) + (hasUniformHint ? 20 : 0) + (hasPoloHint ? 20 : 0) + (hasCategoryHint ? 10 : 0);
 };
 
 const parseVoiceOrder = (transcript: string, products: DisplayProduct[]): ParsedVoiceOrder => {
   const normalized = normalizeVoiceText(transcript);
   const quantity = parseVoiceQuantity(normalized);
-  const size = parseVoiceSize(normalized);
-  const product =
-    products.find((candidate) =>
-      buildProductVoiceAliases(candidate).some(
-        (alias) => alias && normalized.includes(alias),
-      ),
-    ) ?? null;
 
-  return { quantity, size, product, transcript };
+  const scored = products
+    .map((product) => ({ product, score: scoreProductMatch(product, normalized) }))
+    .sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  const product = best && best.score > 0 ? best.product : null;
+  const requestedSize = extractRequestedSizeFromTranscript(normalized);
+
+  return { quantity, product, requestedSize, transcript };
 };
 
 // ── Product Card ──────────────────────────────────────────────────────────────
@@ -256,6 +394,8 @@ const BrowsePage = () => {
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "processing">("idle");
   const [lastTranscript, setLastTranscript] = useState("");
   const [lastVoiceResult, setLastVoiceResult] = useState("");
+  const [voiceDraft, setVoiceDraft] = useState<VoiceOrderDraft | null>(null);
+  const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     ...orpc.product.list.queryOptions(),
     refetchInterval: kioskAutoRefreshMs,
@@ -364,55 +504,96 @@ const BrowsePage = () => {
         (window as SpeechCapableWindow).webkitSpeechRecognition,
     );
 
-  const addVoiceParsedOrderToCart = (parsed: ParsedVoiceOrder) => {
+  const buildVoiceDraft = (parsed: ParsedVoiceOrder): VoiceOrderDraft => {
     if (!parsed.product) {
-      setLastVoiceResult("I couldn't match a product. Try saying the item name clearly.");
-      toast.error("Voice order failed: product not recognized");
-      return;
+      return {
+        transcript: parsed.transcript,
+        quantity: parsed.quantity,
+        product: null,
+        requestedSize: parsed.requestedSize,
+        resolvedVariant: "",
+        availableSizes: [],
+        canConfirm: false,
+        message: "I couldn't match a product. Try saying the item name clearly.",
+      };
     }
 
     const product = parsed.product;
-    const availableSizes = product.sizes?.filter((size) => size !== NO_VARIANT_SIZE) ?? [];
-    let selectedVariant = NO_VARIANT_SIZE;
-
-    if (availableSizes.length > 0) {
-      if (!parsed.size) {
-        setLastVoiceResult(`Heard ${product.name}. Please include a size (small, medium, large).`);
-        toast.error(`Please say a size for ${product.name}`);
-        return;
-      }
-
-      const sizeMatch = availableSizes.find(
-        (size) => normalizeVoiceText(size) === normalizeVoiceText(parsed.size ?? ""),
-      );
-      if (!sizeMatch) {
-        setLastVoiceResult(
-          `${product.name} has sizes: ${availableSizes.join(", ")}. Please try again.`,
-        );
-        toast.error(`Invalid size for ${product.name}`);
-        return;
-      }
-
-      selectedVariant = sizeMatch;
-    }
+    const sizeResolution = resolveProductSizeFromTranscript(
+      product,
+      normalizeVoiceText(parsed.transcript),
+    );
 
     if (!product.available && !product.preOrder) {
-      setLastVoiceResult(`${product.name} is not available right now.`);
-      toast.error(`${product.name} is unavailable`);
-      return;
+      return {
+        transcript: parsed.transcript,
+        quantity: parsed.quantity,
+        product,
+        requestedSize: sizeResolution.requestedSize,
+        resolvedVariant: sizeResolution.resolvedVariant,
+        availableSizes: sizeResolution.availableSizes,
+        canConfirm: false,
+        message: `${product.name} is not available right now.`,
+      };
     }
 
-    addCartItem({
-      productId: product.backendId,
-      productName: product.name,
-      variant: selectedVariant,
-      pickupDate: new Date().toISOString().slice(0, 10),
+    if (sizeResolution.availableSizes.length > 0 && !sizeResolution.requestedSize) {
+      return {
+        transcript: parsed.transcript,
+        quantity: parsed.quantity,
+        product,
+        requestedSize: null,
+        resolvedVariant: "",
+        availableSizes: sizeResolution.availableSizes,
+        canConfirm: false,
+        message: `Please include a size for ${product.name}.`,
+      };
+    }
+
+    if (sizeResolution.availableSizes.length > 0 && !sizeResolution.resolvedVariant) {
+      return {
+        transcript: parsed.transcript,
+        quantity: parsed.quantity,
+        product,
+        requestedSize: sizeResolution.requestedSize,
+        resolvedVariant: "",
+        availableSizes: sizeResolution.availableSizes,
+        canConfirm: false,
+        message: `Invalid size. Available sizes: ${sizeResolution.availableSizes.join(", ")}.`,
+      };
+    }
+
+    return {
+      transcript: parsed.transcript,
       quantity: parsed.quantity,
+      product,
+      requestedSize: sizeResolution.requestedSize,
+      resolvedVariant: sizeResolution.resolvedVariant,
+      availableSizes: sizeResolution.availableSizes,
+      canConfirm: true,
+      message: "Review the parsed order, then confirm to add it to cart.",
+    };
+  };
+
+  const confirmVoiceDraftAddToCart = () => {
+    if (!voiceDraft || !voiceDraft.product || !voiceDraft.canConfirm) return;
+
+    addCartItem({
+      productId: voiceDraft.product.backendId,
+      productName: voiceDraft.product.name,
+      variant: voiceDraft.resolvedVariant || NO_VARIANT_SIZE,
+      pickupDate: new Date().toISOString().slice(0, 10),
+      quantity: voiceDraft.quantity,
     });
 
-    const sizeLabel = selectedVariant !== NO_VARIANT_SIZE ? ` (${selectedVariant})` : "";
-    setLastVoiceResult(`Added ${parsed.quantity} ${product.name}${sizeLabel} to cart.`);
-    toast.success(`Added ${parsed.quantity} ${product.name}${sizeLabel} to cart`);
+    const sizeLabel =
+      voiceDraft.resolvedVariant && voiceDraft.resolvedVariant !== NO_VARIANT_SIZE
+        ? ` (${voiceDraft.resolvedVariant})`
+        : "";
+    const message = `Added ${voiceDraft.quantity} ${voiceDraft.product.name}${sizeLabel} to cart.`;
+    setLastVoiceResult(message);
+    toast.success(message);
+    setIsVoiceDialogOpen(false);
   };
 
   const handleVoiceOrderClick = () => {
@@ -466,7 +647,11 @@ const BrowsePage = () => {
 
         setLastTranscript(transcript);
         setVoiceState("processing");
-        addVoiceParsedOrderToCart(parseVoiceOrder(transcript, products));
+        const parsed = parseVoiceOrder(transcript, products);
+        const draft = buildVoiceDraft(parsed);
+        setVoiceDraft(draft);
+        setLastVoiceResult(draft.message);
+        setIsVoiceDialogOpen(true);
         setVoiceState("idle");
       };
 
@@ -622,6 +807,84 @@ const BrowsePage = () => {
           )}
         </div>
       </main>
+
+      <Dialog open={isVoiceDialogOpen} onOpenChange={setIsVoiceDialogOpen}>
+        <DialogContent className="max-w-md border-[#07484A]/20 bg-[#F3FAFA]">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-[#07484A]">
+              Voice Order Review
+            </DialogTitle>
+            <DialogDescription className="text-[#07484A]/70">
+              Check what the kiosk heard before adding to cart.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">Heard</p>
+              <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]">
+                {voiceDraft?.transcript || lastTranscript || "-"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">Parsed Order</p>
+              <div className="mt-2 space-y-1 text-sm text-[#07484A]">
+                <p>
+                  <span className="font-semibold">Product:</span>{" "}
+                  {voiceDraft?.product?.name ?? "Not recognized"}
+                </p>
+                <p>
+                  <span className="font-semibold">Quantity:</span> {voiceDraft?.quantity ?? 1}
+                </p>
+                <p>
+                  <span className="font-semibold">Requested size:</span>{" "}
+                  {voiceDraft?.requestedSize ?? "None"}
+                </p>
+                <p>
+                  <span className="font-semibold">Matched size:</span>{" "}
+                  {voiceDraft?.resolvedVariant || "Not matched"}
+                </p>
+                {voiceDraft?.availableSizes && voiceDraft.availableSizes.length > 0 && (
+                  <p>
+                    <span className="font-semibold">Available sizes:</span>{" "}
+                    {voiceDraft.availableSizes.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div
+              className={`rounded-xl border px-3 py-2 text-sm ${
+                voiceDraft?.canConfirm
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : "border-amber-200 bg-amber-50 text-amber-900"
+              }`}
+            >
+              {voiceDraft?.message ?? "Waiting for voice input..."}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsVoiceDialogOpen(false)}
+              className="border-[#07484A]/25 text-[#07484A]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmVoiceDraftAddToCart}
+              disabled={!voiceDraft?.canConfirm}
+              className="bg-[#07484A] text-white hover:bg-[#07484A]/90"
+            >
+              Confirm Add to Cart
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <style>{`
         @keyframes fadeUp {
