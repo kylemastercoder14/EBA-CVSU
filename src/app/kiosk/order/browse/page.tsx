@@ -9,6 +9,10 @@ import {
   Mic,
   MicOff,
   Loader2,
+  Plus,
+  Minus,
+  Trash2,
+  Volume2,
 } from "lucide-react";
 import Image from "next/image";
 import { type Product, PRODUCTS } from "@/lib/product";
@@ -33,6 +37,7 @@ const kioskUserTypeStorageKey = "kiosk-user-type";
 const kioskSignInStorageKey = "kiosk-sign-in";
 const kioskAutoRefreshMs = 10_000;
 const kioskVoiceTimeoutMs = 25_000;
+const kioskVoiceLogStorageKey = "kiosk-voice-order-logs";
 
 type SpeechRecognitionResultEventLike = {
   results: ArrayLike<ArrayLike<{ transcript: string }>>;
@@ -80,6 +85,14 @@ type VoiceOrderDraft = {
   message: string;
 };
 
+type VoiceOrderLog = {
+  id: string;
+  timestamp: string;
+  transcript: string;
+  status: "parsed" | "confirmed" | "error";
+  itemCount: number;
+};
+
 const splitByQuantityCues = (transcript: string) => {
   // Fallback splitter when speech recognition drops commas/"and" in long commands.
   const tokens = tokenizeVoiceText(transcript);
@@ -97,6 +110,17 @@ const splitByQuantityCues = (transcript: string) => {
     "to",
     "too",
     "for",
+    "isa",
+    "isang",
+    "dalawa",
+    "tatlo",
+    "apat",
+    "lima",
+    "anim",
+    "pito",
+    "walo",
+    "siyam",
+    "sampu",
   ]);
 
   const segments: string[] = [];
@@ -136,7 +160,7 @@ const splitByQuantityCues = (transcript: string) => {
 
 const splitVoiceCommandIntoSegments = (transcript: string) => {
   const primarySegments = transcript
-    .split(/\s*,\s*|\b(?:and then|then|and)\b/gi)
+    .split(/\s*,\s*|\b(?:and then|then|and|at|tsaka)\b/gi)
     .map((segment) => segment.trim())
     .filter(Boolean);
 
@@ -166,6 +190,17 @@ const numberWordMap: Record<string, number> = {
   eight: 8,
   nine: 9,
   ten: 10,
+  isa: 1,
+  isang: 1,
+  dalawa: 2,
+  tatlo: 3,
+  apat: 4,
+  lima: 5,
+  anim: 6,
+  pito: 7,
+  walo: 8,
+  siyam: 9,
+  sampu: 10,
 };
 
 const parseVoiceQuantity = (normalizedTranscript: string) => {
@@ -184,7 +219,10 @@ const parseVoiceQuantity = (normalizedTranscript: string) => {
     const previousToken = tokens[index - 1] ?? "";
 
     // "want to order" / "go to" style "to" should not count as quantity.
-    if ((token === "to" || token === "too") && (nextToken === "order" || previousToken === "want")) {
+    if (
+      (token === "to" || token === "too") &&
+      (nextToken === "order" || previousToken === "want")
+    ) {
       continue;
     }
 
@@ -212,6 +250,14 @@ const fillerTokens = new Set([
   "want",
   "to",
   "order",
+  "gusto",
+  "ko",
+  "umorder",
+  "um-order",
+  "bumili",
+  "pabili",
+  "paki",
+  "pakilagay",
   "please",
   "pa",
   "po",
@@ -226,6 +272,9 @@ const fillerTokens = new Set([
   "pc",
   "piece",
   "pieces",
+  "ng",
+  "at",
+  "tsaka",
 ]);
 
 const genericProductTokens = new Set(["school", "official", "item"]);
@@ -511,6 +560,17 @@ const BrowsePage = () => {
   const [lastVoiceResult, setLastVoiceResult] = useState("");
   const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
+  const [voiceLogs, setVoiceLogs] = useState<VoiceOrderLog[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(kioskVoiceLogStorageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as VoiceOrderLog[];
+      return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+    } catch {
+      return [];
+    }
+  });
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     ...orpc.product.list.queryOptions(),
     refetchInterval: kioskAutoRefreshMs,
@@ -554,6 +614,14 @@ const BrowsePage = () => {
     },
     [],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      kioskVoiceLogStorageKey,
+      JSON.stringify(voiceLogs.slice(0, 10)),
+    );
+  }, [voiceLogs]);
 
   const cartQty = useCart((state) => state.getItemCount());
   const addCartItem = useCart((state) => state.addItem);
@@ -690,8 +758,151 @@ const BrowsePage = () => {
     };
   };
 
+  const revalidateVoiceDraft = (draft: VoiceOrderDraft): VoiceOrderDraft => {
+    if (!draft.product) {
+      return {
+        ...draft,
+        availableSizes: [],
+        resolvedVariant: "",
+        canConfirm: false,
+        message: "Select a product to continue.",
+      };
+    }
+
+    const product = draft.product;
+    const availableSizes = (product.sizes ?? []).filter((size) => size !== NO_VARIANT_SIZE);
+
+    if (!product.available && !product.preOrder) {
+      return {
+        ...draft,
+        availableSizes,
+        canConfirm: false,
+        message: `${product.name} is not available right now.`,
+      };
+    }
+
+    if (availableSizes.length === 0) {
+      return {
+        ...draft,
+        availableSizes: [],
+        resolvedVariant: NO_VARIANT_SIZE,
+        canConfirm: draft.quantity > 0,
+        message: "Ready to add to cart.",
+      };
+    }
+
+    const variantIsValid = availableSizes.includes(draft.resolvedVariant);
+    if (!variantIsValid) {
+      return {
+        ...draft,
+        availableSizes,
+        canConfirm: false,
+        message: `Select a valid size for ${product.name}.`,
+      };
+    }
+
+    return {
+      ...draft,
+      availableSizes,
+      canConfirm: draft.quantity > 0,
+      message: "Ready to add to cart.",
+    };
+  };
+
   const buildVoiceDrafts = (transcript: string) => {
-    return parseVoiceOrders(transcript, products).map((parsed) => buildVoiceDraft(parsed));
+    return parseVoiceOrders(transcript, products)
+      .map((parsed) => buildVoiceDraft(parsed))
+      .map((draft) => revalidateVoiceDraft(draft));
+  };
+
+  const appendVoiceLog = (entry: Omit<VoiceOrderLog, "id" | "timestamp">) => {
+    setVoiceLogs((current) => [
+      {
+        ...entry,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: new Date().toISOString(),
+      },
+      ...current,
+    ].slice(0, 10));
+  };
+
+  const updateVoiceDraftAt = (
+    index: number,
+    updater: (draft: VoiceOrderDraft) => VoiceOrderDraft,
+  ) => {
+    setVoiceDrafts((current) =>
+      current.map((draft, draftIndex) =>
+        draftIndex === index ? revalidateVoiceDraft(updater(draft)) : draft,
+      ),
+    );
+  };
+
+  const handleVoiceDraftQuantityChange = (index: number, nextQuantity: number) => {
+    updateVoiceDraftAt(index, (draft) => ({
+      ...draft,
+      quantity: Math.max(1, Math.min(99, nextQuantity)),
+    }));
+  };
+
+  const handleVoiceDraftProductChange = (index: number, backendId: string) => {
+    const selectedProduct = products.find((product) => product.backendId === backendId) ?? null;
+    updateVoiceDraftAt(index, (draft) => {
+      if (!selectedProduct) {
+        return { ...draft, product: null, resolvedVariant: "", availableSizes: [] };
+      }
+      const availableSizes = (selectedProduct.sizes ?? []).filter(
+        (size) => size !== NO_VARIANT_SIZE,
+      );
+      let resolvedVariant = draft.resolvedVariant;
+      if (availableSizes.length === 0) {
+        resolvedVariant = NO_VARIANT_SIZE;
+      } else if (!availableSizes.includes(resolvedVariant)) {
+        const requestedMatch = draft.requestedSize
+          ? availableSizes.find((size) =>
+              buildSizeAliasKeys(size).has(draft.requestedSize ?? ""),
+            )
+          : undefined;
+        resolvedVariant = requestedMatch ?? availableSizes[0] ?? "";
+      }
+
+      return {
+        ...draft,
+        product: selectedProduct,
+        availableSizes,
+        resolvedVariant,
+      };
+    });
+  };
+
+  const handleVoiceDraftSizeChange = (index: number, nextSize: string) => {
+    updateVoiceDraftAt(index, (draft) => ({
+      ...draft,
+      resolvedVariant: nextSize,
+    }));
+  };
+
+  const removeVoiceDraftAt = (index: number) => {
+    setVoiceDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
+  };
+
+  const speakVoiceDraftSummary = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    if (voiceDrafts.length === 0) return;
+    const summary = voiceDrafts
+      .map((draft) => {
+        const productName = draft.product?.name ?? "unknown item";
+        const size =
+          draft.resolvedVariant && draft.resolvedVariant !== NO_VARIANT_SIZE
+            ? ` size ${draft.resolvedVariant}`
+            : "";
+        return `${draft.quantity} ${productName}${size}`;
+      })
+      .join(", ");
+
+    const utterance = new SpeechSynthesisUtterance(`I heard: ${summary}.`);
+    utterance.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   };
 
   const confirmVoiceDraftAddToCart = () => {
@@ -714,6 +925,11 @@ const BrowsePage = () => {
       voiceDrafts.length === 1
         ? "Voice order added to cart."
         : `${voiceDrafts.length} voice-ordered items added to cart.`;
+    appendVoiceLog({
+      transcript: lastTranscript,
+      status: "confirmed",
+      itemCount: voiceDrafts.length,
+    });
     setLastVoiceResult(message);
     setVoiceDrafts([]);
     setLastTranscript("");
@@ -756,14 +972,29 @@ const BrowsePage = () => {
         setIsVoiceDialogOpen(true);
         if (event.error === "not-allowed") {
           setLastVoiceResult("Microphone permission denied. Please allow microphone access.");
+          appendVoiceLog({
+            transcript: lastTranscript,
+            status: "error",
+            itemCount: 0,
+          });
           toast.error("Allow microphone permission for voice order");
           return;
         }
         if (event.error === "no-speech") {
           setLastVoiceResult("No speech detected. Please try again.");
+          appendVoiceLog({
+            transcript: "",
+            status: "error",
+            itemCount: 0,
+          });
           return;
         }
         setLastVoiceResult(`Voice recognition error: ${event.error}`);
+        appendVoiceLog({
+          transcript: lastTranscript,
+          status: "error",
+          itemCount: 0,
+        });
         toast.error(`Voice recognition error: ${event.error}`);
       };
 
@@ -777,6 +1008,11 @@ const BrowsePage = () => {
         setVoiceState("processing");
         const drafts = buildVoiceDrafts(transcript);
         setVoiceDrafts(drafts);
+        appendVoiceLog({
+          transcript,
+          status: drafts.length > 0 && drafts.every((draft) => draft.canConfirm) ? "parsed" : "error",
+          itemCount: drafts.length,
+        });
         const allValid = drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
         setLastVoiceResult(
           allValid
@@ -969,6 +1205,28 @@ const BrowsePage = () => {
                   Stop Voice Recognition
                 </Button>
               )}
+              {voiceState === "idle" && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleVoiceOrderClick}
+                    className="h-11 rounded-2xl border-0 bg-[#07484A] px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(7,72,74,0.25)] hover:bg-[#0a5e60]"
+                  >
+                    <Mic className="mr-2 size-4" />
+                    Listen Again
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={speakVoiceDraftSummary}
+                    disabled={voiceDrafts.length === 0}
+                    className="h-11 rounded-2xl border-[#07484A]/20 bg-white/70 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white"
+                  >
+                    <Volume2 className="mr-2 size-4" />
+                    Speak Summary
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-white/40 bg-white/55 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)] backdrop-blur-sm">
@@ -1025,6 +1283,82 @@ const BrowsePage = () => {
                           <p className="mt-0.5 rounded-lg bg-white/70 px-2 py-1 text-xs text-[#07484A]/70">
                             Segment heard: {draft.transcript}
                           </p>
+                          <div className="mt-2 grid gap-2 md:grid-cols-[1.2fr_auto_auto]">
+                            <label className="flex flex-col gap-1 text-xs">
+                              <span className="font-semibold uppercase tracking-[0.12em] text-[#07484A]/60">
+                                Product
+                              </span>
+                              <select
+                                value={draft.product?.backendId ?? ""}
+                                onChange={(event) =>
+                                  handleVoiceDraftProductChange(index, event.target.value)
+                                }
+                                className="h-9 rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A] outline-none ring-0"
+                              >
+                                <option value="">Select product...</option>
+                                {products.map((product) => (
+                                  <option key={product.backendId} value={product.backendId}>
+                                    {product.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span className="font-semibold uppercase tracking-[0.12em] text-[#07484A]/60">
+                                Quantity
+                              </span>
+                              <div className="flex h-9 items-center gap-1 rounded-lg border border-[#07484A]/15 bg-white px-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleVoiceDraftQuantityChange(index, draft.quantity - 1)
+                                  }
+                                  className="flex size-7 items-center justify-center rounded-md bg-[#EEF6F6] text-[#07484A] hover:bg-[#E4F0F0]"
+                                >
+                                  <Minus className="size-4" />
+                                </button>
+                                <span className="w-8 text-center font-serif text-sm font-bold">
+                                  {draft.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleVoiceDraftQuantityChange(index, draft.quantity + 1)
+                                  }
+                                  className="flex size-7 items-center justify-center rounded-md bg-[#EEF6F6] text-[#07484A] hover:bg-[#E4F0F0]"
+                                >
+                                  <Plus className="size-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span className="font-semibold uppercase tracking-[0.12em] text-[#07484A]/60">
+                                Size
+                              </span>
+                              {draft.availableSizes.length > 0 ? (
+                                <select
+                                  value={draft.resolvedVariant || ""}
+                                  onChange={(event) =>
+                                    handleVoiceDraftSizeChange(index, event.target.value)
+                                  }
+                                  className="h-9 min-w-[120px] rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A] outline-none ring-0"
+                                >
+                                  <option value="">Select size...</option>
+                                  {draft.availableSizes.map((size) => (
+                                    <option key={size} value={size}>
+                                      {size}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex h-9 items-center rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A]/70">
+                                  N/A
+                                </div>
+                              )}
+                            </div>
+                          </div>
                           <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
                             <p className="rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Qty:</span> {draft.quantity}
@@ -1053,6 +1387,17 @@ const BrowsePage = () => {
                           >
                             {draft.message}
                           </p>
+                          <div className="mt-2 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeVoiceDraftAt(index)}
+                              className="h-8 rounded-xl border-red-200 bg-white/80 px-3 text-xs font-semibold uppercase tracking-[0.12em] text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="mr-1 size-3.5" />
+                              Remove
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1060,6 +1405,34 @@ const BrowsePage = () => {
                 </div>
               )}
             </div>
+
+            {voiceLogs.length > 0 && (
+              <div className="rounded-2xl border border-white/40 bg-white/45 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.03)]">
+                <p className="font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
+                  Recent Voice Logs (Kiosk Debug)
+                </p>
+                <div className="mt-2 max-h-28 space-y-1 overflow-y-auto pr-1 text-xs">
+                  {voiceLogs.slice(0, 5).map((log) => (
+                    <div
+                      key={log.id}
+                      className="rounded-lg bg-white/70 px-2 py-1 text-[#07484A]/85"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold capitalize">{log.status}</span>
+                        <span className="text-[#07484A]/55">
+                          {new Date(log.timestamp).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="truncate">{log.transcript || "(no transcript)"}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="border-t border-white/40 bg-white/35 px-6 py-4">
