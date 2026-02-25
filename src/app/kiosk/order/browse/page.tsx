@@ -818,27 +818,40 @@ const BrowsePage = () => {
       </main>
 
       <Dialog open={isVoiceDialogOpen} onOpenChange={setIsVoiceDialogOpen}>
-        <DialogContent className="max-w-2xl border-[#07484A]/20 bg-[#F3FAFA]">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-2xl text-[#07484A]">
-              Voice Order Review
-            </DialogTitle>
-            <DialogDescription className="text-[#07484A]/70">
-              Speak your order, review what was detected, then confirm to add it to cart.
-            </DialogDescription>
+        <DialogContent className="max-w-3xl overflow-hidden border-2 border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(240,250,250,0.84))] p-0 shadow-[0_20px_55px_rgba(7,72,74,0.22)] backdrop-blur-xl">
+          <DialogHeader className="border-b border-white/40 bg-white/35 px-6 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-white/40 bg-black/45 text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
+                {voiceState === "listening" ? (
+                  <Mic className="size-5 animate-pulse" />
+                ) : voiceState === "processing" ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <Mic className="size-5" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="font-serif text-3xl font-extrabold tracking-tight text-[#07484A]">
+                  Voice Order Review
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-[#07484A]/70">
+                  Speak your order, review what was detected, then confirm to add it to cart.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+          <div className="space-y-4 px-6 py-5">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div
-                className={`rounded-xl border px-3 py-2 text-sm ${
+                className={`rounded-2xl border px-4 py-3 font-serif text-sm shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${
                   voiceState === "listening"
-                    ? "border-red-200 bg-red-50 text-red-900"
+                    ? "border-red-200 bg-red-50/95 text-red-900"
                     : voiceState === "processing"
-                      ? "border-cyan-200 bg-cyan-50 text-cyan-900"
+                      ? "border-cyan-200 bg-cyan-50/95 text-cyan-900"
                       : voiceDrafts.length > 0 && voiceDrafts.every((draft) => draft.canConfirm)
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                        : "border-amber-200 bg-amber-50 text-amber-900"
+                        ? "border-emerald-200 bg-emerald-50/95 text-emerald-900"
+                        : "border-amber-200 bg-amber-50/95 text-amber-900"
                 }`}
               >
                 {lastVoiceResult || "Tap the voice button to start speaking."}
@@ -848,7 +861,7 @@ const BrowsePage = () => {
                 <Button
                   type="button"
                   onClick={() => recognitionRef.current?.stop()}
-                  className="bg-red-500 text-white hover:bg-red-600"
+                  className="h-11 rounded-2xl border-0 bg-red-500 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(239,68,68,0.28)] hover:bg-red-600"
                 >
                   <MicOff className="mr-2 size-4" />
                   Stop Voice Recognition
@@ -856,20 +869,22 @@ const BrowsePage = () => {
               )}
             </div>
 
-            <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">Heard</p>
-              <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]">
+            <div className="rounded-2xl border border-white/40 bg-white/55 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)] backdrop-blur-sm">
+              <p className="font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
+                Heard
+              </p>
+              <p className="mt-1 font-serif text-base font-semibold text-[#07484A]">
                 {lastTranscript || "-"}
               </p>
             </div>
 
-            <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">
+            <div className="rounded-2xl border border-white/40 bg-white/55 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)] backdrop-blur-sm">
+              <p className="font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
                 Parsed Item{voiceDrafts.length > 1 ? "s" : ""}
               </p>
 
               {voiceDrafts.length === 0 ? (
-                <p className="mt-2 text-sm text-[#07484A]/60">
+                <p className="mt-2 font-serif text-sm italic text-[#07484A]/60">
                   {voiceState === "listening"
                     ? "Listening for your order..."
                     : "No parsed items yet."}
@@ -879,14 +894,14 @@ const BrowsePage = () => {
                   {voiceDrafts.map((draft, index) => (
                     <div
                       key={`${draft.transcript}-${index}`}
-                      className={`rounded-xl border p-3 ${
+                      className={`rounded-2xl border p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03)] ${
                         draft.canConfirm
-                          ? "border-emerald-200 bg-emerald-50/60"
-                          : "border-amber-200 bg-amber-50/70"
+                          ? "border-emerald-200 bg-emerald-50/80"
+                          : "border-amber-200 bg-amber-50/85"
                       }`}
                     >
                       <div className="grid grid-cols-[72px_1fr] gap-3">
-                        <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg border border-[#07484A]/10 bg-white">
+                        <div className="relative h-[72px] w-[72px] overflow-hidden rounded-xl border border-white/50 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.04)]">
                           {draft.product?.image ? (
                             <Image
                               src={draft.product.image}
@@ -902,32 +917,40 @@ const BrowsePage = () => {
                         </div>
 
                         <div className="min-w-0 text-sm text-[#07484A]">
-                          <p className="font-serif text-base font-bold">
+                          <p className="font-serif text-lg font-bold leading-tight">
                             {draft.product?.name ?? "Not recognized"}
                           </p>
-                          <p className="mt-0.5 text-xs text-[#07484A]/65">
+                          <p className="mt-0.5 rounded-lg bg-white/70 px-2 py-1 text-xs text-[#07484A]/70">
                             Segment heard: {draft.transcript}
                           </p>
-                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
-                            <p>
+                          <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
+                            <p className="rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Qty:</span> {draft.quantity}
                             </p>
-                            <p>
+                            <p className="rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Requested:</span>{" "}
                               {draft.requestedSize ?? "None"}
                             </p>
-                            <p>
+                            <p className="rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Matched:</span>{" "}
                               {draft.resolvedVariant || "Not matched"}
                             </p>
-                            <p className="truncate">
+                            <p className="truncate rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Sizes:</span>{" "}
                               {draft.availableSizes.length > 0
                                 ? draft.availableSizes.join(", ")
                                 : "N/A"}
                             </p>
                           </div>
-                          <p className="mt-2 text-xs font-semibold">{draft.message}</p>
+                          <p
+                            className={`mt-2 rounded-lg px-2 py-1 text-xs font-semibold ${
+                              draft.canConfirm
+                                ? "bg-emerald-100 text-emerald-900"
+                                : "bg-amber-100 text-amber-900"
+                            }`}
+                          >
+                            {draft.message}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -937,12 +960,12 @@ const BrowsePage = () => {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="border-t border-white/40 bg-white/35 px-6 py-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsVoiceDialogOpen(false)}
-              className="border-[#07484A]/25 text-[#07484A]"
+              className="h-11 rounded-2xl border-[#07484A]/25 bg-white/70 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white"
             >
               Cancel
             </Button>
@@ -954,7 +977,7 @@ const BrowsePage = () => {
                 voiceDrafts.length === 0 ||
                 voiceDrafts.some((draft) => !draft.canConfirm)
               }
-              className="bg-[#07484A] text-white hover:bg-[#07484A]/90"
+              className="h-11 rounded-2xl border-0 bg-[#07484A] px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(7,72,74,0.25)] hover:bg-[#0a5e60]"
             >
               Confirm Add to Cart
             </Button>
