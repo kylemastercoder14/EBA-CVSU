@@ -12,6 +12,7 @@ import {
   PlusIcon,
   ShoppingCartIcon,
 } from "lucide-react";
+
 import { useCart } from "@/hooks/use-cart";
 import { orpc } from "@/lib/orpc";
 import { NO_VARIANT_SIZE } from "@/validators/products";
@@ -31,11 +32,19 @@ type ProductItem = {
   variants: ProductVariant[];
 };
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat("en-PH", {
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price);
+
+const normalizeCategory = (category: string) => {
+  if (!category) return "Others";
+  return category
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
 };
 
 const Page = () => {
@@ -48,25 +57,26 @@ const Page = () => {
   const addItem = useCart((state) => state.addItem);
   const getItemCount = useCart((state) => state.getItemCount);
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useQuery(orpc.product.list.queryOptions());
+  const { data, isLoading, isError } = useQuery(orpc.product.list.queryOptions());
   const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
 
   const products = data?.products ?? [];
-  const product = products.find((item) => item.id === productId) as ProductItem | undefined;
+  const product = products.find((item) => item.id === productId) as
+    | ProductItem
+    | undefined;
+
   const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map((stock) => [
-      stock.productId,
-      Number(stock.currentStock ?? 0),
-    ]);
+    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
+      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
+    );
     return new Map<string, number>(entries);
   }, [stockData]);
+
   const currentStock = product ? (stockByProductId.get(product.id) ?? 0) : 0;
   const realVariants = useMemo(
-    () => product?.variants.filter((variant) => variant.size !== NO_VARIANT_SIZE) ?? [],
+    () =>
+      product?.variants.filter((variant) => variant.size !== NO_VARIANT_SIZE) ??
+      [],
     [product],
   );
   const fallbackVariant = useMemo(
@@ -100,6 +110,7 @@ const Page = () => {
     }
 
     const variantLabel = hasVariants ? activeSize : NO_VARIANT_SIZE;
+
     addItem({
       productId: product.id,
       productName: product.name,
@@ -108,129 +119,174 @@ const Page = () => {
       pickupDate,
     });
 
-    toast.success(`${product.name} (${variantLabel}) added to cart. Total items: ${getItemCount()}.`);
+    toast.success(
+      `${product.name} (${variantLabel}) added to cart. Total items: ${getItemCount()}.`,
+    );
   };
 
   return (
-    <main className="px-6 py-8 sm:px-10 sm:py-10">
-      <Link href="/products" className="text-[#0B525B] flex items-center gap-2 underline">
-        <ArrowLeft className='size-4' /> Back to products
-      </Link>
+    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-7xl">
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 text-sm text-[#0B525B] underline sm:text-base"
+        >
+          <ArrowLeft className="size-4" /> Back to products
+        </Link>
 
-      {isLoading && (
-        <p className="mt-8 text-center text-lg text-[#20596A]">Loading product...</p>
-      )}
+        {isLoading && (
+          <p className="mt-8 text-center text-lg text-[#20596A]">Loading product...</p>
+        )}
 
-      {isError && (
-        <p className="mt-8 text-center text-lg text-[#7D2D2D]">
-          Unable to load product details right now.
-        </p>
-      )}
+        {isError && (
+          <p className="mt-8 text-center text-lg text-[#7D2D2D]">
+            Unable to load product details right now.
+          </p>
+        )}
 
-      {!isLoading && !isError && !product && (
-        <p className="mt-8 text-center text-lg text-[#20596A]">Product not found.</p>
-      )}
+        {!isLoading && !isError && !product && (
+          <p className="mt-8 text-center text-lg text-[#20596A]">Product not found.</p>
+        )}
 
-      {!isLoading && !isError && product && (
-        <div className="mx-auto mt-6 max-w-175 text-center">
-          <div className="relative mx-auto h-72.5 w-full max-w-[320px] overflow-hidden rounded-4xl bg-[#E7E8EA]">
-            {product.image ? (
-              <Image src={product.image} alt={product.name} fill className="object-contain" />
-            ) : (
-              <div className="flex h-full items-center justify-center text-2xl text-[#1B5A68]">
-                No image
-              </div>
-            )}
-          </div>
+        {!isLoading && !isError && product && (
+          <div className="mt-6 rounded-3xl border border-[#0B525B]/15 bg-white/25 p-4 shadow-[0_10px_24px_rgba(11,82,91,0.06)] backdrop-blur-sm sm:p-6 lg:p-8">
+            <div className="grid gap-6 lg:grid-cols-[minmax(300px,420px)_1fr] lg:items-start lg:gap-8">
+              <section className="rounded-3xl border border-[#C1D1DC] bg-[#EAF1F6]/80 p-3 sm:p-4">
+                <div className="relative mx-auto h-64 w-full max-w-[320px] overflow-hidden rounded-3xl bg-[#E7E8EA] sm:h-72 sm:max-w-[360px] lg:h-96 lg:max-w-none">
+                  {product.image ? (
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-contain p-2"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-lg text-[#1B5A68] sm:text-2xl">
+                      No image
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#D9E8F3] px-3 py-1 text-xs font-semibold text-[#0B525B] sm:text-sm">
+                    {normalizeCategory(product.category)}
+                  </span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold sm:text-sm ${
+                      available
+                        ? "bg-[#075A5C] text-[#DDFFFE]"
+                        : "bg-[#8F8F8F] text-[#F1F1F1]"
+                    }`}
+                  >
+                    {available ? `Available • Stock ${currentStock}` : "Not Available"}
+                  </span>
+                </div>
+              </section>
 
-          <h1 className="mt-4 font-serif text-4xl font-bold text-[#0B525B]">{product.name}</h1>
-          <p className="mt-2 text-3xl font-semibold text-[#0B525B]">₱{formatPrice(unitPrice)}</p>
+              <section className="text-center lg:text-left">
+                <h1 className="font-serif text-2xl font-bold leading-tight text-[#0B525B] sm:text-3xl lg:text-4xl">
+                  {product.name}
+                </h1>
+                <p className="mt-2 text-2xl font-semibold text-[#0B525B] sm:text-3xl lg:text-3xl">
+                  PHP {formatPrice(unitPrice)}
+                </p>
 
-          <div className="mt-6">
-            <p className="font-serif text-xl text-[#0B525B]">
-              Preferred Pickup Date <span className="text-[#D05555]">*</span>
-            </p>
-            <label className="mx-auto mt-3 flex h-14 max-w-140 items-center justify-between rounded-full bg-[#F1F4F6] px-6">
-              <input
-                type="date"
-                value={pickupDate}
-                onChange={(event) => setPickupDate(event.target.value)}
-                className="w-full bg-transparent text-center text-xl text-[#0B525B] outline-none"
-              />
-            </label>
-          </div>
+                <div className="mt-6 space-y-6">
+                  <div>
+                    <p className="font-serif text-base text-[#0B525B] sm:text-lg lg:text-xl">
+                      Preferred Pickup Date <span className="text-[#D05555]">*</span>
+                    </p>
+                    <label className="mx-auto mt-3 flex h-12 w-full max-w-xl items-center rounded-full bg-[#F1F4F6] px-4 sm:h-14 sm:px-6 lg:mx-0">
+                      <input
+                        type="date"
+                        value={pickupDate}
+                        onChange={(event) => setPickupDate(event.target.value)}
+                      className="w-full bg-transparent text-center text-sm text-[#0B525B] outline-none sm:text-base lg:text-lg"
+                      />
+                    </label>
+                  </div>
 
-          {hasVariants ? (
-            <div className="mt-8">
-              <p className="font-serif text-xl text-[#0B525B]">
-                Choose Size/Variant <span className="text-[#D05555]">*</span>
-              </p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-                {realVariants.map((variant) => {
-                  const active = variant.size === activeSize;
-                  return (
+                  {hasVariants ? (
+                    <div>
+                      <p className="font-serif text-base text-[#0B525B] sm:text-lg lg:text-xl">
+                        Choose Size/Variant <span className="text-[#D05555]">*</span>
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:justify-start">
+                        {realVariants.map((variant) => {
+                          const active = variant.size === activeSize;
+                          return (
+                            <button
+                              key={variant.size}
+                              type="button"
+                              onClick={() => setSelectedSize(variant.size)}
+                              className={`rounded-full px-3 py-1.5 text-sm transition-colors sm:px-4 sm:py-2 sm:text-base lg:text-base ${
+                                active
+                                  ? "bg-[#075A5C] text-white"
+                                  : "bg-[#DDE5EC] text-[#0B525B] hover:bg-[#EAF1F6]"
+                              }`}
+                            >
+                              {variant.size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-center text-sm italic text-[#0B525B]/70 lg:text-left">
+                      No size selection required for this product.
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-center lg:justify-start">
+                    <div className="inline-flex items-center gap-4 rounded-full bg-[#F2F3F4] px-5 py-2 text-base text-[#0B525B] sm:gap-6 sm:px-7 sm:text-lg">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                        className="hover:text-[#06454A]"
+                        aria-label="Decrease quantity"
+                      >
+                        <MinusIcon className="size-5" />
+                      </button>
+                      <span className="min-w-6 text-center font-semibold">{quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((prev) => Math.min(99, prev + 1))}
+                        className="hover:text-[#06454A]"
+                        aria-label="Increase quantity"
+                      >
+                        <PlusIcon className="size-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-3 lg:items-start">
                     <button
-                      key={variant.size}
                       type="button"
-                      onClick={() => setSelectedSize(variant.size)}
-                      className={`rounded-full px-4 py-2 text-xl transition-colors ${active
-                          ? "bg-[#075A5C] text-white"
-                          : "bg-[#DDE5EC] text-[#0B525B] hover:bg-[#EAF1F6]"
-                        }`}
+                      onClick={handleAddOrder}
+                      disabled={!available}
+                      className={`inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold sm:h-14 sm:gap-3 sm:text-base lg:text-lg ${
+                        available
+                          ? "bg-[#075A5C] text-white hover:bg-[#064F51]"
+                          : "cursor-not-allowed bg-[#8F8F8F] text-[#E8E8E8]"
+                      }`}
                     >
-                      {variant.size}
+                      <ShoppingCartIcon className="size-5 sm:size-6" />
+                      {available ? "Add Order" : "Not Available"}
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <p className="mt-8 text-center text-sm italic text-[#0B525B]/70">
-              No size selection required for this product.
-            </p>
-          )}
-
-          <div className="mt-8 flex items-center justify-center">
-            <div className="inline-flex items-center gap-6 rounded-full bg-[#F2F3F4] px-7 py-2 text-xl text-[#0B525B]">
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                className="hover:text-[#06454A]"
-                aria-label="Decrease quantity"
-              >
-                <MinusIcon className="size-5" />
-              </button>
-              <span>{quantity}</span>
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => Math.min(99, prev + 1))}
-                className="hover:text-[#06454A]"
-                aria-label="Increase quantity"
-              >
-                <PlusIcon className="size-5" />
-              </button>
+                    <p className="text-xs text-[#335D69] sm:text-sm">
+                      Cart items: <span className="font-semibold">{getItemCount()}</span>
+                    </p>
+                    {!available && (
+                      <p className="text-sm text-[#7D2D2D]">
+                        This product is currently out of stock.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={handleAddOrder}
-            disabled={!available}
-            className={`mt-8 inline-flex w-full max-w-100 items-center justify-center gap-3 rounded-full px-6 py-4 text-2xl font-semibold ${available
-                ? "bg-[#075A5C] text-white hover:bg-[#064F51]"
-                : "cursor-not-allowed bg-[#8F8F8F] text-[#E8E8E8]"
-              }`}
-          >
-            <ShoppingCartIcon className="size-7" />
-            {available ? "Add Order" : "Not Available"}
-          </button>
-          {product && !available && (
-            <p className="mt-3 text-sm text-[#7D2D2D]">
-              This product is currently out of stock.
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </main>
   );
 };

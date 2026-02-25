@@ -28,7 +28,16 @@ const Page = () => {
   const verifyPaymentMutation = useMutation(
     orpc.payment.verify.mutationOptions({
       onSuccess: (result) => {
-        toast.success(result.message || "Payment verified successfully");
+        const sms = result.smsNotification;
+        if (sms?.attempted && sms.sent) {
+          toast.success("Payment verified successfully. SMS notification sent.");
+        } else if (sms?.attempted && !sms.sent) {
+          toast.warning(
+            `Payment verified, but SMS failed${sms.error ? `: ${sms.error}` : "."}`,
+          );
+        } else {
+          toast.success(result.message || "Payment verified successfully");
+        }
         queryClient.invalidateQueries({
           queryKey: orpc.payment.list.queryKey(),
         });
@@ -50,7 +59,16 @@ const Page = () => {
   const declinePaymentMutation = useMutation(
     orpc.payment.decline.mutationOptions({
       onSuccess: (result) => {
-        toast.success(result.message || "Payment declined successfully");
+        const sms = result.smsNotification;
+        if (sms?.attempted && sms.sent) {
+          toast.success("Payment declined successfully. SMS notification sent.");
+        } else if (sms?.attempted && !sms.sent) {
+          toast.warning(
+            `Payment declined, but SMS failed${sms.error ? `: ${sms.error}` : "."}`,
+          );
+        } else {
+          toast.success(result.message || "Payment declined successfully");
+        }
         queryClient.invalidateQueries({
           queryKey: orpc.payment.list.queryKey(),
         });
@@ -125,12 +143,13 @@ const Page = () => {
     });
   };
 
-  const confirmDecline = () => {
+  const confirmDecline = (reason: string) => {
     if (!selectedPayment) return;
 
     declinePaymentMutation.mutate({
       paymentId: selectedPayment.id,
       actorName: "Admin",
+      ...(reason ? { reason } : {}),
     });
   };
 
@@ -171,6 +190,7 @@ const Page = () => {
               payments={currentPayments}
               totalItems={filteredPayments.length}
               paymentType="GCash"
+              isLoading={isLoading}
               searchQuery={searchQuery}
               currentPage={currentPage}
               totalPages={totalPages}
@@ -192,6 +212,7 @@ const Page = () => {
               payments={currentPayments}
               totalItems={filteredPayments.length}
               paymentType="Cash"
+              isLoading={isLoading}
               searchQuery={searchQuery}
               currentPage={currentPage}
               totalPages={totalPages}

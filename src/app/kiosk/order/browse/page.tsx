@@ -621,7 +621,9 @@ const BrowsePage = () => {
   const [lastVoiceResult, setLastVoiceResult] = useState("");
   const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
-  const [isSpeakingVoiceSummary, setIsSpeakingVoiceSummary] = useState(false);
+  const [voiceSummaryState, setVoiceSummaryState] = useState<
+    "idle" | "loading" | "playing"
+  >("idle");
   const [voiceLogs, setVoiceLogs] = useState<VoiceOrderLog[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -788,7 +790,7 @@ const BrowsePage = () => {
       summaryAudioRef.current.pause();
       summaryAudioRef.current = null;
     }
-    setIsSpeakingVoiceSummary(false);
+    setVoiceSummaryState("idle");
     if (summaryAudioUrlRef.current) {
       const staleUrl = summaryAudioUrlRef.current;
       summaryAudioUrlRef.current = null;
@@ -1077,7 +1079,7 @@ const BrowsePage = () => {
   };
 
   const speakVoiceDraftSummary = async () => {
-    if (isSpeakingVoiceSummary) return;
+    if (voiceSummaryState !== "idle") return;
     if (voiceDrafts.length === 0) return;
 
     const summary = voiceDrafts
@@ -1094,9 +1096,9 @@ const BrowsePage = () => {
     const summaryText = `I heard: ${summary}. Please review before confirming.`;
 
     try {
-      setIsSpeakingVoiceSummary(true);
+      setVoiceSummaryState("loading");
       cleanupSummaryAudio();
-      setIsSpeakingVoiceSummary(true);
+      setVoiceSummaryState("loading");
 
       const response = await fetch("/api/queue/announce", {
         method: "POST",
@@ -1114,7 +1116,7 @@ const BrowsePage = () => {
       summaryAudioRef.current = audio;
       summaryAudioUrlRef.current = audioUrl;
       audio.onended = () => {
-        setIsSpeakingVoiceSummary(false);
+        setVoiceSummaryState("idle");
         if (summaryAudioRef.current === audio) {
           summaryAudioRef.current = null;
         }
@@ -1127,11 +1129,12 @@ const BrowsePage = () => {
         }
       };
       audio.onerror = () => {
-        setIsSpeakingVoiceSummary(false);
+        setVoiceSummaryState("idle");
       };
+      setVoiceSummaryState("playing");
       await audio.play();
     } catch {
-      setIsSpeakingVoiceSummary(false);
+      setVoiceSummaryState("idle");
       speakVoiceDraftSummaryFallback(summary);
     }
   };
@@ -1446,6 +1449,14 @@ const BrowsePage = () => {
                   Speak your order, review what was detected, then confirm to
                   add it to cart.
                 </DialogDescription>
+                {voiceSummaryState !== "idle" && (
+                  <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 font-serif text-xs font-semibold uppercase tracking-[0.12em] text-cyan-900">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {voiceSummaryState === "loading"
+                      ? "Generating Summary Voice..."
+                      : "Playing Summary Voice..."}
+                  </p>
+                )}
               </div>
             </div>
           </DialogHeader>
@@ -1490,15 +1501,21 @@ const BrowsePage = () => {
                     type="button"
                     variant="outline"
                     onClick={speakVoiceDraftSummary}
-                    disabled={voiceDrafts.length === 0 || isSpeakingVoiceSummary}
+                    disabled={
+                      voiceDrafts.length === 0 || voiceSummaryState !== "idle"
+                    }
                     className="h-11 rounded-2xl border-[#07484A]/20 bg-white/70 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white"
                   >
-                    {isSpeakingVoiceSummary ? (
+                    {voiceSummaryState !== "idle" ? (
                       <Loader2 className="mr-2 size-4 animate-spin" />
                     ) : (
                       <Volume2 className="mr-2 size-4" />
                     )}
-                    {isSpeakingVoiceSummary ? "Generating..." : "Speak Summary"}
+                    {voiceSummaryState === "loading"
+                      ? "Generating..."
+                      : voiceSummaryState === "playing"
+                        ? "Playing..."
+                        : "Speak Summary"}
                   </Button>
                 </div>
               )}

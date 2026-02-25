@@ -78,48 +78,48 @@ const Page = () => {
   };
 
   return (
-    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-6 py-10">
-      <section className="mx-auto w-full max-w-120">
-        <h1 className="text-center font-serif text-5xl font-bold text-[#0B525B]">
+    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <section className="mx-auto w-full max-w-3xl rounded-2xl border border-[#0B525B]/15 bg-white/25 p-4 shadow-[0_10px_24px_rgba(11,82,91,0.06)] backdrop-blur-sm sm:p-6 lg:p-8">
+        <h1 className="text-center font-serif text-2xl font-bold text-[#0B525B] sm:text-3xl lg:text-4xl">
           My Profile
         </h1>
 
-        <div className="mt-12 space-y-5">
+        <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
           <div>
-            <p className="mb-1 text-[29px] text-[#0D5A67]">Full Name</p>
+            <p className="mb-1 text-base text-[#0D5A67] sm:text-lg lg:text-xl">Full Name</p>
             <Input
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
-              className="h-15 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-3xl text-[#0B525B]"
+              className="h-11 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-sm text-[#0B525B] sm:h-12 sm:text-base lg:h-13 lg:text-lg"
             />
           </div>
 
           <div>
-            <p className="mb-1 text-[29px] text-[#0D5A67]">CVSU Email</p>
+            <p className="mb-1 text-base text-[#0D5A67] sm:text-lg lg:text-xl">CVSU Email</p>
             <Input
               readOnly
               value={cvsuEmail}
-              className="h-15 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-3xl text-[#0B525B]"
+              className="h-11 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-sm text-[#0B525B] sm:h-12 sm:text-base lg:h-13 lg:text-lg"
             />
           </div>
 
           <div>
-            <p className="mb-1 text-[29px] text-[#0D5A67]">Mobile Number</p>
+            <p className="mb-1 text-base text-[#0D5A67] sm:text-lg lg:text-xl">Mobile Number</p>
             <Input
               value={mobileNumber}
               onChange={(event) => setMobileNumber(event.target.value)}
-              className="h-15 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-3xl text-[#0B525B]"
+              className="h-11 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-sm text-[#0B525B] sm:h-12 sm:text-base lg:h-13 lg:text-lg"
             />
           </div>
 
           <div>
-            <p className="mb-1 text-[29px] text-[#0D5A67]">Password</p>
+            <p className="mb-1 text-base text-[#0D5A67] sm:text-lg lg:text-xl">Password</p>
             <Input
               type="password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               placeholder="Enter new password"
-              className="h-15 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-3xl text-[#0B525B]"
+              className="h-11 rounded-[14px] border border-[#2D7CD4] bg-[#F4F6F8] px-4 text-sm text-[#0B525B] sm:h-12 sm:text-base lg:h-13 lg:text-lg"
             />
           </div>
         </div>
@@ -128,7 +128,7 @@ const Page = () => {
           type="button"
           onClick={handleSave}
           disabled={updateStudentProfileMutation.isPending}
-          className="mt-10 h-16 w-full rounded-full border border-[#073F42] bg-[#07545A] text-3xl font-semibold text-white hover:bg-[#064D52]"
+          className="mt-8 h-11 w-full rounded-full border border-[#073F42] bg-[#07545A] text-sm font-semibold text-white hover:bg-[#064D52] sm:mt-10 sm:h-12 sm:text-base lg:h-13 lg:text-lg"
         >
           {updateStudentProfileMutation.isPending ? "Saving..." : "Save Changes"}
           <LockIcon className="size-5" />

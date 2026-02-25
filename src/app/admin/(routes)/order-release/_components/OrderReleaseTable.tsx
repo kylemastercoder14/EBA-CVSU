@@ -14,6 +14,7 @@ import { Order, OrderStatus } from "./types";
 interface OrderReleaseTableProps {
   orders: Order[];
   status: OrderStatus;
+  isLoading?: boolean;
   onReleaseClick?: (order: Order) => void;
   onMarkReadyClick?: (order: Order) => void;
 }
@@ -21,9 +22,11 @@ interface OrderReleaseTableProps {
 export const OrderReleaseTable = ({
   orders,
   status,
+  isLoading = false,
   onReleaseClick,
   onMarkReadyClick,
 }: OrderReleaseTableProps) => {
+  const skeletonRows = 4;
   const emptyText =
     status === "Processing"
       ? "No orders currently being processed"
@@ -44,12 +47,35 @@ export const OrderReleaseTable = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {orders.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`release-skeleton-${status}-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4">
+                <div className="h-5 w-24 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-36 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-full max-w-64 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-10 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-28 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-9 w-28 animate-pulse rounded-md bg-[#07484A]/12" />
+              </TableCell>
+            </TableRow>
+          ))
+        ) : orders.length > 0 ? (
           orders.map((order) => (
             <TableRow key={order.id} className="hover:bg-gray-50">
               <TableCell className="p-4 text-base">{order.orderNumber}</TableCell>
               <TableCell className="p-4 text-base font-medium">{order.name}</TableCell>
-              <TableCell className="p-4 text-base text-[#07484A]">{order.items}</TableCell>
+              <TableCell className="p-4 text-base max-w-75 truncate">{order.items}</TableCell>
               <TableCell className="p-4 text-base">{order.quantity}</TableCell>
               <TableCell className="p-4 text-base">{order.pickupDate}</TableCell>
               <TableCell className="p-4">

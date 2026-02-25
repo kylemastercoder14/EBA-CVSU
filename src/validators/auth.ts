@@ -42,6 +42,17 @@ export const studentLoginInputSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const resetStudentPasswordInputSchema = z.object({
+  identifier: z.string().min(1, "Student number or CvSU email is required"),
+  mobileNumber: z.string().min(1, "Mobile number is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const verifyStudentResetIdentityInputSchema = z.object({
+  identifier: z.string().min(1, "Student number or CvSU email is required"),
+  mobileNumber: z.string().min(1, "Mobile number is required"),
+});
+
 export const studentSessionSchema = z.object({
   id: z.string(),
   fullName: z.string(),
@@ -61,6 +72,16 @@ export const loginStudentOutputSchema = z.object({
   loggedIn: z.boolean(),
   message: z.string(),
   student: studentSessionSchema,
+});
+
+export const resetStudentPasswordOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export const verifyStudentResetIdentityOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
 });
 
 export const updateStudentProfileInputSchema = z

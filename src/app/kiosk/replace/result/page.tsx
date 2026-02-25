@@ -47,7 +47,7 @@ const ReturnResultPage = () => {
         ringColor:"stroke-emerald-400",
         Icon:     CheckCircle2,
         heading:  "Return Request Submitted",
-        subtext:  message || "Please bring your receipt and item to the EBA Office",
+        subtext:  message || "Your return request is waiting for admin approval. You will receive an SMS once it is approved or declined.",
       }
     : {
         iconBg:   "bg-red-500",

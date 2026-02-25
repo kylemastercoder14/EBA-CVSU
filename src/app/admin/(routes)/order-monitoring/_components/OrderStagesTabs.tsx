@@ -13,6 +13,7 @@ interface OrderStagesTabsProps {
   activeTab: OrderStage;
   stageCounts: Record<OrderStage, number>;
   currentOrders: Order[];
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -31,6 +32,7 @@ export const OrderStagesTabs = ({
   activeTab,
   stageCounts,
   currentOrders,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -95,6 +97,7 @@ export const OrderStagesTabs = ({
           description="New orders awaiting admin confirmation"
           orders={currentOrders}
           stage="Pending"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -115,6 +118,7 @@ export const OrderStagesTabs = ({
           description="Orders waiting for payment confirmation"
           orders={currentOrders}
           stage="To Pay"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -134,6 +138,7 @@ export const OrderStagesTabs = ({
           description="Payments verified; staff are processing these orders"
           orders={currentOrders}
           stage="Processing"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -153,6 +158,7 @@ export const OrderStagesTabs = ({
           description="Orders cancelled after payment review decline"
           orders={currentOrders}
           stage="Cancelled"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

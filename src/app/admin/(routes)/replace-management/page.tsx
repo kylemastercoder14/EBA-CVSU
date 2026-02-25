@@ -48,7 +48,18 @@ const Page = () => {
   const updateStatusMutation = useMutation(
     orpc.replace.updateStatus.mutationOptions({
       onSuccess: (result) => {
-        toast.success(result.message || "Replace request updated successfully");
+        const sms = result.smsNotification;
+        if (sms?.attempted && sms.sent) {
+          toast.success(
+            `${result.message || "Replace request updated successfully"} SMS notification sent.`,
+          );
+        } else if (sms?.attempted && !sms.sent) {
+          toast.warning(
+            `${result.message || "Replace request updated"} but SMS failed${sms.error ? `: ${sms.error}` : "."}`,
+          );
+        } else {
+          toast.success(result.message || "Replace request updated successfully");
+        }
         queryClient.invalidateQueries({
           queryKey: orpc.replace.list.queryKey(),
         });
@@ -112,13 +123,14 @@ const Page = () => {
     });
   };
 
-  const confirmReject = () => {
+  const confirmReject = (reason: string) => {
     if (!selectedRequest) return;
 
     updateStatusMutation.mutate({
       replaceRequestId: selectedRequest.id,
       status: "REJECTED",
       actorName: "Admin",
+      ...(reason ? { reason } : {}),
     });
   };
 
@@ -136,6 +148,7 @@ const Page = () => {
           activeTab={activeTab}
           statusCounts={statusCounts}
           currentRequests={currentRequests}
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

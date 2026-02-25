@@ -1,10 +1,11 @@
 import type { KioskReceiptPayload } from "@/types/kiosk-receipt";
+import {
+  formatReceiptIssuedAtShort,
+  formatReceiptMoney,
+  formatReceiptPickupDate,
+} from "@/lib/receipt-template";
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+const formatMoney = formatReceiptMoney;
 
 // 32 chars fits cleanly within 48mm printable width
 const toLine = (left: string, right = "", width = 32) => {
@@ -39,26 +40,9 @@ const withTimeout = async <T,>(
 const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
   const lines: string[] = [];
 
-  const issuedAt = new Intl.DateTimeFormat("en-PH", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(receipt.issuedAt));
-
+  const issuedAt = formatReceiptIssuedAtShort(receipt.issuedAt);
   const firstPickup = receipt.items[0]?.pickupDate
-    ? (() => {
-        const parsed = new Date(`${receipt.items[0].pickupDate}T00:00:00`);
-        return Number.isNaN(parsed.getTime())
-          ? receipt.items[0].pickupDate
-          : new Intl.DateTimeFormat("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            }).format(parsed);
-      })()
+    ? formatReceiptPickupDate(receipt.items[0].pickupDate)
     : "-";
 
   lines.push("\x1B\x40"); // Initialize printer
@@ -67,7 +51,7 @@ const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
   // Store name — large bold
   lines.push("\x1B\x21\x11"); // Font large (double width + height)
   lines.push("\x1B\x45\x01"); // Bold on
-  lines.push("EBA ORDERING");
+  lines.push("EBA ORDER RECEIPT");
   lines.push("\x1B\x45\x00"); // Bold off
   lines.push("\x1B\x21\x00"); // Font normal
   lines.push("External & Business Affairs");
@@ -76,22 +60,30 @@ const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
   lines.push("\x1B\x61\x00"); // Left align
   lines.push(divider());
 
-  // Transaction info
+  // Transaction info (matched with student receipt layout)
   lines.push(issuedAt);
-  lines.push(toLine("OR No:", receipt.orderNumber));
+  lines.push(toLine("Receipt", receipt.orderNumber));
+  lines.push(toLine("Order Number:", receipt.orderNumber));
   lines.push(toLine("Customer:", receipt.customerName));
   lines.push(toLine("Mobile:", receipt.mobileNumber));
-  lines.push(toLine("Pickup:", firstPickup));
-  lines.push(toLine("Payment:", receipt.paymentMethod.toUpperCase()));
+  lines.push(toLine("Pickup Date:", firstPickup));
+  lines.push(
+    toLine(
+      "Payment Method:",
+      receipt.paymentMethod === "gcash" ? "GCash" : "Cash",
+    ),
+  );
   if (receipt.paymentReference) {
-    lines.push(toLine("Ref:", receipt.paymentReference));
+    lines.push(toLine("GCash Ref:", receipt.paymentReference));
+  } else {
+    lines.push(toLine("Pay Status:", "Pending Cash"));
   }
 
   lines.push(divider());
 
   // Items header
   lines.push("\x1B\x45\x01"); // Bold on
-  lines.push(toLine("ITEM", "AMOUNT"));
+  lines.push(toLine("ITEM", "LINE TOTAL"));
   lines.push("\x1B\x45\x00"); // Bold off
   lines.push(divider());
 
@@ -110,8 +102,13 @@ const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
       lines.push(toLine(label, amount));
     }
 
-    // Qty breakdown
-    lines.push(`  x${item.quantity} @ PHP ${formatMoney(item.unitPrice)}`);
+    // Qty/variant breakdown to mirror HTML receipt columns
+    if (item.variant) {
+      lines.push(`  Variant: ${item.variant}`);
+    }
+    lines.push(
+      `  Qty ${item.quantity} @ PHP ${formatMoney(item.unitPrice)}`,
+    );
   }
 
   lines.push(divider());
@@ -127,13 +124,8 @@ const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
 
   // Footer
   lines.push("\x1B\x61\x01"); // Center align
-  lines.push("This serves as your");
-  lines.push("\x1B\x45\x01"); // Bold on
-  lines.push("OFFICIAL RECEIPT");
-  lines.push("\x1B\x45\x00"); // Bold off
-  lines.push("");
-  lines.push("Thank you for your order!");
-  lines.push("Please come again :)");
+  lines.push("This receipt serves as proof");
+  lines.push("of order and payment.");
   lines.push("");
   lines.push(receipt.orderNumber);
 

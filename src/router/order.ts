@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendEbaSmsQueued, type EbaSmsSendResult } from "@/lib/eba-sms";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import { type StockStatus, type UserType } from "@/generated/prisma";
@@ -21,6 +22,32 @@ import {
   updateOrderStatusOutputSchema,
 } from "@/validators/order";
 
+type ReadySmsInput = {
+  orderNumber: string;
+  recipientNumber: string;
+  customerName: string;
+  pickupDate: Date | null;
+  items: Array<{
+    productName: string;
+    quantity: number;
+    size: string | null;
+  }>;
+};
+
+type ReadySmsResult = EbaSmsSendResult;
+
+const sendOrderReadySms = async (
+  input: ReadySmsInput,
+): Promise<ReadySmsResult> => {
+  const message = `Hello ${input.customerName}, your order #${input.orderNumber} is now ready for pickup at the EBA Counter. Please bring your receipt for confirmation.`;
+
+  return sendEbaSmsQueued({
+    orderNumber: input.orderNumber,
+    recipientNumber: input.recipientNumber,
+    message,
+  });
+};
+
 const getNextOrderNumber = async () => {
   const lastOrder = await prisma.order.findFirst({
     where: {
@@ -38,7 +65,10 @@ const getNextOrderNumber = async () => {
 
   let nextNumber = 1;
   if (lastOrder?.orderNumber) {
-    const numericValue = Number.parseInt(lastOrder.orderNumber.replace("ORD-", ""), 10);
+    const numericValue = Number.parseInt(
+      lastOrder.orderNumber.replace("ORD-", ""),
+      10,
+    );
     if (!Number.isNaN(numericValue)) {
       nextNumber = numericValue + 1;
     }
@@ -47,14 +77,19 @@ const getNextOrderNumber = async () => {
   return `ORD-${nextNumber.toString().padStart(4, "0")}`;
 };
 
-const getNextId = async (prefix: string, model: "order" | "payment" | "orderItem") => {
+const getNextId = async (
+  prefix: string,
+  model: "order" | "payment" | "orderItem",
+) => {
   if (model === "order") {
     const last = await prisma.order.findFirst({
       where: { id: { startsWith: prefix } },
       orderBy: { id: "desc" },
       select: { id: true },
     });
-    const numericValue = last ? Number.parseInt(last.id.replace(prefix, ""), 10) : 0;
+    const numericValue = last
+      ? Number.parseInt(last.id.replace(prefix, ""), 10)
+      : 0;
     return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
   }
 
@@ -64,7 +99,9 @@ const getNextId = async (prefix: string, model: "order" | "payment" | "orderItem
       orderBy: { id: "desc" },
       select: { id: true },
     });
-    const numericValue = last ? Number.parseInt(last.id.replace(prefix, ""), 10) : 0;
+    const numericValue = last
+      ? Number.parseInt(last.id.replace(prefix, ""), 10)
+      : 0;
     return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
   }
 
@@ -73,7 +110,9 @@ const getNextId = async (prefix: string, model: "order" | "payment" | "orderItem
     orderBy: { id: "desc" },
     select: { id: true },
   });
-  const numericValue = last ? Number.parseInt(last.id.replace(prefix, ""), 10) : 0;
+  const numericValue = last
+    ? Number.parseInt(last.id.replace(prefix, ""), 10)
+    : 0;
   return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
 };
 
@@ -83,7 +122,9 @@ const getNextUserId = async (prefix: "KSTU" | "KVIS") => {
     orderBy: { id: "desc" },
     select: { id: true },
   });
-  const numericValue = last ? Number.parseInt(last.id.replace(prefix, ""), 10) : 0;
+  const numericValue = last
+    ? Number.parseInt(last.id.replace(prefix, ""), 10)
+    : 0;
   return `${prefix}${(Number.isNaN(numericValue) ? 1 : numericValue + 1).toString().padStart(4, "0")}`;
 };
 
@@ -141,7 +182,10 @@ const createStaffNotifications = async (
 
   let nextNumber = 1;
   if (lastNotification?.id) {
-    const parsed = Number.parseInt(lastNotification.id.replace("NOTIF", ""), 10);
+    const parsed = Number.parseInt(
+      lastNotification.id.replace("NOTIF", ""),
+      10,
+    );
     if (!Number.isNaN(parsed)) {
       nextNumber = parsed + 1;
     }
@@ -163,8 +207,10 @@ const mapOrderStageToTrackStage = (
   releaseStatus: "READY" | "RELEASED",
   paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
 ) => {
-  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "cancelled" as const;
-  if (stage === "COMPLETED" || releaseStatus === "RELEASED") return "completed" as const;
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED")
+    return "cancelled" as const;
+  if (stage === "COMPLETED" || releaseStatus === "RELEASED")
+    return "completed" as const;
   if (stage === "PAID" && releaseStatus === "READY") return "ready" as const;
   if (stage === "TO_PAY") return "preparing" as const;
   return "to-pay" as const;
@@ -174,8 +220,10 @@ const mapOrderStageToMonitoringStage = (
   stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
   paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
 ) => {
-  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "Cancelled" as const;
-  if (stage === "TO_PAY" && paymentStatus === "VERIFIED") return "Processing" as const;
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED")
+    return "Cancelled" as const;
+  if (stage === "TO_PAY" && paymentStatus === "VERIFIED")
+    return "Processing" as const;
   if (stage === "TO_PAY") return "To Pay" as const;
   return "Pending" as const;
 };
@@ -209,15 +257,20 @@ const mapOrderQueueStatus = (
   releaseStatus: "READY" | "RELEASED",
 ) => {
   // Cancelled/declined orders are filtered out before queue mapping.
-  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "Pending" as const;
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED")
+    return "Pending" as const;
   if (releaseStatus === "RELEASED") return "Released" as const;
   if (stage === "COMPLETED") return "Released" as const;
   if (stage === "TO_CONFIRM") return "Pending" as const;
   if (stage === "TO_PAY") {
-    return paymentStatus === "VERIFIED" ? ("Preparing" as const) : ("To Pay" as const);
+    return paymentStatus === "VERIFIED"
+      ? ("Preparing" as const)
+      : ("To Pay" as const);
   }
   if (stage === "PAID") {
-    return releaseStatus === "READY" ? ("Ready" as const) : ("Preparing" as const);
+    return releaseStatus === "READY"
+      ? ("Ready" as const)
+      : ("Preparing" as const);
   }
   return "Pending" as const;
 };
@@ -231,7 +284,9 @@ const getManilaTodayRange = (now = new Date()) => {
   }).formatToParts(now);
 
   const year = Number(parts.find((part) => part.type === "year")?.value ?? "0");
-  const month = Number(parts.find((part) => part.type === "month")?.value ?? "1");
+  const month = Number(
+    parts.find((part) => part.type === "month")?.value ?? "1",
+  );
   const day = Number(parts.find((part) => part.type === "day")?.value ?? "1");
 
   // Asia/Manila is UTC+08:00 (no DST)
@@ -241,7 +296,10 @@ const getManilaTodayRange = (now = new Date()) => {
   return { startUtc, endUtc };
 };
 
-const getStockStatus = (minStock: number, currentStock: number): StockStatus => {
+const getStockStatus = (
+  minStock: number,
+  currentStock: number,
+): StockStatus => {
   if (currentStock <= minStock * 0.5) {
     return "CRITICAL";
   }
@@ -303,8 +361,10 @@ export const listOrdersMonitoring = base
           order.orderItems.map((item) => item.product.name).join(", ") ||
           "-";
 
-        const paymentMethod = order.paymentMethod ?? order.payment?.method ?? "CASH";
-        const paymentStatus = order.paymentStatus ?? order.payment?.status ?? "PENDING";
+        const paymentMethod =
+          order.paymentMethod ?? order.payment?.method ?? "CASH";
+        const paymentStatus =
+          order.paymentStatus ?? order.payment?.status ?? "PENDING";
 
         return {
           id: order.id,
@@ -312,7 +372,8 @@ export const listOrdersMonitoring = base
           name: order.user.fullName,
           items: itemsSummary,
           quantity: order.totalQuantity,
-          paymentMethod: paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
+          paymentMethod:
+            paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
           paymentStatus:
             paymentStatus === "VERIFIED"
               ? ("Verified" as const)
@@ -454,33 +515,47 @@ export const listOrdersQueue = base
     return {
       orders: orders
         .map((order) => {
-          if (order.stage === "CANCELLED" || order.paymentStatus === "DECLINED") {
+          if (
+            order.stage === "CANCELLED" ||
+            order.paymentStatus === "DECLINED"
+          ) {
             return null;
           }
-        const itemsSummary =
-          order.itemsSummary?.trim() ||
-          order.orderItems.map((item) => item.product.name).join(", ") ||
-          "-";
+          const itemsSummary =
+            order.itemsSummary?.trim() ||
+            order.orderItems.map((item) => item.product.name).join(", ") ||
+            "-";
 
-        const paymentMethod = order.paymentMethod ?? order.payment?.method ?? "CASH";
-        const paymentStatus = order.paymentStatus ?? order.payment?.status ?? "PENDING";
+          const paymentMethod =
+            order.paymentMethod ?? order.payment?.method ?? "CASH";
+          const paymentStatus =
+            order.paymentStatus ?? order.payment?.status ?? "PENDING";
 
-        return {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customerName: order.user.fullName,
-          itemsSummary,
-          quantity: order.totalQuantity,
-          paymentMethod: paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
-          paymentStatus:
-            paymentStatus === "VERIFIED" ? ("Verified" as const) : ("Pending" as const),
-          stage: order.stage,
-          releaseStatus: order.releaseStatus,
-          queueStatus: mapOrderQueueStatus(order.stage, paymentStatus, order.releaseStatus),
-          createdAt: order.createdAt.toISOString(),
-          pickupDate: formatOrderDate(order.pickupDate),
-        };
-      })
+          return {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customerName: order.user.fullName,
+            itemsSummary,
+            quantity: order.totalQuantity,
+            paymentMethod:
+              paymentMethod === "GCASH"
+                ? ("GCash" as const)
+                : ("Cash" as const),
+            paymentStatus:
+              paymentStatus === "VERIFIED"
+                ? ("Verified" as const)
+                : ("Pending" as const),
+            stage: order.stage,
+            releaseStatus: order.releaseStatus,
+            queueStatus: mapOrderQueueStatus(
+              order.stage,
+              paymentStatus,
+              order.releaseStatus,
+            ),
+            createdAt: order.createdAt.toISOString(),
+            pickupDate: formatOrderDate(order.pickupDate),
+          };
+        })
         .filter((order): order is NonNullable<typeof order> => Boolean(order)),
     };
   });
@@ -536,7 +611,9 @@ export const listOrdersByUser = base
           name: item.product.name,
           quantity: item.quantity,
           size: item.productVariant?.size ?? "-",
-          pickupDate: order.pickupDate ? order.pickupDate.toISOString().slice(0, 10) : "-",
+          pickupDate: order.pickupDate
+            ? order.pickupDate.toISOString().slice(0, 10)
+            : "-",
           total: Number(item.unitPrice) * item.quantity,
           image: item.product.imageUrl ?? "",
         })),
@@ -613,7 +690,9 @@ export const createOrder = base
           throw errors.NOT_FOUND();
         }
 
-        const selectedVariant = product.variants.find((variant) => variant.size === item.variant);
+        const selectedVariant = product.variants.find(
+          (variant) => variant.size === item.variant,
+        );
         if (!selectedVariant) {
           throw errors.BAD_REQUEST();
         }
@@ -627,7 +706,10 @@ export const createOrder = base
       }),
     );
 
-    const totalQuantity = itemsWithPricing.reduce((sum, item) => sum + item.quantity, 0);
+    const totalQuantity = itemsWithPricing.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
     const totalAmount = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
@@ -641,16 +723,17 @@ export const createOrder = base
       .map((item) => `${item.productName} (${item.variant}) x${item.quantity}`)
       .join(", ");
 
-    const [orderId, paymentId, firstOrderItemId, orderNumber] = await Promise.all([
-      getNextId("ORDR", "order"),
-      getNextId("PAY", "payment"),
-      getNextId("OI", "orderItem"),
-      getNextOrderNumber(),
-    ]);
+    const [orderId, paymentId, firstOrderItemId, orderNumber] =
+      await Promise.all([
+        getNextId("ORDR", "order"),
+        getNextId("PAY", "payment"),
+        getNextId("OI", "orderItem"),
+        getNextOrderNumber(),
+      ]);
 
     const paymentReference =
       input.paymentMethod === "GCASH"
-        ? input.paymentReference?.trim() ?? ""
+        ? (input.paymentReference?.trim() ?? "")
         : `CASH-${orderNumber}`;
 
     const created = await prisma.$transaction(async (tx) => {
@@ -670,7 +753,9 @@ export const createOrder = base
 
       await tx.orderItem.createMany({
         data: itemsWithPricing.map((item, index) => ({
-          id: `OI${(Number.parseInt(firstOrderItemId.replace("OI", ""), 10) + index)
+          id: `OI${(
+            Number.parseInt(firstOrderItemId.replace("OI", ""), 10) + index
+          )
             .toString()
             .padStart(4, "0")}`,
           orderId: createdOrder.id,
@@ -730,7 +815,9 @@ export const createOrder = base
         paymentStatus: created.paymentStatus,
         totalQuantity: created.totalQuantity,
         totalAmount,
-        pickupDate: created.pickupDate ? created.pickupDate.toISOString() : null,
+        pickupDate: created.pickupDate
+          ? created.pickupDate.toISOString()
+          : null,
         createdAt: created.createdAt.toISOString(),
         paymentReference,
       },
@@ -749,14 +836,20 @@ export const createKioskOrder = base
   .handler(async ({ input, errors }) => {
     const normalizedName = input.customer.fullName.trim();
     const normalizedMobile = input.customer.mobileNumber.trim();
-    const normalizedStudentNumber = input.customer.studentNumber?.trim() || null;
+    const normalizedStudentNumber =
+      input.customer.studentNumber?.trim() || null;
     const customerType: UserType = input.customer.userType;
 
     if (!normalizedName || !normalizedMobile) {
       throw errors.BAD_REQUEST();
     }
 
-    let user = null as null | { id: string; fullName: string; mobileNumber: string; studentNumber: string | null };
+    let user = null as null | {
+      id: string;
+      fullName: string;
+      mobileNumber: string;
+      studentNumber: string | null;
+    };
     if (customerType === "STUDENT" && normalizedStudentNumber) {
       user = await prisma.user.findFirst({
         where: {
@@ -789,14 +882,17 @@ export const createKioskOrder = base
     }
 
     if (!user) {
-      const nextUserId = await getNextUserId(customerType === "STUDENT" ? "KSTU" : "KVIS");
+      const nextUserId = await getNextUserId(
+        customerType === "STUDENT" ? "KSTU" : "KVIS",
+      );
       user = await prisma.user.create({
         data: {
           id: nextUserId,
           type: customerType,
           fullName: normalizedName,
           mobileNumber: normalizedMobile,
-          studentNumber: customerType === "STUDENT" ? normalizedStudentNumber : null,
+          studentNumber:
+            customerType === "STUDENT" ? normalizedStudentNumber : null,
           cvsuEmail: null,
           password: null,
         },
@@ -850,7 +946,9 @@ export const createKioskOrder = base
           throw errors.NOT_FOUND();
         }
 
-        const selectedVariant = product.variants.find((variant) => variant.size === item.variant);
+        const selectedVariant = product.variants.find(
+          (variant) => variant.size === item.variant,
+        );
         if (!selectedVariant) {
           throw errors.BAD_REQUEST();
         }
@@ -864,7 +962,10 @@ export const createKioskOrder = base
       }),
     );
 
-    const totalQuantity = itemsWithPricing.reduce((sum, item) => sum + item.quantity, 0);
+    const totalQuantity = itemsWithPricing.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
     const totalAmount = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
@@ -878,16 +979,17 @@ export const createKioskOrder = base
       .map((item) => `${item.productName} (${item.variant}) x${item.quantity}`)
       .join(", ");
 
-    const [orderId, paymentId, firstOrderItemId, orderNumber] = await Promise.all([
-      getNextId("ORDR", "order"),
-      getNextId("PAY", "payment"),
-      getNextId("OI", "orderItem"),
-      getNextOrderNumber(),
-    ]);
+    const [orderId, paymentId, firstOrderItemId, orderNumber] =
+      await Promise.all([
+        getNextId("ORDR", "order"),
+        getNextId("PAY", "payment"),
+        getNextId("OI", "orderItem"),
+        getNextOrderNumber(),
+      ]);
 
     const paymentReference =
       input.paymentMethod === "GCASH"
-        ? input.paymentReference?.trim() ?? ""
+        ? (input.paymentReference?.trim() ?? "")
         : `CASH-${orderNumber}`;
 
     const created = await prisma.$transaction(async (tx) => {
@@ -907,7 +1009,9 @@ export const createKioskOrder = base
 
       await tx.orderItem.createMany({
         data: itemsWithPricing.map((item, index) => ({
-          id: `OI${(Number.parseInt(firstOrderItemId.replace("OI", ""), 10) + index)
+          id: `OI${(
+            Number.parseInt(firstOrderItemId.replace("OI", ""), 10) + index
+          )
             .toString()
             .padStart(4, "0")}`,
           orderId: createdOrder.id,
@@ -968,7 +1072,9 @@ export const createKioskOrder = base
         paymentStatus: created.paymentStatus,
         totalQuantity: created.totalQuantity,
         totalAmount,
-        pickupDate: created.pickupDate ? created.pickupDate.toISOString() : null,
+        pickupDate: created.pickupDate
+          ? created.pickupDate.toISOString()
+          : null,
         createdAt: created.createdAt.toISOString(),
         paymentReference,
       },
@@ -996,6 +1102,28 @@ export const updateOrderStatus = base
         releaseStatus: true,
         paymentStatus: true,
         userId: true,
+        pickupDate: true,
+        user: {
+          select: {
+            fullName: true,
+            mobileNumber: true,
+          },
+        },
+        orderItems: {
+          select: {
+            quantity: true,
+            product: {
+              select: {
+                name: true,
+              },
+            },
+            productVariant: {
+              select: {
+                size: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -1048,7 +1176,10 @@ export const updateOrderStatus = base
             stockItems.map((stock) => [stock.productId, stock]),
           );
 
-          for (const [productId, deductQuantity] of quantityByProductId.entries()) {
+          for (const [
+            productId,
+            deductQuantity,
+          ] of quantityByProductId.entries()) {
             const stock = stockByProductId.get(productId);
             if (!stock) {
               throw errors.BAD_REQUEST();
@@ -1087,8 +1218,12 @@ export const updateOrderStatus = base
         where: { id: input.orderId },
         data: {
           ...(input.stage ? { stage: input.stage } : {}),
-          ...(input.releaseStatus ? { releaseStatus: input.releaseStatus } : {}),
-          ...(input.paymentStatus ? { paymentStatus: input.paymentStatus } : {}),
+          ...(input.releaseStatus
+            ? { releaseStatus: input.releaseStatus }
+            : {}),
+          ...(input.paymentStatus
+            ? { paymentStatus: input.paymentStatus }
+            : {}),
         },
       });
 
@@ -1114,6 +1249,26 @@ export const updateOrderStatus = base
       return order;
     });
 
+    const isMarkReadyTransition =
+      updatedOrder.stage === "PAID" &&
+      updatedOrder.releaseStatus === "READY" &&
+      (existingOrder.stage !== "PAID" ||
+        existingOrder.releaseStatus !== "READY");
+
+    const smsNotification = isMarkReadyTransition
+      ? await sendOrderReadySms({
+          orderNumber: updatedOrder.orderNumber,
+          recipientNumber: existingOrder.user.mobileNumber,
+          customerName: existingOrder.user.fullName,
+          pickupDate: existingOrder.pickupDate,
+          items: existingOrder.orderItems.map((item) => ({
+            productName: item.product.name,
+            quantity: item.quantity,
+            size: item.productVariant?.size ?? null,
+          })),
+        })
+      : undefined;
+
     return {
       success: true,
       message: "Order status updated successfully",
@@ -1124,5 +1279,6 @@ export const updateOrderStatus = base
         releaseStatus: updatedOrder.releaseStatus,
         paymentStatus: updatedOrder.paymentStatus,
       },
+      smsNotification,
     };
   });

@@ -31,7 +31,7 @@ export const ReleaseOrderDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#D3E9FF] border-2 border-[#07484A]">
+      <DialogContent className="bg-[#D3E9FF] border-2 max-w-2xl! border-[#07484A]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#07484A]">
             {isMarkReady ? "Mark Order Ready" : "Release Order"}

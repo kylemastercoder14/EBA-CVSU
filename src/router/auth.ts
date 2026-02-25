@@ -6,9 +6,13 @@ import {
   getStaffSessionOutputSchema,
   loginStudentOutputSchema,
   loginStaffOutputSchema,
+  resetStudentPasswordInputSchema,
+  resetStudentPasswordOutputSchema,
   registerStudentInputSchema,
   registerStudentOutputSchema,
   studentLoginInputSchema,
+  verifyStudentResetIdentityInputSchema,
+  verifyStudentResetIdentityOutputSchema,
   updateStudentProfileInputSchema,
   updateStudentProfileOutputSchema,
 } from "@/validators/auth";
@@ -16,6 +20,57 @@ import { createHash } from "crypto";
 
 const hashPassword = (password: string) =>
   createHash("sha256").update(password).digest("hex");
+
+const normalizeMobileDigits = (value: string) =>
+  value.replace(/[^\d]/g, "");
+
+const mobileNumbersMatch = (a: string, b: string) => {
+  const left = normalizeMobileDigits(a);
+  const right = normalizeMobileDigits(b);
+  if (!left || !right) return false;
+
+  const normalizePh = (digits: string) => {
+    if (digits.startsWith("63")) return `0${digits.slice(2)}`;
+    return digits;
+  };
+
+  return normalizePh(left) === normalizePh(right);
+};
+
+const findStudentByIdentifier = async (identifier: string) => {
+  const normalizedIdentifier = identifier.trim();
+  return prisma.user.findFirst({
+    where: {
+      type: "STUDENT",
+      OR: [
+        { studentNumber: normalizedIdentifier },
+        { cvsuEmail: normalizedIdentifier.toLowerCase() },
+      ],
+    },
+    select: {
+      id: true,
+      fullName: true,
+      mobileNumber: true,
+    },
+  });
+};
+
+const getStudentIdentifierValidationMessage = (identifier: string) => {
+  const trimmed = identifier.trim();
+  if (!trimmed) return "Student number or CvSU email is required.";
+
+  if (trimmed.includes("@")) {
+    const isEmailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(trimmed);
+    if (!isEmailLike) {
+      return "Please enter a valid email address.";
+    }
+    if (!trimmed.toLowerCase().endsWith("@cvsu.edu.ph")) {
+      return "Email must use the CvSU domain (@cvsu.edu.ph).";
+    }
+  }
+
+  return null;
+};
 
 export const loginStaff = base
   .route({
@@ -249,6 +304,125 @@ export const getStaffSession = base
         role: "STAFF" as const,
         isActive: staff.isActive,
       },
+    };
+  });
+
+export const resetStudentPassword = base
+  .route({
+    method: "PUT",
+    path: "/auth/student/reset-password",
+    summary: "reset student password using identifier and mobile number",
+    tags: ["auth"],
+  })
+  .input(resetStudentPasswordInputSchema)
+  .output(resetStudentPasswordOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const normalizedIdentifier = input.identifier.trim();
+    const normalizedMobile = input.mobileNumber.trim();
+    const identifierValidationMessage =
+      getStudentIdentifierValidationMessage(normalizedIdentifier);
+
+    if (identifierValidationMessage) {
+      throw errors.BAD_REQUEST({
+        message: identifierValidationMessage,
+      });
+    }
+
+    const student = await findStudentByIdentifier(normalizedIdentifier);
+
+    if (!student) {
+      await createSystemLog(prisma, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Failed student password reset attempt for identifier "${normalizedIdentifier}".`,
+        status: "WARNING",
+        actorName: "System",
+      });
+      throw errors.BAD_REQUEST({
+        message:
+          "Student number or CvSU email was not found. Please check your details.",
+      });
+    }
+
+    if (!mobileNumbersMatch(student.mobileNumber, normalizedMobile)) {
+      await createSystemLog(prisma, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Failed student password reset mobile verification for identifier "${normalizedIdentifier}".`,
+        status: "WARNING",
+        actorName: student.fullName,
+        actorUserId: student.id,
+      });
+      throw errors.BAD_REQUEST({
+        message:
+          "Mobile number does not match our records for this account.",
+      });
+    }
+
+    await prisma.user.update({
+      where: {
+        id: student.id,
+      },
+      data: {
+        password: hashPassword(input.newPassword.trim()),
+      },
+    });
+
+    await createSystemLog(prisma, {
+      type: "ACTIVITY",
+      category: "PAYMENT_PENDING",
+      description: `Student "${student.fullName}" reset account password via forgot password.`,
+      status: "SUCCESS",
+      actorName: student.fullName,
+      actorUserId: student.id,
+    });
+
+    return {
+      success: true,
+      message: "Password reset successful. You can now log in.",
+    };
+  });
+
+export const verifyStudentResetIdentity = base
+  .route({
+    method: "POST",
+    path: "/auth/student/reset-password/verify-identity",
+    summary: "verify student identity for forgot password using identifier and mobile number",
+    tags: ["auth"],
+  })
+  .input(verifyStudentResetIdentityInputSchema)
+  .output(verifyStudentResetIdentityOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const normalizedIdentifier = input.identifier.trim();
+    const normalizedMobile = input.mobileNumber.trim();
+    const identifierValidationMessage =
+      getStudentIdentifierValidationMessage(normalizedIdentifier);
+
+    if (identifierValidationMessage) {
+      throw errors.BAD_REQUEST({
+        message: identifierValidationMessage,
+      });
+    }
+
+    const student = await findStudentByIdentifier(normalizedIdentifier);
+
+    if (!student) {
+      throw errors.BAD_REQUEST({
+        message:
+          "Student number or CvSU email was not found. Please check your details.",
+      });
+    }
+
+    if (!mobileNumbersMatch(student.mobileNumber, normalizedMobile)) {
+      throw errors.BAD_REQUEST({
+        message:
+          "Mobile number does not match our records for this account.",
+      });
+    }
+
+    return {
+      success: true,
+      message: "Identity verified. You can now set a new password.",
     };
   });
 

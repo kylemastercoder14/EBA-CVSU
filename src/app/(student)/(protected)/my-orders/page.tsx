@@ -72,8 +72,8 @@ const Page = () => {
 
   return (
     <main className="relative h-dvh overflow-hidden bg-[#C9D6E2]">
-      <section className="h-full overflow-y-auto px-3 pt-3 pb-64 sm:px-4 sm:pt-4 sm:pb-70">
-        <div className="space-y-3 rounded-xl bg-[#B8C9D7] p-3 sm:p-4">
+      <section className="h-full overflow-y-auto px-3 pt-3 pb-64 sm:px-4 sm:pt-4 sm:pb-72 lg:px-8 lg:pb-76">
+        <div className="mx-auto max-w-5xl space-y-3 rounded-xl bg-[#B8C9D7] p-3 sm:p-4 lg:p-5">
           {items.length === 0 && (
             <div className="rounded-2xl bg-[#D9E2EA] p-6 text-center">
               <p className="text-xl font-semibold text-[#0B525B]">
@@ -85,7 +85,7 @@ const Page = () => {
               <Button
                 type="button"
                 onClick={() => router.push("/products")}
-                className="mt-4 rounded-full bg-[#075A5C] px-7"
+                className="mt-4 rounded-full bg-[#075A5C] px-7 text-sm sm:text-base"
               >
                 Browse Products
               </Button>
@@ -106,9 +106,9 @@ const Page = () => {
             return (
               <article
                 key={`${item.productId}-${item.variant}-${item.pickupDate}`}
-                className="flex gap-3 rounded-2xl border-b border-[#D5E0EA] pb-3 last:border-b-0 last:pb-0"
+                className="flex flex-col gap-3 rounded-2xl border-b border-[#D5E0EA] pb-3 last:border-b-0 last:pb-0 sm:flex-row"
               >
-                <div className="relative h-22 w-22 shrink-0 overflow-hidden rounded-3xl bg-[#E6E8EA]">
+                <div className="relative h-22 w-22 shrink-0 overflow-hidden rounded-3xl bg-[#E6E8EA] sm:h-22 sm:w-22">
                   {hasImage ? (
                     <Image
                       src={imageSrc}
@@ -124,24 +124,24 @@ const Page = () => {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h2 className="line-clamp-1 font-serif text-2xl leading-[1.03] text-[#0A535B]">
+                  <h2 className="line-clamp-2 font-serif text-xl leading-[1.03] text-[#0A535B] sm:text-2xl">
                     {item.productName}
                   </h2>
-                  <p className="text-lg leading-tight text-[#2F6F79]">
+                  <p className="text-sm leading-tight text-[#2F6F79] sm:text-base lg:text-lg">
                     Size/Variant: {item.variant}
                   </p>
-                  <p className="text-lg leading-tight text-[#2F6F79]">
+                  <p className="text-sm leading-tight text-[#2F6F79] sm:text-base lg:text-lg">
                     Quantity: {item.quantity}
                   </p>
-                  <p className="text-lg leading-tight text-[#2F6F79]">
+                  <p className="text-sm leading-tight text-[#2F6F79] sm:text-base lg:text-lg">
                     Pickup: {formatPickupDate(item.pickupDate)}
                   </p>
 
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       onClick={() => router.push(`/products/${item.productId}`)}
-                      className="h-8 rounded-full bg-[#065257] px-5 text-lg font-semibold hover:bg-[#05494D]"
+                      className="h-8 rounded-full bg-[#065257] px-4 text-sm font-semibold hover:bg-[#05494D] sm:px-5 sm:text-base lg:text-lg"
                     >
                       <EditIcon className="size-4" />
                       Edit
@@ -155,7 +155,7 @@ const Page = () => {
                           pickupDate: item.pickupDate,
                         })
                       }
-                      className="h-8 rounded-full bg-[#FF2E2E] px-5 text-lg font-semibold text-white hover:bg-[#ED1B1B]"
+                      className="h-8 rounded-full bg-[#FF2E2E] px-4 text-sm font-semibold text-white hover:bg-[#ED1B1B] sm:px-5 sm:text-base lg:text-lg"
                     >
                       <Trash2Icon className="size-4" />
                       Remove
@@ -163,7 +163,7 @@ const Page = () => {
                   </div>
 
                   {unitPrice > 0 && (
-                    <p className="mt-2 text-xl text-[#1E5763]">
+                    <p className="mt-2 text-base text-[#1E5763] sm:text-lg lg:text-xl">
                       Item total: PHP {formatMoney(unitPrice * item.quantity)}
                     </p>
                   )}
@@ -175,7 +175,8 @@ const Page = () => {
       </section>
 
       <section className="absolute inset-x-0 bottom-0 border-t border-[#A3B9CA] bg-[#B8C9D7] p-3 sm:p-4">
-        <p className="text-2xl font-bold text-[#0B525B]">
+        <div className="mx-auto max-w-5xl">
+        <p className="text-lg font-bold text-[#0B525B] sm:text-xl lg:text-2xl">
           Total: PHP {formatMoney(totalAmount)}
         </p>
 
@@ -188,7 +189,7 @@ const Page = () => {
           />
           <label
             htmlFor="terms-and-conditions"
-            className="text-lg text-[#216270]"
+            className="text-sm text-[#216270] sm:text-base lg:text-lg"
           >
             I accept the{" "}
             <Dialog>
@@ -202,10 +203,10 @@ const Page = () => {
               </DialogTrigger>
               <DialogContent
                 showCloseButton={false}
-                className="max-w-2xl! overflow-hidden rounded-[40px] border-none bg-[#2A2A2F] p-0 text-white"
+                className="max-w-[95vw]! overflow-hidden rounded-3xl border-none bg-[#2A2A2F] p-0 text-white sm:max-w-2xl!"
               >
-                <DialogHeader className="space-y-0 border-b border-[#4B4B4F] px-8 pt-4 pb-4 text-left">
-                  <DialogTitle className="text-3xl font-bold text-white">
+                <DialogHeader className="space-y-0 border-b border-[#4B4B4F] px-4 pt-4 pb-4 text-left sm:px-8">
+                  <DialogTitle className="text-xl font-bold text-white sm:text-2xl lg:text-3xl">
                     Terms and Conditions
                   </DialogTitle>
                   <DialogDescription className="sr-only">
@@ -213,14 +214,14 @@ const Page = () => {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="max-h-[65vh] no-scrollbar space-y-5 overflow-y-auto px-8 py-2">
-                  <p className="text-2xl font-semibold text-[#F4F4F6]">
+                <div className="max-h-[65vh] no-scrollbar space-y-4 overflow-y-auto px-4 py-2 sm:space-y-5 sm:px-8">
+                  <p className="text-lg font-semibold text-[#F4F4F6] sm:text-xl lg:text-2xl">
                     EBA Uniform Ordering Terms and Conditions
                   </p>
 
                   <div>
-                    <h3 className="text-xl font-bold">1. Order Placement</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">1. Order Placement</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       By submitting an order through our website, you confirm
                       that all information provided - including your full name,
                       contact number, and selected pickup schedule - is accurate
@@ -230,8 +231,8 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">2. Payment Terms</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">2. Payment Terms</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Payment must be completed at the time of placing your
                       order. We accept GCash and Cash payments. For GCash
                       payments, a valid reference number must be provided as
@@ -244,8 +245,8 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">3. Pickup Schedule</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">3. Pickup Schedule</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Customers must select a pickup date during checkout.
                       Orders must be collected at the EBA office during official
                       operating hours on the selected date. If an order is not
@@ -255,10 +256,10 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">
                       4. Returns and Exchanges
                     </h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Returns and exchanges are accepted within seven (7) days
                       from the pickup date only for defective items or incorrect
                       items received. Items must be unused, in original
@@ -270,8 +271,8 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">5. Size and Fit</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">5. Size and Fit</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Customers are responsible for selecting the correct size
                       before placing an order. Size charts are provided for
                       reference. EBA is not responsible for incorrect size
@@ -280,10 +281,10 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">
                       6. Order Modifications and Cancellations
                     </h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Requests for order modifications or cancellations must be
                       submitted within twenty-four (24) hours from the time the
                       order was placed. All modification requests are subject to
@@ -292,10 +293,10 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">
                       7. Limitation of Liability
                     </h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       EBA shall not be held liable for delays, losses, or
                       damages resulting from events beyond its reasonable
                       control. EBA reserves the right to refuse service, cancel
@@ -305,8 +306,8 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">8. Privacy Policy</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">8. Privacy Policy</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Personal information collected through this website is used
                       solely for order processing, verification, and
                       communication purposes. EBA does not sell, trade, or share
@@ -316,8 +317,8 @@ const Page = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold">9. Contact Information</h3>
-                    <p className="text-base leading-7 text-[#E2E2E2]">
+                    <h3 className="text-base font-bold sm:text-lg lg:text-xl">9. Contact Information</h3>
+                    <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       For inquiries regarding orders, payments, or policies,
                       customers may contact the EBA office during official
                       operating hours.
@@ -329,7 +330,7 @@ const Page = () => {
                   <DialogClose asChild>
                     <Button
                       type="button"
-                      className="h-16 w-full rounded-none bg-[#10B916] text-2xl font-semibold hover:bg-[#0EA713]"
+                      className="h-12 w-full rounded-none bg-[#10B916] text-base font-semibold hover:bg-[#0EA713] sm:h-14 sm:text-lg"
                     >
                       Close
                     </Button>
@@ -344,10 +345,11 @@ const Page = () => {
           type="button"
           disabled={items.length === 0 || !acceptedTerms}
           onClick={handleProceed}
-          className="mt-4 h-13 w-full rounded-full bg-[#09BD14] text-2xl font-semibold text-white hover:bg-[#08AF12] disabled:cursor-not-allowed disabled:bg-[#7CAF83]"
+          className="mt-4 h-11 w-full rounded-full bg-[#09BD14] text-sm font-semibold text-white hover:bg-[#08AF12] disabled:cursor-not-allowed disabled:bg-[#7CAF83] sm:h-12 sm:text-base lg:h-12 lg:text-lg"
         >
           Proceed
         </Button>
+        </div>
       </section>
     </main>
   );

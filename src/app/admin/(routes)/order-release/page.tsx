@@ -29,12 +29,21 @@ const Page = () => {
 
   const releaseOrderMutation = useMutation(
     orpc.order.updateStatus.mutationOptions({
-      onSuccess: () => {
-        toast.success(
-          releaseDialogMode === "ready"
-            ? "Order marked ready for pickup"
-            : "Order released successfully",
-        );
+      onSuccess: (result) => {
+        if (releaseDialogMode === "ready") {
+          const sms = result.smsNotification;
+          if (sms?.attempted && sms.sent) {
+            toast.success("Order marked ready for pickup. SMS notification sent.");
+          } else if (sms?.attempted && !sms.sent) {
+            toast.warning(
+              `Order marked ready, but SMS failed${sms.error ? `: ${sms.error}` : "."}`,
+            );
+          } else {
+            toast.success("Order marked ready for pickup");
+          }
+        } else {
+          toast.success("Order released successfully");
+        }
         queryClient.invalidateQueries({
           queryKey: orpc.order.listRelease.queryKey(),
         });
@@ -48,7 +57,7 @@ const Page = () => {
         setSelectedOrder(null);
       },
       onError: (error) => {
-        toast.error(error.message || "Failed to release order");
+        toast.error(error.message || "Failed to update order status");
       },
     }),
   );
@@ -178,6 +187,7 @@ const Page = () => {
           description="Verified payments currently being processed by staff"
           status="Processing"
           orders={currentProcessingOrders}
+          isLoading={isLoading}
           searchQuery={processingSearchQuery}
           currentPage={processingCurrentPage}
           totalPages={processingTotalPages}
@@ -198,6 +208,7 @@ const Page = () => {
           description="Orders prepared and awaiting customer pickup"
           status="Ready"
           orders={currentReadyOrders}
+          isLoading={isLoading}
           searchQuery={readySearchQuery}
           currentPage={readyCurrentPage}
           totalPages={readyTotalPages}
@@ -218,6 +229,7 @@ const Page = () => {
           description="Orders that have been released to customers"
           status="Released"
           orders={currentReleasedOrders}
+          isLoading={isLoading}
           searchQuery={releasedSearchQuery}
           currentPage={releasedCurrentPage}
           totalPages={releasedTotalPages}

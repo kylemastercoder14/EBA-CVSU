@@ -14,6 +14,7 @@ import { Payment, PaymentStatus } from "./types";
 interface PaymentTableProps {
   payments: Payment[];
   paymentType: "GCash" | "Cash";
+  isLoading?: boolean;
   onVerifyClick: (payment: Payment) => void;
   onDeclineClick: (payment: Payment) => void;
 }
@@ -21,9 +22,11 @@ interface PaymentTableProps {
 export const PaymentTable = ({
   payments,
   paymentType,
+  isLoading = false,
   onVerifyClick,
   onDeclineClick,
 }: PaymentTableProps) => {
+  const skeletonRows = 4;
   const getStatusColor = (status: PaymentStatus) => {
     if (status === "Declined") {
       return "bg-red-500 hover:bg-red-500 text-white";
@@ -48,7 +51,33 @@ export const PaymentTable = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {payments.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`payment-skeleton-${paymentType}-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4">
+                <div className="h-5 w-24 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-36 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-20 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-32 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="flex gap-2">
+                  <div className="h-9 w-18 animate-pulse rounded-md bg-[#07484A]/12" />
+                  <div className="h-9 w-18 animate-pulse rounded-md bg-[#07484A]/10" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))
+        ) : payments.length > 0 ? (
           payments.map((payment) => (
             <TableRow key={payment.id} className="hover:bg-gray-50">
               <TableCell className="p-4 text-base">{payment.orderNum}</TableCell>

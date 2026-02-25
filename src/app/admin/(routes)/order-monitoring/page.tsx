@@ -112,6 +112,7 @@ const Page = () => {
           activeTab={activeTab}
           stageCounts={stageCounts}
           currentOrders={currentOrders}
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

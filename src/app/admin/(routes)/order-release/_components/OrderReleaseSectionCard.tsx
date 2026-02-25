@@ -15,6 +15,7 @@ interface OrderReleaseSectionCardProps {
   description: string;
   status: OrderStatus;
   orders: Order[];
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -34,6 +35,7 @@ export const OrderReleaseSectionCard = ({
   description,
   status,
   orders,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -58,6 +60,7 @@ export const OrderReleaseSectionCard = ({
         <OrderReleaseTable
           orders={orders}
           status={status}
+          isLoading={isLoading}
           onReleaseClick={onReleaseClick}
           onMarkReadyClick={onMarkReadyClick}
         />

@@ -13,10 +13,17 @@ import { Order, OrderStage, PaymentMethod, PaymentStatus } from "./types";
 interface OrderTableProps {
   orders: Order[];
   stage: OrderStage;
+  isLoading?: boolean;
   onConfirmClick?: (order: Order) => void;
 }
 
-export const OrderTable = ({ orders, stage, onConfirmClick }: OrderTableProps) => {
+export const OrderTable = ({
+  orders,
+  stage,
+  isLoading = false,
+  onConfirmClick,
+}: OrderTableProps) => {
+  const skeletonRows = 4;
   const getPaymentStatusColor = (status: PaymentStatus) => {
     if (status === "Declined") {
       return "bg-red-500 hover:bg-red-500 text-white";
@@ -50,12 +57,43 @@ export const OrderTable = ({ orders, stage, onConfirmClick }: OrderTableProps) =
         </TableRow>
       </TableHeader>
       <TableBody>
-        {orders.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`monitoring-skeleton-${stage}-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4">
+                <div className="h-5 w-24 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-36 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-full max-w-64 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-10 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-16 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-28 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              {showActionColumn && (
+                <TableCell className="p-4">
+                  <div className="h-9 w-28 animate-pulse rounded-md bg-[#07484A]/12" />
+                </TableCell>
+              )}
+            </TableRow>
+          ))
+        ) : orders.length > 0 ? (
           orders.map((order) => (
             <TableRow key={order.id} className="hover:bg-[#C5E3FF]">
               <TableCell className="p-4 text-base">{order.orderNum}</TableCell>
               <TableCell className="p-4 text-base font-medium">{order.name}</TableCell>
-              <TableCell className="p-4 text-base text-[#07484A]">{order.items}</TableCell>
+              <TableCell className="p-4 max-w-75 text-base truncate">{order.items}</TableCell>
               <TableCell className="p-4 text-base">{order.quantity}</TableCell>
               <TableCell className="p-4 text-base">
                 <span className={`font-semibold ${getPaymentMethodColor(order.paymentMethod)}`}>

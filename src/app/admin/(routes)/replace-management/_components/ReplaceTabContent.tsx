@@ -9,6 +9,7 @@ interface ReplaceTabContentProps {
   description: string;
   requests: ReplaceRequest[];
   status: ReplaceRequestStatus;
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -27,6 +28,7 @@ export const ReplaceTabContent = ({
   description,
   requests,
   status,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -50,6 +52,7 @@ export const ReplaceTabContent = ({
         <ReplaceTable
           requests={requests}
           status={status}
+          isLoading={isLoading}
           onReviewClick={onReviewClick}
         />
         <ReplacePagination

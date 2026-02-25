@@ -3,8 +3,8 @@ import { ReactNode } from "react";
 
 const StudentProtectedLayout = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="min-h-screen bg-[#C8D6E4] flex items-center justify-center">
-      <div className="mx-auto w-full max-w-245 overflow-hidden border border-[#0B525B] bg-[#C8D6E4] shadow-sm lg:min-h-[90vh]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(241,248,255,0.9),rgba(200,214,228,1)_45%)]">
+      <div>
         <StudentHeader />
         {children}
       </div>

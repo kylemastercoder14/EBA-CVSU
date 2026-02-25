@@ -234,6 +234,7 @@ const CartPage = () => {
   const { navigate } = useTransitionNav();
   const cartItems = useCart((state) => state.items);
   const removeItem = useCart((state) => state.removeItem);
+  const clearCart = useCart((state) => state.clearCart);
   const updateItemQuantity = useCart((state) => state.updateItemQuantity);
   const [accepted, setAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
@@ -288,6 +289,12 @@ const CartPage = () => {
       },
       editingQuantity,
     );
+    closeEditDialog();
+  };
+
+  const handleRemoveAllItems = () => {
+    clearCart();
+    setAccepted(false);
     closeEditDialog();
   };
 
@@ -367,6 +374,14 @@ const CartPage = () => {
             </div>
 
             <div className="flex gap-3">
+              <button
+                onClick={handleRemoveAllItems}
+                className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-red-300/50 bg-red-400/15 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-red-700 backdrop-blur-sm transition-all hover:bg-red-400/25 active:scale-[0.98]"
+              >
+                <Trash2 className="size-5" />
+                Remove All
+              </button>
+
               <button
                 onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
                 className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-white/40 bg-white/30 font-serif text-base font-semibold uppercase text-[#07484A] backdrop-blur-sm transition-all hover:bg-white/45 active:scale-[0.98]"

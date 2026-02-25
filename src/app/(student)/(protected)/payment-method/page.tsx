@@ -35,35 +35,37 @@ const Page = () => {
   const router = useRouter();
 
   return (
-    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-6 py-8 sm:px-10">
-      <h1 className="text-center font-serif text-4xl font-bold text-[#0B525B] sm:text-5xl">
+    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+      <h1 className="text-center font-serif text-2xl font-bold text-[#0B525B] sm:text-3xl lg:text-4xl">
         Select Payment Method
       </h1>
 
-      <section className="mx-auto mt-10 flex w-full max-w-95 flex-col gap-8 sm:mt-12">
+      <section className="mx-auto mt-6 grid w-full max-w-5xl grid-cols-1 gap-5 sm:mt-8 sm:gap-6 lg:mt-10 lg:grid-cols-2 lg:gap-6">
         {options.map((option) => (
           <button
             key={option.id}
             type="button"
             onClick={() => router.push(`/payment-method/${option.id}`)}
-            className={`rounded-[34px] border-5 bg-[#91BCE6] px-6 py-10 text-center transition-colors hover:bg-[#A1C7EC] ${option.borderClass}`}
+            className={`rounded-[24px] border-2 bg-[#91BCE6] px-4 py-6 text-center transition-colors hover:bg-[#A1C7EC] sm:rounded-[30px] sm:border-4 sm:px-6 sm:py-8 lg:rounded-[30px] lg:border-4 lg:py-8 ${option.borderClass}`}
           >
             <div
-              className={`mx-auto flex size-32 items-center justify-center rounded-full ${option.iconWrapClass}`}
+              className={`mx-auto flex size-18 items-center justify-center rounded-full sm:size-24 lg:size-24 ${option.iconWrapClass}`}
             >
               {option.id === "cash" ? (
-                <HandCoinsIcon className={`size-14 ${option.iconClass}`} />
+                <HandCoinsIcon className={`size-8 sm:size-10 lg:size-10 ${option.iconClass}`} />
               ) : (
-                <SmartphoneIcon className={`size-14 ${option.iconClass}`} />
+                <SmartphoneIcon className={`size-8 sm:size-10 lg:size-10 ${option.iconClass}`} />
               )}
             </div>
-            <h2 className="mt-6 font-serif text-4xl font-bold text-[#0B525B]">
+            <h2 className="mt-4 font-serif text-2xl font-bold text-[#0B525B] sm:mt-5 sm:text-3xl lg:mt-6 lg:text-3xl">
               {option.title}
             </h2>
-            <p className="mt-4 text-xl text-[#416A75]">{option.description}</p>
+            <p className="mt-2 text-sm text-[#416A75] sm:mt-3 sm:text-base lg:mt-4 lg:text-lg">{option.description}</p>
           </button>
         ))}
       </section>
+      </div>
     </main>
   );
 };

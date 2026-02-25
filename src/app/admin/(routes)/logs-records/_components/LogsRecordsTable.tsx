@@ -20,9 +20,14 @@ import { formatEnumLabel } from '@/lib/utils';
 
 interface LogsRecordsTableProps {
   logs: LogRecord[];
+  isLoading?: boolean;
 }
 
-export const LogsRecordsTable = ({ logs }: LogsRecordsTableProps) => {
+export const LogsRecordsTable = ({
+  logs,
+  isLoading = false,
+}: LogsRecordsTableProps) => {
+  const skeletonRows = 5;
   const getTypeIcon = (type: LogType) => {
     switch (type) {
       case "ORDER":
@@ -71,7 +76,19 @@ export const LogsRecordsTable = ({ logs }: LogsRecordsTableProps) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {logs.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`logs-skeleton-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4"><div className="h-4 w-18 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-16 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-24 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-full max-w-xs animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-20 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-24 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+            </TableRow>
+          ))
+        ) : logs.length > 0 ? (
           logs.map((log) => (
             <TableRow key={log.id} className="hover:bg-gray-50">
               <TableCell className="p-4 text-sm font-medium">

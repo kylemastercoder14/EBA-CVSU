@@ -11,7 +11,9 @@ import {
   getStaffSession,
   loginStaff,
   loginStudent,
+  resetStudentPassword,
   registerStudent,
+  verifyStudentResetIdentity,
   updateStudentProfile,
 } from "@/router/auth";
 import {
@@ -63,6 +65,8 @@ export const router = {
     session: getStaffSession,
     registerStudent,
     loginStudent,
+    verifyStudentResetIdentity,
+    resetStudentPassword,
     updateStudentProfile,
   },
   notifications: {

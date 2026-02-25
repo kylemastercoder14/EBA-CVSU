@@ -20,15 +20,18 @@ import { NO_VARIANT_SIZE } from "@/validators/products";
 
 interface ProductTableProps {
   products: Product[];
+  isLoading?: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
 }
 
 export const ProductTable = ({
   products,
+  isLoading = false,
   onEdit,
   onDelete,
 }: ProductTableProps) => {
+  const skeletonRows = 4;
   return (
     <Table>
       <TableHeader className="bg-[#07484A]">
@@ -58,7 +61,27 @@ export const ProductTable = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {products.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`product-skeleton-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4">
+                <div className="size-15 animate-pulse rounded border-2 border-[#07484A]/10 bg-[#07484A]/5" />
+              </TableCell>
+              <TableCell className="p-4"><div className="h-4 w-28 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-20 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-40 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-32 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-14 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-14 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4">
+                <div className="flex gap-2">
+                  <div className="h-9 w-9 animate-pulse rounded-md bg-[#07484A]/12" />
+                  <div className="h-9 w-9 animate-pulse rounded-md bg-[#07484A]/10" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))
+        ) : products.length > 0 ? (
           products.map((product) => {
             const realVariants = product.variants.filter(
               (variant) => variant.size !== NO_VARIANT_SIZE,

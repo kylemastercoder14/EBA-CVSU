@@ -103,13 +103,15 @@ export const StudentHeader = () => {
     router.push("/");
   };
 
+  const isActivePath = (href: string) => pathname === href;
+
   return (
-    <header className="flex items-center justify-between gap-3 bg-[#F1F4F6] px-4 py-3 sm:px-6">
+    <header className="flex items-center justify-between gap-3 border-b border-[#0B525B]/20 bg-[#F1F4F6] px-4 py-3 sm:px-6 lg:px-8">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="inline-flex min-w-44 items-center justify-between gap-3 rounded-none border border-[#0B525B] bg-[#F1F4F6] px-3 py-2 text-[#0B525B] transition-colors hover:bg-[#E3EBF2]"
+            className="inline-flex min-w-44 items-center justify-between gap-3 rounded-none border border-[#0B525B] bg-[#F1F4F6] px-3 py-2 text-[#0B525B] transition-colors hover:bg-[#E3EBF2] lg:min-w-60"
           >
             <span className="inline-flex items-center gap-2 truncate font-serif text-base font-semibold">
               <CircleUserRoundIcon className="size-4 shrink-0" />
@@ -137,11 +139,33 @@ export const StudentHeader = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <nav className="hidden lg:flex items-center gap-1 rounded-md border border-[#0B525B]/20 bg-white/40 px-2 py-1">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActivePath(item.href);
+
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 font-serif text-sm font-semibold transition-colors ${
+                isActive
+                  ? "bg-[#0B525B] text-white"
+                  : "text-[#0B525B] hover:bg-[#D9E8F4]"
+              }`}
+            >
+              <Icon className="size-4" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center justify-center p-1 text-[#0B525B]"
+            className="inline-flex items-center justify-center p-1 text-[#0B525B] lg:hidden"
             aria-label="Open menu"
           >
             <MenuIcon className="size-8" />
@@ -165,7 +189,7 @@ export const StudentHeader = () => {
                   key={item.key}
                   href={item.href}
                   onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-3 rounded-md px-4 py-3 text-[30px] ${
+                  className={`flex items-center gap-3 rounded-md px-4 py-3 text-xl sm:text-2xl ${
                     isActive ? "bg-[#A8CEE9] font-medium" : "hover:bg-[#A8CEE9]/70"
                   }`}
                 >

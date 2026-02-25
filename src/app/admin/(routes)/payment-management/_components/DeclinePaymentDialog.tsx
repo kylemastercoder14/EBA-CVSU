@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +16,7 @@ interface DeclinePaymentDialogProps {
   isOpen: boolean;
   payment: Payment | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
   isPending?: boolean;
 }
 
@@ -26,9 +27,14 @@ export const DeclinePaymentDialog = ({
   onConfirm,
   isPending = false,
 }: DeclinePaymentDialogProps) => {
+  const [reason, setReason] = useState("");
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#D3E9FF] border-2 border-[#07484A]">
+      <DialogContent
+        key={`${payment?.id ?? "no-payment"}-${isOpen ? "open" : "closed"}`}
+        className="bg-[#D3E9FF] border-2 border-[#07484A]"
+      >
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#07484A]">
             Decline Payment
@@ -71,6 +77,22 @@ export const DeclinePaymentDialog = ({
                 </div>
               </div>
             </div>
+            <div className="bg-white/50 p-4 rounded-lg border border-[#07484A]/20">
+              <label
+                htmlFor="decline-payment-reason"
+                className="mb-2 block text-sm font-semibold text-[#07484A]"
+              >
+                Decline Reason (will be included in SMS)
+              </label>
+              <textarea
+                id="decline-payment-reason"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                disabled={isPending}
+                placeholder="Example: Invalid GCash reference number"
+                className="min-h-24 w-full rounded-lg border border-[#07484A]/20 bg-white px-3 py-2 text-sm text-[#07484A] outline-none ring-0 placeholder:text-[#07484A]/40"
+              />
+            </div>
           </div>
         )}
         <DialogFooter>
@@ -85,7 +107,7 @@ export const DeclinePaymentDialog = ({
           </Button>
           <Button
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm(reason.trim())}
             disabled={isPending}
             className="bg-red-600 hover:bg-red-700 text-white"
           >

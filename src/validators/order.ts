@@ -207,4 +207,13 @@ export const updateOrderStatusOutputSchema = z.object({
     releaseStatus: z.enum(["READY", "RELEASED"]),
     paymentStatus: z.enum(["PENDING", "VERIFIED", "DECLINED"]),
   }),
+  smsNotification: z
+    .object({
+      attempted: z.boolean(),
+      sent: z.boolean(),
+      recipientNumber: z.string().optional(),
+      error: z.string().optional(),
+      statusCode: z.number().optional(),
+    })
+    .optional(),
 });

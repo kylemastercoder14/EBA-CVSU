@@ -18,10 +18,16 @@ import {
 
 interface StockTableProps {
   stockData: StockItem[];
+  isLoading?: boolean;
   onEdit: (item: StockItem) => void;
 }
 
-export const StockTable = ({ stockData, onEdit }: StockTableProps) => {
+export const StockTable = ({
+  stockData,
+  isLoading = false,
+  onEdit,
+}: StockTableProps) => {
+  const skeletonRows = 4;
   return (
     <Table>
       <TableHeader className="bg-[#07484A]">
@@ -48,7 +54,19 @@ export const StockTable = ({ stockData, onEdit }: StockTableProps) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {stockData.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`stock-skeleton-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4"><div className="h-4 w-18 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-32 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-20 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-16 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-10 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-9 w-9 animate-pulse rounded-md bg-[#07484A]/12" /></TableCell>
+            </TableRow>
+          ))
+        ) : stockData.length > 0 ? (
           stockData.map((item) => (
             <TableRow key={item.id} className="hover:bg-[#C5E3FF]">
               <TableCell className="p-4 text-sm">{item.productId}</TableCell>

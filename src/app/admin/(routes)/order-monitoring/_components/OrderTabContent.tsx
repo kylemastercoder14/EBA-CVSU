@@ -9,6 +9,7 @@ interface OrderTabContentProps {
   description: string;
   orders: Order[];
   stage: OrderStage;
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -27,6 +28,7 @@ export const OrderTabContent = ({
   description,
   orders,
   stage,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -47,7 +49,12 @@ export const OrderTabContent = ({
       </CardHeader>
       <CardContent className="p-0">
         <OrderSearchBar value={searchQuery} onChange={onSearchChange} />
-        <OrderTable orders={orders} stage={stage} onConfirmClick={onConfirmClick} />
+        <OrderTable
+          orders={orders}
+          stage={stage}
+          isLoading={isLoading}
+          onConfirmClick={onConfirmClick}
+        />
         <OrderPagination
           currentPage={currentPage}
           totalPages={totalPages}

@@ -45,13 +45,13 @@ const Page = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#C8D6E4] flex items-center justify-center">
+    <div className="min-h-dvh bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#C8D6E4] lg:border-2 lg:shadow-xl border-[#0B525B] px-15 py-10"
+        className="mx-auto w-full max-w-md rounded-2xl border border-[#0B525B]/40 bg-[#C8D6E4] px-5 py-5 shadow-sm sm:max-w-lg sm:px-8 sm:py-7 lg:max-w-2xl lg:border-2 lg:px-12 lg:py-10 lg:shadow-xl"
       >
         <div className="flex flex-col items-center">
-          <div className="size-25 relative">
+          <div className="lg:size-25 size-20 relative">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -61,7 +61,7 @@ const Page = () => {
             />
           </div>
 
-          <h1 className="mt-3 text-center font-serif text-[#0B525B] text-[34px] sm:text-[42px] leading-tight font-bold max-w-130">
+          <h1 className="mt-3 text-center font-serif text-[#0B525B] text-2xl leading-tight font-bold sm:text-[30px] lg:max-w-130 lg:text-[32px]">
             EXTERNAL AND BUSINESS
             <br />
             AFFAIR ORDERING
@@ -69,7 +69,7 @@ const Page = () => {
             SYSTEM
           </h1>
 
-          <h2 className="mt-5 sm:mt-6 text-[#0B525B] font-serif font-semibold text-xl sm:text-2xl">
+          <h2 className="mt-5 font-serif text-lg font-semibold text-[#0B525B] sm:text-xl">
             USER LOGIN
           </h2>
 
@@ -84,7 +84,7 @@ const Page = () => {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Enter student number or cvsu email"
-              className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 text-[#0B525B] placeholder:text-[#6C9093]"
+              className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-11 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
             />
           </div>
 
@@ -95,7 +95,7 @@ const Page = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 pr-12 text-[#0B525B] placeholder:text-[#6C9093]"
+              className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-11 pr-11 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
             />
             <button
               type="button"
@@ -111,7 +111,12 @@ const Page = () => {
           </div>
 
           <div className="text-right text-black text-sm pr-1">
-            Forgot password?
+            <Link
+              href={`/forgot-password${identifier.trim() ? `?identifier=${encodeURIComponent(identifier.trim())}` : ""}`}
+              className="underline underline-offset-2 hover:text-[#0B525B]"
+            >
+              Forgot password?
+            </Link>
           </div>
         </div>
 
@@ -119,12 +124,12 @@ const Page = () => {
           type="submit"
           disabled={loginStudentMutation.isPending}
           size="lg"
-          className="mt-5 w-full h-11 text-xl rounded-sm font-bold"
+          className="mt-5 h-11 w-full rounded-sm text-base font-bold sm:text-lg lg:text-xl"
         >
           Login
         </Button>
 
-        <p className="mt-6 text-center text-black">
+        <p className="mt-6 text-center text-sm text-black sm:text-base">
           Don&apos;t have an account?{" "}
           <Link href="/sign-up" className="text-[#B27A00]">
             Register Now

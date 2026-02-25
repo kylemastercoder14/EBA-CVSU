@@ -10,6 +10,7 @@ interface PaymentTabContentProps {
   payments: Payment[];
   totalItems: number;
   paymentType: "GCash" | "Cash";
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -29,6 +30,7 @@ export const PaymentTabContent = ({
   payments,
   totalItems,
   paymentType,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -56,6 +58,7 @@ export const PaymentTabContent = ({
         <PaymentTable
           payments={payments}
           paymentType={paymentType}
+          isLoading={isLoading}
           onVerifyClick={onVerifyClick}
           onDeclineClick={onDeclineClick}
         />

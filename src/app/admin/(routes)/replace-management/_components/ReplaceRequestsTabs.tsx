@@ -8,6 +8,7 @@ interface ReplaceRequestsTabsProps {
   activeTab: ReplaceRequestStatus;
   statusCounts: Record<ReplaceRequestStatus, number>;
   currentRequests: ReplaceRequest[];
+  isLoading?: boolean;
   searchQuery: string;
   currentPage: number;
   totalPages: number;
@@ -26,6 +27,7 @@ export const ReplaceRequestsTabs = ({
   activeTab,
   statusCounts,
   currentRequests,
+  isLoading = false,
   searchQuery,
   currentPage,
   totalPages,
@@ -80,6 +82,7 @@ export const ReplaceRequestsTabs = ({
           description="Review and process replacement requests from kiosk users"
           requests={currentRequests}
           status="Pending"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -100,6 +103,7 @@ export const ReplaceRequestsTabs = ({
           description="Requests approved by admin"
           requests={currentRequests}
           status="Approved"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -120,6 +124,7 @@ export const ReplaceRequestsTabs = ({
           description="Requests rejected by admin"
           requests={currentRequests}
           status="Rejected"
+          isLoading={isLoading}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

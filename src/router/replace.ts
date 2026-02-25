@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendEbaSmsQueued, type EbaSmsSendResult } from "@/lib/eba-sms";
 import { base } from "@/middlewares/base";
 import {
   createReplaceRequestInputSchema,
@@ -8,6 +9,35 @@ import {
   updateReplaceRequestStatusInputSchema,
   updateReplaceRequestStatusOutputSchema,
 } from "@/validators/replace";
+
+type ReplaceStatusSmsInput = {
+  kind: "approved" | "rejected";
+  orderNumber: string;
+  recipientNumber: string;
+  customerName: string;
+  reason?: string | null;
+};
+
+type ReplaceStatusSmsResult = EbaSmsSendResult;
+
+const sendReplaceStatusSms = async (
+  input: ReplaceStatusSmsInput,
+): Promise<ReplaceStatusSmsResult> => {
+  const shortReason = input.reason?.trim()
+    ? input.reason.trim().replace(/\s+/g, " ").slice(0, 80)
+    : "";
+
+  const message =
+    input.kind === "approved"
+      ? `Hello ${input.customerName}, your return request for order (${input.orderNumber}) has been approved. Please bring the item and your receipt to the EBA Office.`
+      : `Hello ${input.customerName}, your return request for order (${input.orderNumber}) was declined due to ${shortReason || "request review result"}. For concerns, contact EBA support.`;
+
+  return sendEbaSmsQueued({
+    orderNumber: input.orderNumber,
+    recipientNumber: input.recipientNumber,
+    message,
+  });
+};
 
 const getNextReplaceRequestId = async () => {
   const last = await prisma.replaceRequest.findFirst({
@@ -131,6 +161,12 @@ export const updateReplaceRequestStatus = base
         order: {
           select: {
             orderNumber: true,
+            user: {
+              select: {
+                fullName: true,
+                mobileNumber: true,
+              },
+            },
           },
         },
       },
@@ -147,9 +183,23 @@ export const updateReplaceRequestStatus = base
         order: {
           select: {
             orderNumber: true,
+            user: {
+              select: {
+                fullName: true,
+                mobileNumber: true,
+              },
+            },
           },
         },
       },
+    });
+
+    const smsNotification = await sendReplaceStatusSms({
+      kind: input.status === "APPROVED" ? "approved" : "rejected",
+      orderNumber: updated.order.orderNumber,
+      recipientNumber: updated.order.user.mobileNumber,
+      customerName: updated.order.user.fullName,
+      reason: input.status === "REJECTED" ? (input.reason ?? null) : null,
     });
 
     return {
@@ -163,5 +213,6 @@ export const updateReplaceRequestStatus = base
         status: updated.status,
         createdAt: updated.createdAt.toISOString(),
       },
+      smsNotification,
     };
   });

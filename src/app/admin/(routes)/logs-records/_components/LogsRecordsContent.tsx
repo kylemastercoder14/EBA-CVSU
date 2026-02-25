@@ -11,6 +11,7 @@ type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_a
 
 interface LogsRecordsContentProps {
   logs: LogRecord[];
+  isLoading?: boolean;
   searchQuery: string;
   typeFilter: TypeFilter;
   categoryFilter: CategoryFilter;
@@ -31,6 +32,7 @@ interface LogsRecordsContentProps {
 
 export const LogsRecordsContent = ({
   logs,
+  isLoading = false,
   searchQuery,
   typeFilter,
   categoryFilter,
@@ -63,7 +65,7 @@ export const LogsRecordsContent = ({
 
       <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
         <CardContent className="p-0">
-          <LogsRecordsTable logs={logs} />
+          <LogsRecordsTable logs={logs} isLoading={isLoading} />
           <LogsRecordsPagination
             currentPage={currentPage}
             totalPages={totalPages}

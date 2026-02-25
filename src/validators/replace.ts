@@ -35,6 +35,7 @@ export const updateReplaceRequestStatusInputSchema = z.object({
   replaceRequestId: z.string().min(1, "Replace request ID is required"),
   status: z.enum(["APPROVED", "REJECTED"]),
   actorName: z.string().optional(),
+  reason: z.string().trim().min(1).optional(),
 });
 
 export const updateReplaceRequestStatusOutputSchema = z.object({
@@ -48,4 +49,13 @@ export const updateReplaceRequestStatusOutputSchema = z.object({
     status: z.enum(["PENDING", "APPROVED", "REJECTED"]),
     createdAt: z.string(),
   }),
+  smsNotification: z
+    .object({
+      attempted: z.boolean(),
+      sent: z.boolean(),
+      recipientNumber: z.string().optional(),
+      error: z.string().optional(),
+      statusCode: z.number().optional(),
+    })
+    .optional(),
 });

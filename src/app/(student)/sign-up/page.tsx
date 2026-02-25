@@ -127,13 +127,13 @@ const Page = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#C8D6E4] flex items-center justify-center">
+    <div className="min-h-dvh bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#C8D6E4] lg:border-2 lg:shadow-xl border-[#0B525B] px-15 py-10"
+        className="mx-auto w-full max-w-md rounded-2xl border border-[#0B525B]/40 bg-[#C8D6E4] px-5 py-5 shadow-sm sm:max-w-2xl sm:px-8 sm:py-8 lg:max-w-4xl lg:border-2 lg:px-12 lg:py-10 lg:shadow-xl"
       >
         <div className="flex flex-col items-center">
-          <div className="size-25 relative">
+          <div className="relative size-20 sm:size-24 lg:size-25">
             <Image
               src="/logo.png"
               alt="Logo"
@@ -143,13 +143,13 @@ const Page = () => {
             />
           </div>
 
-          <h1 className="mt-3 text-center font-serif text-[#0B525B] text-[30px] sm:text-[38px] leading-tight font-bold max-w-140">
+          <h1 className="mt-3 max-w-140 text-center font-serif text-2xl leading-tight font-bold text-[#0B525B] sm:text-[30px] lg:text-[32px]">
             EXTERNAL AND BUSINESS AFFAIR
             <br />
             ORDERING SYSTEM
           </h1>
 
-          <h2 className="mt-5 sm:mt-6 text-[#0B525B] font-serif font-semibold text-xl sm:text-2xl">
+          <h2 className="mt-5 text-[#0B525B] font-serif font-semibold text-lg sm:mt-6 sm:text-xl">
             USER REGISTRATION
           </h2>
 
@@ -157,7 +157,7 @@ const Page = () => {
         </div>
 
         <div className="mt-8 space-y-4">
-          <div className="grid lg:grid-cols-2 grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="relative">
               <MailIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-[#0B525B]" />
               <Input
@@ -165,7 +165,7 @@ const Page = () => {
                 value={cvsuEmail}
                 onChange={(e) => setCvsuEmail(e.target.value)}
                 placeholder="Enter your cvsu email"
-                className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 text-[#0B525B] placeholder:text-[#6C9093]"
+                className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-12 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
               />
             </div>
 
@@ -176,7 +176,7 @@ const Page = () => {
                 value={mobileNumber}
                 onChange={(e) => setMobileNumber(e.target.value)}
                 placeholder="Enter your mobile number"
-                className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 text-[#0B525B] placeholder:text-[#6C9093]"
+                className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-12 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
               />
             </div>
           </div>
@@ -190,7 +190,7 @@ const Page = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 pr-12 text-[#0B525B] placeholder:text-[#6C9093]"
+              className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-12 pr-12 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
             />
             <button
               type="button"
@@ -212,7 +212,7 @@ const Page = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Enter confirm password"
-                className="h-12 rounded-2xl border border-[#258CFF] bg-transparent pl-12 pr-12 text-[#0B525B] placeholder:text-[#6C9093]"
+                className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-12 pr-12 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
               />
             <button
               type="button"
@@ -255,12 +255,12 @@ const Page = () => {
           type="submit"
           disabled={registerStudentMutation.isPending}
           size="lg"
-          className="mt-5 w-full h-11 text-xl rounded-sm font-bold"
+          className="mt-5 h-11 w-full rounded-sm text-base font-bold sm:text-lg lg:text-xl"
         >
           Register
         </Button>
 
-        <p className="mt-6 text-center text-black">
+        <p className="mt-6 text-center text-sm text-black sm:text-base">
           Have an account?{" "}
           <Link href="/" className="text-[#B27A00]">
             Login Now

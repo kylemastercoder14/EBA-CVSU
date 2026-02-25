@@ -82,46 +82,53 @@ const Page = () => {
   }, [products, searchTerm, selectedCategory]);
 
   return (
-    <main>
-      <section className="bg-[#C4D0DD] px-8 py-9">
-        <h1 className="font-serif text-4xl font-bold text-[#0B525B]">Browse Products</h1>
-        <p className="mt-3 text-2xl text-[#4E7F89]">
-          Find uniforms, pajamas, and merchandise for CvSU students
-        </p>
+    <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4]">
+      <section className="bg-[#C4D0DD] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-9">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="font-serif text-2xl font-bold text-[#0B525B] sm:text-3xl lg:text-4xl">
+            Browse Products
+          </h1>
+          <p className="mt-2 text-sm text-[#4E7F89] sm:mt-3 sm:text-base lg:text-lg">
+            Find uniforms, pajamas, and merchandise for CvSU students
+          </p>
+        </div>
       </section>
 
-      <section className="bg-[#4F8BC8] px-6 py-8 sm:px-8">
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr] lg:items-start">
+      <section className="bg-[#4F8BC8] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <div className="mx-auto max-w-7xl space-y-4">
           <label className="relative block">
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search products..."
-              className="h-12 w-full rounded-full bg-[#E7DFEA] px-5 pr-14 text-xl text-[#4B4B58] outline-none placeholder:text-[#5B5963]"
+              className="h-11 w-full rounded-full bg-[#E7DFEA] px-4 pr-12 text-base text-[#4B4B58] outline-none placeholder:text-[#5B5963] sm:h-12 sm:px-5 sm:pr-14 sm:text-lg lg:text-xl"
             />
-            <SearchIcon className="pointer-events-none absolute right-4 top-1/2 size-7 -translate-y-1/2 text-[#55505E]" />
+            <SearchIcon className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#55505E] sm:right-4 sm:size-6 lg:size-7" />
           </label>
 
-          <div className="flex items-center gap-3">
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                onClick={() => setSelectedCategory(category)}
-                className={`h-12 rounded-full px-4 text-center font-serif text-lg transition-colors ${
-                  selectedCategory === category
-                    ? "bg-[#075A5C] text-white"
-                    : "bg-[#BFD9EB] text-[#195568] hover:bg-[#D2E7F3]"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+          <div className="-mx-1 overflow-x-auto pb-1">
+            <div className="flex min-w-max items-center gap-2 px-1 sm:gap-3">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`h-10 shrink-0 rounded-full px-3 text-center font-serif text-sm transition-colors sm:h-11 sm:px-4 sm:text-base lg:h-12 lg:text-lg ${
+                    selectedCategory === category
+                      ? "bg-[#075A5C] text-white"
+                      : "bg-[#BFD9EB] text-[#195568] hover:bg-[#D2E7F3]"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="px-6 py-8 sm:px-8 sm:py-10">
+      <section className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <div className="mx-auto max-w-7xl">
         {isLoading && (
           <p className="text-center text-lg text-[#20596A]">Loading products...</p>
         )}
@@ -137,7 +144,7 @@ const Page = () => {
         )}
 
         {!isLoading && !isError && filteredProducts.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
             {filteredProducts.map((product) => {
               const stockCount = stockByProductId.get(product.id) ?? 0;
               const available = product.isActive && stockCount > 0;
@@ -150,10 +157,10 @@ const Page = () => {
               return (
                 <div
                   key={product.id}
-                  className="relative rounded-[34px] border-4 border-[#A5BACB] bg-linear-to-b from-[#C5D3DF] to-[#4C8CC9] p-4 shadow-sm transition-transform hover:-translate-y-0.5"
+                  className="relative rounded-[26px] border-2 border-[#A5BACB] bg-linear-to-b from-[#C5D3DF] to-[#4C8CC9] p-3 shadow-sm transition-transform hover:-translate-y-0.5 sm:rounded-[30px] sm:border-3 sm:p-4 lg:rounded-[34px] lg:border-4"
                 >
                   <span
-                    className={`absolute top-3 right-4 z-10 rounded-full px-4 py-1 text-base font-semibold ${
+                    className={`absolute top-3 right-3 z-10 rounded-full px-3 py-1 text-xs font-semibold sm:right-4 sm:px-4 sm:text-sm lg:text-base ${
                       available
                         ? "bg-[#075A5C] text-[#DDFFFE]"
                         : "bg-[#8E2C1B] text-[#FFF2ED]"
@@ -161,7 +168,7 @@ const Page = () => {
                   >
                     {available ? "Available" : "Not Available"}
                   </span>
-                  <div className="relative mx-auto h-56 w-full max-w-65 overflow-hidden rounded-3xl bg-transparent">
+                  <div className="relative mx-auto h-44 w-full max-w-65 overflow-hidden rounded-2xl bg-transparent sm:h-52 sm:rounded-3xl lg:h-56">
                     {product.image ? (
                       <Image
                         src={product.image}
@@ -170,23 +177,25 @@ const Page = () => {
                         className="object-contain"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-2xl text-[#1B5A68]">
+                      <div className="flex h-full items-center justify-center text-lg text-[#1B5A68] sm:text-2xl">
                         No image
                       </div>
                     )}
                   </div>
 
-                  <p className="mt-2 text-xl text-[#063c66]">{category}</p>
-                  <h2 className="mt-1 line-clamp-1 font-sans text-2xl leading-tight text-white">
+                  <p className="mt-2 text-sm text-[#063c66] sm:text-lg lg:text-xl">{category}</p>
+                  <h2 className="mt-1 line-clamp-2 min-h-[2.75rem] font-sans text-lg leading-tight text-white sm:min-h-[3.1rem] sm:text-xl lg:text-xl">
                     {product.name}
                   </h2>
-                  <p className="mt-1 text-sm text-[#D3E8FF]">
+                  <p className="mt-1 text-xs text-[#D3E8FF] sm:text-sm">
                     Stock: {stockCount} | Variants: {visibleVariantCount}
                   </p>
-                  <p className="mb-3 text-2xl text-[#D3E8FF]">PHP {formatPrice(price)}</p>
+                  <p className="mb-3 text-lg text-[#D3E8FF] sm:text-xl lg:text-xl">
+                    PHP {formatPrice(price)}
+                  </p>
                   <Button
                     onClick={() => router.push(`/products/${product.id}`)}
-                    className="ml-auto flex justify-end rounded-full bg-[#063c66] hover:bg-[#063c66]/90"
+                    className="h-9 w-full rounded-full bg-[#063c66] text-sm hover:bg-[#063c66]/90 sm:ml-auto sm:w-auto sm:px-4 sm:text-base"
                   >
                     View Details <ArrowRight className="size-4" />
                   </Button>
@@ -195,6 +204,7 @@ const Page = () => {
             })}
           </div>
         )}
+        </div>
       </section>
     </main>
   );

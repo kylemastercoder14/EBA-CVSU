@@ -32,6 +32,15 @@ export const verifyPaymentOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
   payment: paymentListItemSchema,
+  smsNotification: z
+    .object({
+      attempted: z.boolean(),
+      sent: z.boolean(),
+      recipientNumber: z.string().optional(),
+      error: z.string().optional(),
+      statusCode: z.number().optional(),
+    })
+    .optional(),
 });
 
 export const declinePaymentOutputSchema = verifyPaymentOutputSchema;

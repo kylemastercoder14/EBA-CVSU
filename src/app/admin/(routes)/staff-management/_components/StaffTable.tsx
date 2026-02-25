@@ -14,11 +14,18 @@ import { formatEnumLabel } from "@/lib/utils";
 
 interface StaffTableProps {
   staff: Staff[];
+  isLoading?: boolean;
   onEdit: (staff: Staff) => void;
   onDelete: (staff: Staff) => void;
 }
 
-export const StaffTable = ({ staff, onEdit, onDelete }: StaffTableProps) => {
+export const StaffTable = ({
+  staff,
+  isLoading = false,
+  onEdit,
+  onDelete,
+}: StaffTableProps) => {
+  const skeletonRows = 4;
   return (
     <Table>
       <TableHeader className="bg-[#07484A]">
@@ -33,7 +40,24 @@ export const StaffTable = ({ staff, onEdit, onDelete }: StaffTableProps) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {staff.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`staff-skeleton-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4"><div className="h-4 w-16 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-32 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-16 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-28 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-4 w-24 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4"><div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+              <TableCell className="p-4">
+                <div className="flex gap-2">
+                  <div className="h-9 w-9 animate-pulse rounded-md bg-[#07484A]/12" />
+                  <div className="h-9 w-9 animate-pulse rounded-md bg-[#07484A]/10" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))
+        ) : staff.length > 0 ? (
           staff.map((member) => (
             <TableRow key={member.id} className="hover:bg-[#C5E3FF]">
               <TableCell className="p-4 text-sm">{member.id}</TableCell>

@@ -13,6 +13,7 @@ import { ReplaceRequest, ReplaceRequestStatus } from "./types";
 interface ReplaceTableProps {
   requests: ReplaceRequest[];
   status: ReplaceRequestStatus;
+  isLoading?: boolean;
   onReviewClick: (request: ReplaceRequest) => void;
 }
 
@@ -34,8 +35,10 @@ const formatDate = (isoText: string) =>
 export const ReplaceTable = ({
   requests,
   status,
+  isLoading = false,
   onReviewClick,
 }: ReplaceTableProps) => {
+  const skeletonRows = 4;
   const showActionColumn = status === "Pending";
   const colSpan = showActionColumn ? 6 : 5;
 
@@ -54,7 +57,32 @@ export const ReplaceTable = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {requests.length > 0 ? (
+        {isLoading ? (
+          Array.from({ length: skeletonRows }).map((_, index) => (
+            <TableRow key={`replace-skeleton-${status}-${index}`} className="hover:bg-transparent">
+              <TableCell className="p-4">
+                <div className="h-5 w-20 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-24 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-28 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-5 w-36 animate-pulse rounded bg-[#07484A]/10" />
+              </TableCell>
+              <TableCell className="p-4">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-[#07484A]/10" />
+              </TableCell>
+              {showActionColumn && (
+                <TableCell className="p-4">
+                  <div className="h-9 w-28 animate-pulse rounded-md bg-[#07484A]/12" />
+                </TableCell>
+              )}
+            </TableRow>
+          ))
+        ) : requests.length > 0 ? (
           requests.map((request) => (
             <TableRow key={request.id} className="hover:bg-[#C5E3FF]">
               <TableCell className="p-4 text-base font-medium">{request.id}</TableCell>

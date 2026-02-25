@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendEbaSmsQueued, type EbaSmsSendResult } from "@/lib/eba-sms";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
@@ -9,6 +10,35 @@ import {
   verifyPaymentInputSchema,
   verifyPaymentOutputSchema,
 } from "@/validators/payment";
+
+type PaymentSmsInput = {
+  kind: "verified" | "declined";
+  orderNumber: string;
+  recipientNumber: string;
+  customerName: string;
+  paymentMethod: "GCASH" | "CASH";
+  declineReason?: string | null;
+};
+
+type PaymentSmsResult = EbaSmsSendResult;
+
+const sendPaymentStatusSms = async (
+  input: PaymentSmsInput,
+): Promise<PaymentSmsResult> => {
+  const shortReason = input.declineReason?.trim()
+    ? input.declineReason.trim().replace(/\s+/g, " ").slice(0, 80)
+    : "";
+  const message =
+    input.kind === "verified"
+      ? `Hello, your payment for order #${input.orderNumber} has been successfully verified. We are now processing your order. Thank you!`
+      : `Hello, your payment for order #${input.orderNumber} was declined due to ${shortReason || "payment validation failed"}. Please contact EBA support`;
+
+  return sendEbaSmsQueued({
+    orderNumber: input.orderNumber,
+    recipientNumber: input.recipientNumber,
+    message,
+  });
+};
 
 const toPaymentListItem = (payment: {
   id: string;
@@ -36,7 +66,8 @@ const toPaymentListItem = (payment: {
       : payment.status === "DECLINED"
         ? ("Declined" as const)
         : ("Pending" as const),
-  paymentMethod: payment.method === "CASH" ? ("Cash" as const) : ("GCash" as const),
+  paymentMethod:
+    payment.method === "CASH" ? ("Cash" as const) : ("GCash" as const),
 });
 
 type NotificationClient = {
@@ -88,7 +119,10 @@ const createStaffNotifications = async (
 
   let nextNumber = 1;
   if (lastNotification?.id) {
-    const parsed = Number.parseInt(lastNotification.id.replace("NOTIF", ""), 10);
+    const parsed = Number.parseInt(
+      lastNotification.id.replace("NOTIF", ""),
+      10,
+    );
     if (!Number.isNaN(parsed)) {
       nextNumber = parsed + 1;
     }
@@ -168,6 +202,7 @@ export const verifyPayment = base
             user: {
               select: {
                 fullName: true,
+                mobileNumber: true,
               },
             },
           },
@@ -192,6 +227,7 @@ export const verifyPayment = base
               user: {
                 select: {
                   fullName: true,
+                  mobileNumber: true,
                 },
               },
             },
@@ -242,6 +278,14 @@ export const verifyPayment = base
       return payment;
     });
 
+    const smsNotification = await sendPaymentStatusSms({
+      kind: "verified",
+      orderNumber: updatedPayment.order.orderNumber,
+      recipientNumber: updatedPayment.order.user.mobileNumber,
+      customerName: updatedPayment.order.user.fullName,
+      paymentMethod: updatedPayment.method,
+    });
+
     return {
       success: true,
       message: "Payment verified successfully",
@@ -259,6 +303,7 @@ export const verifyPayment = base
           },
         },
       }),
+      smsNotification,
     };
   });
 
@@ -282,6 +327,7 @@ export const declinePayment = base
             user: {
               select: {
                 fullName: true,
+                mobileNumber: true,
               },
             },
           },
@@ -306,6 +352,7 @@ export const declinePayment = base
               user: {
                 select: {
                   fullName: true,
+                  mobileNumber: true,
                 },
               },
             },
@@ -351,6 +398,15 @@ export const declinePayment = base
       return payment;
     });
 
+    const smsNotification = await sendPaymentStatusSms({
+      kind: "declined",
+      orderNumber: updatedPayment.order.orderNumber,
+      recipientNumber: updatedPayment.order.user.mobileNumber,
+      customerName: updatedPayment.order.user.fullName,
+      paymentMethod: updatedPayment.method,
+      declineReason: input.reason ?? null,
+    });
+
     return {
       success: true,
       message: "Payment declined and order cancelled successfully",
@@ -368,5 +424,6 @@ export const declinePayment = base
           },
         },
       }),
+      smsNotification,
     };
   });

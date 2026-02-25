@@ -26,6 +26,7 @@ interface RecentOrderItem {
 
 interface RecentOrderTableProps {
   orders: RecentOrderItem[];
+  isLoading?: boolean;
 }
 
 const formatMoney = (value: number) =>
@@ -47,7 +48,11 @@ const getBadgeClassName = (status: RecentOrderItem["status"]) => {
   return "";
 };
 
-export const RecentOrderTable = ({ orders }: RecentOrderTableProps) => {
+export const RecentOrderTable = ({
+  orders,
+  isLoading = false,
+}: RecentOrderTableProps) => {
+  const skeletonRows = 5;
   return (
     <div className="mt-10">
       <Card className="border-3 border-[#07484A] bg-[#D3E9FF]">
@@ -71,7 +76,18 @@ export const RecentOrderTable = ({ orders }: RecentOrderTableProps) => {
             </TableHeader>
 
             <TableBody>
-              {orders.length > 0 ? (
+              {isLoading ? (
+                Array.from({ length: skeletonRows }).map((_, index) => (
+                  <TableRow key={`recent-order-skeleton-${index}`}>
+                    <TableCell className="p-4"><div className="h-4 w-22 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+                    <TableCell className="p-4"><div className="h-4 w-32 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+                    <TableCell className="p-4"><div className="h-4 w-28 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+                    <TableCell className="p-4"><div className="h-4 w-10 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+                    <TableCell className="p-4"><div className="h-4 w-24 animate-pulse rounded bg-[#07484A]/10" /></TableCell>
+                    <TableCell className="p-4"><div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
+                  </TableRow>
+                ))
+              ) : orders.length > 0 ? (
                 orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="p-4">{order.orderNumber}</TableCell>
