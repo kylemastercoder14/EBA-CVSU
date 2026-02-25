@@ -32,7 +32,7 @@ type DisplayProduct = Product & { stockCount?: number; backendId: string };
 const kioskUserTypeStorageKey = "kiosk-user-type";
 const kioskSignInStorageKey = "kiosk-sign-in";
 const kioskAutoRefreshMs = 10_000;
-const kioskVoiceTimeoutMs = 8_000;
+const kioskVoiceTimeoutMs = 25_000;
 
 type SpeechRecognitionResultEventLike = {
   results: ArrayLike<ArrayLike<{ transcript: string }>>;
@@ -82,7 +82,7 @@ type VoiceOrderDraft = {
 
 const splitVoiceCommandIntoSegments = (transcript: string) => {
   return transcript
-    .split(/\b(?:and then|then|and)\b/gi)
+    .split(/\s*,\s*|\b(?:and then|then|and)\b/gi)
     .map((segment) => segment.trim())
     .filter(Boolean);
 };
@@ -818,7 +818,7 @@ const BrowsePage = () => {
       </main>
 
       <Dialog open={isVoiceDialogOpen} onOpenChange={setIsVoiceDialogOpen}>
-        <DialogContent className="max-w-3xl overflow-hidden border-2 border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(240,250,250,0.84))] p-0 shadow-[0_20px_55px_rgba(7,72,74,0.22)] backdrop-blur-xl">
+        <DialogContent className="max-w-3xl! overflow-hidden border-2 border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(240,250,250,0.84))] p-0 shadow-[0_20px_55px_rgba(7,72,74,0.22)] backdrop-blur-xl">
           <DialogHeader className="border-b border-white/40 bg-white/35 px-6 py-5">
             <div className="flex items-start gap-3">
               <div className="flex size-11 items-center justify-center rounded-2xl border border-white/40 bg-black/45 text-white shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
@@ -901,7 +901,7 @@ const BrowsePage = () => {
                       }`}
                     >
                       <div className="grid grid-cols-[72px_1fr] gap-3">
-                        <div className="relative h-[72px] w-[72px] overflow-hidden rounded-xl border border-white/50 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.04)]">
+                        <div className="relative h-18 w-18 overflow-hidden rounded-xl border border-white/50 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.04)]">
                           {draft.product?.image ? (
                             <Image
                               src={draft.product.image}
