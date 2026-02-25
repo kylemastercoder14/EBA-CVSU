@@ -80,6 +80,13 @@ type VoiceOrderDraft = {
   message: string;
 };
 
+const splitVoiceCommandIntoSegments = (transcript: string) => {
+  return transcript
+    .split(/\b(?:and then|then|and)\b/gi)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+};
+
 const normalizeVoiceText = (value: string) =>
   value
     .toLowerCase()
@@ -299,6 +306,12 @@ const parseVoiceOrder = (transcript: string, products: DisplayProduct[]): Parsed
   return { quantity, product, requestedSize, transcript };
 };
 
+const parseVoiceOrders = (transcript: string, products: DisplayProduct[]) => {
+  const segments = splitVoiceCommandIntoSegments(transcript);
+  if (segments.length === 0) return [parseVoiceOrder(transcript, products)];
+  return segments.map((segment) => parseVoiceOrder(segment, products));
+};
+
 // ── Product Card ──────────────────────────────────────────────────────────────
 const ProductCard = ({
   product,
@@ -394,7 +407,7 @@ const BrowsePage = () => {
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "processing">("idle");
   const [lastTranscript, setLastTranscript] = useState("");
   const [lastVoiceResult, setLastVoiceResult] = useState("");
-  const [voiceDraft, setVoiceDraft] = useState<VoiceOrderDraft | null>(null);
+  const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     ...orpc.product.list.queryOptions(),
@@ -575,23 +588,33 @@ const BrowsePage = () => {
     };
   };
 
+  const buildVoiceDrafts = (transcript: string) => {
+    return parseVoiceOrders(transcript, products).map((parsed) => buildVoiceDraft(parsed));
+  };
+
   const confirmVoiceDraftAddToCart = () => {
-    if (!voiceDraft || !voiceDraft.product || !voiceDraft.canConfirm) return;
+    if (voiceDrafts.length === 0 || voiceDrafts.some((draft) => !draft.canConfirm || !draft.product)) {
+      return;
+    }
 
-    addCartItem({
-      productId: voiceDraft.product.backendId,
-      productName: voiceDraft.product.name,
-      variant: voiceDraft.resolvedVariant || NO_VARIANT_SIZE,
-      pickupDate: new Date().toISOString().slice(0, 10),
-      quantity: voiceDraft.quantity,
-    });
+    for (const draft of voiceDrafts) {
+      if (!draft.product) continue;
+      addCartItem({
+        productId: draft.product.backendId,
+        productName: draft.product.name,
+        variant: draft.resolvedVariant || NO_VARIANT_SIZE,
+        pickupDate: new Date().toISOString().slice(0, 10),
+        quantity: draft.quantity,
+      });
+    }
 
-    const sizeLabel =
-      voiceDraft.resolvedVariant && voiceDraft.resolvedVariant !== NO_VARIANT_SIZE
-        ? ` (${voiceDraft.resolvedVariant})`
-        : "";
-    const message = `Added ${voiceDraft.quantity} ${voiceDraft.product.name}${sizeLabel} to cart.`;
+    const message =
+      voiceDrafts.length === 1
+        ? "Voice order added to cart."
+        : `${voiceDrafts.length} voice-ordered items added to cart.`;
     setLastVoiceResult(message);
+    setVoiceDrafts([]);
+    setLastTranscript("");
     toast.success(message);
     setIsVoiceDialogOpen(false);
   };
@@ -621,11 +644,14 @@ const BrowsePage = () => {
 
       recognition.onstart = () => {
         setVoiceState("listening");
-        setLastVoiceResult("Listening... Say an order like '2 test booklet'.");
+        setIsVoiceDialogOpen(true);
+        setLastVoiceResult("Listening... Speak your order, then stop or wait.");
+        setVoiceDrafts([]);
       };
 
       recognition.onerror = (event) => {
         setVoiceState("idle");
+        setIsVoiceDialogOpen(true);
         if (event.error === "not-allowed") {
           setLastVoiceResult("Microphone permission denied. Please allow microphone access.");
           toast.error("Allow microphone permission for voice order");
@@ -647,10 +673,14 @@ const BrowsePage = () => {
 
         setLastTranscript(transcript);
         setVoiceState("processing");
-        const parsed = parseVoiceOrder(transcript, products);
-        const draft = buildVoiceDraft(parsed);
-        setVoiceDraft(draft);
-        setLastVoiceResult(draft.message);
+        const drafts = buildVoiceDrafts(transcript);
+        setVoiceDrafts(drafts);
+        const allValid = drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
+        setLastVoiceResult(
+          allValid
+            ? "Review the parsed voice order and confirm to add to cart."
+            : "Please review the parsed voice order and fix the invalid item(s) by speaking again.",
+        );
         setIsVoiceDialogOpen(true);
         setVoiceState("idle");
       };
@@ -664,6 +694,9 @@ const BrowsePage = () => {
       };
 
       setLastTranscript("");
+      setVoiceDrafts([]);
+      setIsVoiceDialogOpen(true);
+      setLastVoiceResult("Preparing microphone...");
       recognition.start();
 
       recognitionTimeoutRef.current = window.setTimeout(() => {
@@ -746,30 +779,6 @@ const BrowsePage = () => {
               Showing items available for visitors
             </p>
           )}
-          <div className="mt-3 space-y-1">
-            <p className="font-serif text-xs uppercase tracking-[0.16em] text-[#07484A]/60">
-              Voice Order
-            </p>
-            <p className="font-serif text-sm text-[#07484A]/75">
-              Tap the mic and say: <span className="font-bold">2 test booklet</span> or{" "}
-              <span className="font-bold">1 PE uniform medium</span>
-            </p>
-            {(lastTranscript || lastVoiceResult) && (
-              <div className="rounded-xl border border-white/35 bg-white/35 px-3 py-2 shadow-[0_4px_14px_rgba(0,0,0,0.06)]">
-                {lastTranscript && (
-                  <p className="font-serif text-xs uppercase tracking-[0.14em] text-[#07484A]/60">
-                    Heard:{" "}
-                    <span className="normal-case tracking-normal">{lastTranscript}</span>
-                  </p>
-                )}
-                {lastVoiceResult && (
-                  <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]">
-                    {lastVoiceResult}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── Product grid ── */}
@@ -809,59 +818,122 @@ const BrowsePage = () => {
       </main>
 
       <Dialog open={isVoiceDialogOpen} onOpenChange={setIsVoiceDialogOpen}>
-        <DialogContent className="max-w-md border-[#07484A]/20 bg-[#F3FAFA]">
+        <DialogContent className="max-w-2xl border-[#07484A]/20 bg-[#F3FAFA]">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-[#07484A]">
               Voice Order Review
             </DialogTitle>
             <DialogDescription className="text-[#07484A]/70">
-              Check what the kiosk heard before adding to cart.
+              Speak your order, review what was detected, then confirm to add it to cart.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div
+                className={`rounded-xl border px-3 py-2 text-sm ${
+                  voiceState === "listening"
+                    ? "border-red-200 bg-red-50 text-red-900"
+                    : voiceState === "processing"
+                      ? "border-cyan-200 bg-cyan-50 text-cyan-900"
+                      : voiceDrafts.length > 0 && voiceDrafts.every((draft) => draft.canConfirm)
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                        : "border-amber-200 bg-amber-50 text-amber-900"
+                }`}
+              >
+                {lastVoiceResult || "Tap the voice button to start speaking."}
+              </div>
+
+              {voiceState === "listening" && (
+                <Button
+                  type="button"
+                  onClick={() => recognitionRef.current?.stop()}
+                  className="bg-red-500 text-white hover:bg-red-600"
+                >
+                  <MicOff className="mr-2 size-4" />
+                  Stop Voice Recognition
+                </Button>
+              )}
+            </div>
+
             <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
               <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">Heard</p>
               <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]">
-                {voiceDraft?.transcript || lastTranscript || "-"}
+                {lastTranscript || "-"}
               </p>
             </div>
 
             <div className="rounded-xl border border-[#07484A]/10 bg-white px-3 py-2">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">Parsed Order</p>
-              <div className="mt-2 space-y-1 text-sm text-[#07484A]">
-                <p>
-                  <span className="font-semibold">Product:</span>{" "}
-                  {voiceDraft?.product?.name ?? "Not recognized"}
-                </p>
-                <p>
-                  <span className="font-semibold">Quantity:</span> {voiceDraft?.quantity ?? 1}
-                </p>
-                <p>
-                  <span className="font-semibold">Requested size:</span>{" "}
-                  {voiceDraft?.requestedSize ?? "None"}
-                </p>
-                <p>
-                  <span className="font-semibold">Matched size:</span>{" "}
-                  {voiceDraft?.resolvedVariant || "Not matched"}
-                </p>
-                {voiceDraft?.availableSizes && voiceDraft.availableSizes.length > 0 && (
-                  <p>
-                    <span className="font-semibold">Available sizes:</span>{" "}
-                    {voiceDraft.availableSizes.join(", ")}
-                  </p>
-                )}
-              </div>
-            </div>
+              <p className="text-xs uppercase tracking-[0.14em] text-[#07484A]/55">
+                Parsed Item{voiceDrafts.length > 1 ? "s" : ""}
+              </p>
 
-            <div
-              className={`rounded-xl border px-3 py-2 text-sm ${
-                voiceDraft?.canConfirm
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-amber-200 bg-amber-50 text-amber-900"
-              }`}
-            >
-              {voiceDraft?.message ?? "Waiting for voice input..."}
+              {voiceDrafts.length === 0 ? (
+                <p className="mt-2 text-sm text-[#07484A]/60">
+                  {voiceState === "listening"
+                    ? "Listening for your order..."
+                    : "No parsed items yet."}
+                </p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {voiceDrafts.map((draft, index) => (
+                    <div
+                      key={`${draft.transcript}-${index}`}
+                      className={`rounded-xl border p-3 ${
+                        draft.canConfirm
+                          ? "border-emerald-200 bg-emerald-50/60"
+                          : "border-amber-200 bg-amber-50/70"
+                      }`}
+                    >
+                      <div className="grid grid-cols-[72px_1fr] gap-3">
+                        <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg border border-[#07484A]/10 bg-white">
+                          {draft.product?.image ? (
+                            <Image
+                              src={draft.product.image}
+                              alt={draft.product.name}
+                              fill
+                              className="object-contain p-1"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[10px] text-[#07484A]/45">
+                              No image
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 text-sm text-[#07484A]">
+                          <p className="font-serif text-base font-bold">
+                            {draft.product?.name ?? "Not recognized"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#07484A]/65">
+                            Segment heard: {draft.transcript}
+                          </p>
+                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
+                            <p>
+                              <span className="font-semibold">Qty:</span> {draft.quantity}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Requested:</span>{" "}
+                              {draft.requestedSize ?? "None"}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Matched:</span>{" "}
+                              {draft.resolvedVariant || "Not matched"}
+                            </p>
+                            <p className="truncate">
+                              <span className="font-semibold">Sizes:</span>{" "}
+                              {draft.availableSizes.length > 0
+                                ? draft.availableSizes.join(", ")
+                                : "N/A"}
+                            </p>
+                          </div>
+                          <p className="mt-2 text-xs font-semibold">{draft.message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -877,7 +949,11 @@ const BrowsePage = () => {
             <Button
               type="button"
               onClick={confirmVoiceDraftAddToCart}
-              disabled={!voiceDraft?.canConfirm}
+              disabled={
+                voiceState !== "idle" ||
+                voiceDrafts.length === 0 ||
+                voiceDrafts.some((draft) => !draft.canConfirm)
+              }
               className="bg-[#07484A] text-white hover:bg-[#07484A]/90"
             >
               Confirm Add to Cart
