@@ -94,6 +94,18 @@ type VoiceOrderLog = {
   itemCount: number;
 };
 
+type VoiceInterpretCatalogProduct = {
+  name: string;
+  category: string;
+  sizes: string[];
+};
+
+type VoiceInterpretResponse = {
+  normalizedTranscript?: string;
+  usedAi?: boolean;
+  provider?: string;
+};
+
 const splitByQuantityCues = (transcript: string) => {
   // Fallback splitter when speech recognition drops commas/"and" in long commands.
   const tokens = tokenizeVoiceText(transcript);
@@ -585,6 +597,9 @@ const BrowsePage = () => {
   const { navigate } = useTransitionNav();
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const recognitionTimeoutRef = useRef<number | null>(null);
+  const summaryAudioRef = useRef<HTMLAudioElement | null>(null);
+  const summaryAudioUrlRef = useRef<string | null>(null);
+  const voiceParseRequestRef = useRef(0);
   const [type] = useState<UserType>(() => {
     if (typeof window === "undefined") return "student";
 
@@ -601,6 +616,8 @@ const BrowsePage = () => {
     "idle" | "listening" | "processing"
   >("idle");
   const [lastTranscript, setLastTranscript] = useState("");
+  const [lastAiInterpretedTranscript, setLastAiInterpretedTranscript] =
+    useState("");
   const [lastVoiceResult, setLastVoiceResult] = useState("");
   const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
@@ -653,6 +670,14 @@ const BrowsePage = () => {
     () => () => {
       if (recognitionTimeoutRef.current != null) {
         window.clearTimeout(recognitionTimeoutRef.current);
+      }
+      if (summaryAudioRef.current) {
+        summaryAudioRef.current.pause();
+        summaryAudioRef.current = null;
+      }
+      if (summaryAudioUrlRef.current) {
+        URL.revokeObjectURL(summaryAudioUrlRef.current);
+        summaryAudioUrlRef.current = null;
       }
       recognitionRef.current?.stop();
     },
@@ -746,6 +771,88 @@ const BrowsePage = () => {
       })
       .join(", ");
   }, [voiceDrafts]);
+
+  const voiceInterpretCatalog = useMemo<VoiceInterpretCatalogProduct[]>(
+    () =>
+      products.map((product) => ({
+        name: product.name,
+        category: product.category,
+        sizes: (product.sizes ?? []).filter((size) => size !== NO_VARIANT_SIZE),
+      })),
+    [products],
+  );
+
+  const cleanupSummaryAudio = () => {
+    if (summaryAudioRef.current) {
+      summaryAudioRef.current.pause();
+      summaryAudioRef.current = null;
+    }
+    if (summaryAudioUrlRef.current) {
+      const staleUrl = summaryAudioUrlRef.current;
+      summaryAudioUrlRef.current = null;
+      // Delay revocation slightly to avoid blob:// ERR_FILE_NOT_FOUND in some browsers.
+      window.setTimeout(() => URL.revokeObjectURL(staleUrl), 2_000);
+    }
+  };
+
+  const speakVoiceDraftSummaryFallback = (summary: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(`I heard: ${summary}.`);
+    utterance.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const interpretVoiceTranscriptWithAi = async (transcript: string) => {
+    const trimmedTranscript = transcript.trim();
+    if (!trimmedTranscript) {
+      return {
+        normalizedTranscript: "",
+        usedAi: false,
+        provider: "local",
+      } as const;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 5_500);
+
+    try {
+      const response = await fetch("/api/kiosk/voice/interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: trimmedTranscript,
+          products: voiceInterpretCatalog,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Interpret route failed (${response.status})`);
+      }
+
+      const payload = (await response.json()) as VoiceInterpretResponse;
+      const normalizedTranscript =
+        typeof payload.normalizedTranscript === "string" &&
+        payload.normalizedTranscript.trim()
+          ? payload.normalizedTranscript.trim()
+          : trimmedTranscript;
+
+      return {
+        normalizedTranscript,
+        usedAi: Boolean(payload.usedAi),
+        provider: payload.provider ?? "local",
+      } as const;
+    } catch {
+      return {
+        normalizedTranscript: trimmedTranscript,
+        usedAi: false,
+        provider: "local",
+      } as const;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  };
 
   const buildVoiceDraft = (parsed: ParsedVoiceOrder): VoiceOrderDraft => {
     if (!parsed.product) {
@@ -967,9 +1074,9 @@ const BrowsePage = () => {
     );
   };
 
-  const speakVoiceDraftSummary = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const speakVoiceDraftSummary = async () => {
     if (voiceDrafts.length === 0) return;
+
     const summary = voiceDrafts
       .map((draft) => {
         const productName = draft.product?.name ?? "unknown item";
@@ -981,10 +1088,42 @@ const BrowsePage = () => {
       })
       .join(", ");
 
-    const utterance = new SpeechSynthesisUtterance(`I heard: ${summary}.`);
-    utterance.rate = 0.95;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    const summaryText = `I heard: ${summary}. Please review before confirming.`;
+
+    try {
+      cleanupSummaryAudio();
+
+      const response = await fetch("/api/queue/announce", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: summaryText }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ElevenLabs summary failed (${response.status})`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      summaryAudioRef.current = audio;
+      summaryAudioUrlRef.current = audioUrl;
+      audio.onended = () => {
+        if (summaryAudioRef.current === audio) {
+          summaryAudioRef.current = null;
+        }
+        if (summaryAudioUrlRef.current === audioUrl) {
+          const endedUrl = summaryAudioUrlRef.current;
+          summaryAudioUrlRef.current = null;
+          if (endedUrl) {
+            window.setTimeout(() => URL.revokeObjectURL(endedUrl), 2_000);
+          }
+        }
+      };
+      await audio.play();
+    } catch {
+      speakVoiceDraftSummaryFallback(summary);
+    }
   };
 
   const confirmVoiceDraftAddToCart = () => {
@@ -1018,6 +1157,7 @@ const BrowsePage = () => {
     setLastVoiceResult(message);
     setVoiceDrafts([]);
     setLastTranscript("");
+    setLastAiInterpretedTranscript("");
     toast.success(message);
     setIsVoiceDialogOpen(false);
   };
@@ -1027,6 +1167,8 @@ const BrowsePage = () => {
       recognitionRef.current?.stop();
       return;
     }
+
+    cleanupSummaryAudio();
 
     const voiceWindow = window as SpeechCapableWindow;
     const RecognitionCtor =
@@ -1046,9 +1188,11 @@ const BrowsePage = () => {
       recognition.continuous = false;
 
       recognition.onstart = () => {
+        voiceParseRequestRef.current += 1;
         setVoiceState("listening");
         setIsVoiceDialogOpen(true);
         setLastVoiceResult("Listening... Speak your order, then stop or wait.");
+        setLastAiInterpretedTranscript("");
         setVoiceDrafts([]);
       };
 
@@ -1092,26 +1236,44 @@ const BrowsePage = () => {
           .trim();
 
         setLastTranscript(transcript);
+        setLastAiInterpretedTranscript("");
         setVoiceState("processing");
-        const drafts = buildVoiceDrafts(transcript);
-        setVoiceDrafts(drafts);
-        appendVoiceLog({
-          transcript,
-          status:
-            drafts.length > 0 && drafts.every((draft) => draft.canConfirm)
-              ? "parsed"
-              : "error",
-          itemCount: drafts.length,
-        });
-        const allValid =
-          drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
-        setLastVoiceResult(
-          allValid
-            ? "Review the parsed voice order and confirm to add to cart."
-            : "Please review the parsed voice order and fix the invalid item(s) by speaking again.",
-        );
-        setIsVoiceDialogOpen(true);
-        setVoiceState("idle");
+        setLastVoiceResult("Interpreting your voice order...");
+        const parseRequestId = ++voiceParseRequestRef.current;
+        void (async () => {
+          const interpreted = await interpretVoiceTranscriptWithAi(transcript);
+          if (voiceParseRequestRef.current !== parseRequestId) return;
+
+          const transcriptForParsing = interpreted.normalizedTranscript || transcript;
+          const drafts = buildVoiceDrafts(transcriptForParsing);
+          setVoiceDrafts(drafts);
+          setLastAiInterpretedTranscript(
+            interpreted.usedAi && transcriptForParsing !== transcript
+              ? transcriptForParsing
+              : "",
+          );
+          appendVoiceLog({
+            transcript,
+            status:
+              drafts.length > 0 && drafts.every((draft) => draft.canConfirm)
+                ? "parsed"
+                : "error",
+            itemCount: drafts.length,
+          });
+          const allValid =
+            drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
+          const aiNote =
+            interpreted.usedAi && interpreted.provider !== "local"
+              ? " (AI-assisted)"
+              : "";
+          setLastVoiceResult(
+            allValid
+              ? `Review the parsed voice order${aiNote} and confirm to add to cart.`
+              : `Please review the parsed voice order${aiNote} and fix the invalid item(s) by editing or speaking again.`,
+          );
+          setIsVoiceDialogOpen(true);
+          setVoiceState("idle");
+        })();
       };
 
       recognition.onend = () => {
@@ -1125,6 +1287,7 @@ const BrowsePage = () => {
       };
 
       setLastTranscript("");
+      setLastAiInterpretedTranscript("");
       setVoiceDrafts([]);
       setIsVoiceDialogOpen(true);
       setLastVoiceResult("Preparing microphone...");
@@ -1246,7 +1409,13 @@ const BrowsePage = () => {
         </div>
       </main>
 
-      <Dialog open={isVoiceDialogOpen} onOpenChange={setIsVoiceDialogOpen}>
+      <Dialog
+        open={isVoiceDialogOpen}
+        onOpenChange={(open) => {
+          setIsVoiceDialogOpen(open);
+          if (!open) cleanupSummaryAudio();
+        }}
+      >
         <DialogContent className="max-w-3xl! overflow-hidden border-2 border-white/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(240,250,250,0.84))] p-0 shadow-[0_20px_55px_rgba(7,72,74,0.22)] backdrop-blur-xl">
           <DialogHeader className="border-b border-white/40 bg-white/35 px-6 py-5">
             <div className="flex items-start gap-3">
@@ -1328,6 +1497,16 @@ const BrowsePage = () => {
               <p className="mt-1 font-serif text-base font-semibold text-[#07484A]">
                 {lastTranscript || "-"}
               </p>
+              {lastAiInterpretedTranscript && (
+                <>
+                  <p className="mt-2 font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
+                    AI Interpreted Transcript
+                  </p>
+                  <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]/85">
+                    {lastAiInterpretedTranscript}
+                  </p>
+                </>
+              )}
               {interpretedVoiceSummary && (
                 <>
                   <p className="mt-2 font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
