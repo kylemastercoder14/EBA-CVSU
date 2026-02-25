@@ -80,17 +80,8 @@ type VoiceOrderDraft = {
   message: string;
 };
 
-const splitVoiceCommandIntoSegments = (transcript: string) => {
-  const primarySegments = transcript
-    .split(/\s*,\s*|\b(?:and then|then|and)\b/gi)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-
-  if (primarySegments.length > 1) {
-    return primarySegments;
-  }
-
-  // Fallback: speech recognition often drops commas/"and" in long commands.
+const splitByQuantityCues = (transcript: string) => {
+  // Fallback splitter when speech recognition drops commas/"and" in long commands.
   const tokens = tokenizeVoiceText(transcript);
   const quantityCues = new Set([
     "one",
@@ -114,8 +105,7 @@ const splitVoiceCommandIntoSegments = (transcript: string) => {
   let hasMeaningfulAfterQuantity = false;
 
   for (const token of tokens) {
-    const isQuantityCue =
-      /^\d{1,2}$/.test(token) || quantityCues.has(token);
+    const isQuantityCue = /^\d{1,2}$/.test(token) || quantityCues.has(token);
 
     if (isQuantityCue && seenQuantityCue && hasMeaningfulAfterQuantity) {
       segments.push(current.join(" ").trim());
@@ -142,6 +132,18 @@ const splitVoiceCommandIntoSegments = (transcript: string) => {
   }
 
   return segments.filter(Boolean);
+};
+
+const splitVoiceCommandIntoSegments = (transcript: string) => {
+  const primarySegments = transcript
+    .split(/\s*,\s*|\b(?:and then|then|and)\b/gi)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  // Always run sub-splitting per segment to recover missing commas between items.
+  return primarySegments
+    .flatMap((segment) => splitByQuantityCues(segment))
+    .filter(Boolean);
 };
 
 const normalizeVoiceText = (value: string) =>
@@ -176,14 +178,28 @@ const parseVoiceQuantity = (normalizedTranscript: string) => {
     for: 4,
   };
 
-  for (const token of tokens) {
-    if (fillerTokens.has(token)) continue;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const nextToken = tokens[index + 1] ?? "";
+    const previousToken = tokens[index - 1] ?? "";
+
+    // "want to order" / "go to" style "to" should not count as quantity.
+    if ((token === "to" || token === "too") && (nextToken === "order" || previousToken === "want")) {
+      continue;
+    }
+
     if (/^\d{1,2}$/.test(token)) {
+      const nextIsSizeToken = /^(xl|xxl|xxxl|\dxl|2xl|3xl|4xl|5xl)$/i.test(nextToken);
+      if (nextIsSizeToken) {
+        // "2 xl" is probably a size, not quantity.
+        continue;
+      }
       return Math.max(1, Math.min(99, Number(token)));
     }
     if (quantityAliases[token] != null) {
       return quantityAliases[token];
     }
+    if (fillerTokens.has(token)) continue;
     // If the first meaningful token is not a quantity (e.g., "booklet"), default to 1.
     break;
   }
@@ -220,6 +236,11 @@ const tokenizeVoiceText = (value: string) =>
     .filter(Boolean);
 
 const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
+  const spacedNumericXl = normalizedTranscript.match(/\b([2-5])\s+xl\b/i)?.[1];
+  if (spacedNumericXl) {
+    return `${spacedNumericXl}xl`;
+  }
+
   const tokenMatch = normalizedTranscript.match(
     /\b(5xl|4xl|3xl|2xl|xxxl|xxl|xl|small|medium|large|sm|md|lg)\b/i,
   )?.[1]?.toLowerCase();
