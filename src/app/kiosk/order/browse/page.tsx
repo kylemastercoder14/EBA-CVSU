@@ -1440,7 +1440,7 @@ const BrowsePage = () => {
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 py-5">
+          <div className="space-y-4 px-6">
             <div
               className={`rounded-2xl border px-4 py-3 font-serif text-sm shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${
                 voiceState === "listening"
@@ -1531,7 +1531,7 @@ const BrowsePage = () => {
                     : "No parsed items yet."}
                 </p>
               ) : (
-                <ScrollArea className="mt-3 h-[340px] min-h-[220px] rounded-2xl border border-white/35 bg-white/25 p-2">
+                <ScrollArea className="mt-3 h-85 min-h-55 rounded-2xl border border-white/35 bg-white/25 p-2">
                   <div className="space-y-3 pr-2">
                     {voiceDrafts.map((draft, index) => (
                     <div
@@ -1704,38 +1704,6 @@ const BrowsePage = () => {
                 </ScrollArea>
               )}
             </div>
-
-            {voiceLogs.length > 0 && (
-              <div className="rounded-2xl border border-white/40 bg-white/45 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.03)]">
-                <p className="font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
-                  Recent Voice Logs (Kiosk Debug)
-                </p>
-                <div className="mt-2 max-h-28 space-y-1 overflow-y-auto pr-1 text-xs">
-                  {voiceLogs.slice(0, 5).map((log) => (
-                    <div
-                      key={log.id}
-                      className="rounded-lg bg-white/70 px-2 py-1 text-[#07484A]/85"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold capitalize">
-                          {log.status}
-                        </span>
-                        <span className="text-[#07484A]/55">
-                          {new Date(log.timestamp).toLocaleTimeString("en-US", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <p className="truncate">
-                        {log.transcript || "(no transcript)"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <DialogFooter className="border-t border-white/40 bg-white/35 px-6 py-4">
