@@ -16,6 +16,26 @@ const toLine = (left: string, right = "", width = 32) => {
 
 const divider = () => "-".repeat(32);
 
+const withTimeout = async <T,>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${ms}ms.`));
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 const buildEscPosReceipt = (receipt: KioskReceiptPayload) => {
   const lines: string[] = [];
 
@@ -149,11 +169,16 @@ export const printReceiptViaQz = async (
       },
     );
 
-    // ✅ Signature — must return a FUNCTION that returns a Promise
-    // This was the bug: passing async fn directly instead of () => Promise
+    // QZ 2.x accepts either:
+    // 1) an async function that returns the signature string, or
+    // 2) a function that returns a resolver callback (resolve, reject) => void.
+    // Use the resolver callback form for compatibility with qz-tray@2.2.x.
     qz.security.setSignatureAlgorithm("SHA512");
     qz.security.setSignaturePromise((toSign: string) => {
-      return () =>
+      return (
+        resolve: (value: string) => void,
+        reject: (reason?: unknown) => void,
+      ) => {
         fetch("/api/qz/sign", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -165,13 +190,19 @@ export const printReceiptViaQz = async (
           })
           .then((payload) => {
             if (!payload.signature) throw new Error("Missing QZ signature.");
-            return payload.signature;
-          });
+            resolve(payload.signature);
+          })
+          .catch(reject);
+      };
     });
 
     // Connect if not already active
     if (!qz.websocket.isActive()) {
-      await qz.websocket.connect({ retries: 3, delay: 1 });
+      await withTimeout(
+        qz.websocket.connect({ retries: 3, delay: 1 }),
+        10_000,
+        "QZ websocket connect",
+      );
     }
 
     // Resolve printer name
@@ -179,11 +210,19 @@ export const printReceiptViaQz = async (
     let printer: string = preferredPrinter;
 
     if (!printer) {
-      const defaultPrinter = await qz.printers.getDefault();
+      const defaultPrinter = await withTimeout(
+        qz.printers.getDefault(),
+        5_000,
+        "QZ getDefault printer",
+      );
       if (defaultPrinter) {
         printer = defaultPrinter as string;
       } else {
-        const allPrinters = (await qz.printers.find()) as string[];
+        const allPrinters = (await withTimeout(
+          qz.printers.find(),
+          8_000,
+          "QZ find printers",
+        )) as string[];
         const thermal = allPrinters.find((p) =>
           ["xp-58", "xp58", "pb-58", "pb58", "thermal", "receipt", "pos"].some(
             (kw) => p.toLowerCase().includes(kw),
@@ -202,13 +241,17 @@ export const printReceiptViaQz = async (
       copies: 1,
     });
 
-    await qz.print(config, [
-      {
-        type: "raw",
-        format: "plain",
-        data: buildEscPosReceipt(receipt),
-      },
-    ]);
+    await withTimeout(
+      qz.print(config, [
+        {
+          type: "raw",
+          format: "plain",
+          data: buildEscPosReceipt(receipt),
+        },
+      ]),
+      15_000,
+      "QZ print",
+    );
 
     return true;
   } catch (error) {

@@ -1,19 +1,165 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
-import { ShoppingCart, ShoppingBag, ArrowLeft } from "lucide-react";
+import {
+  ShoppingCart,
+  ShoppingBag,
+  ArrowLeft,
+  Mic,
+  MicOff,
+  Loader2,
+} from "lucide-react";
 import Image from "next/image";
 import { type Product, PRODUCTS } from "@/lib/product";
 import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { useCart } from "@/hooks/use-cart";
+import { toast } from "sonner";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type UserType = "student" | "visitor";
 type DisplayProduct = Product & { stockCount?: number; backendId: string };
 const kioskUserTypeStorageKey = "kiosk-user-type";
 const kioskSignInStorageKey = "kiosk-sign-in";
 const kioskAutoRefreshMs = 10_000;
+const kioskVoiceTimeoutMs = 8_000;
+
+type SpeechRecognitionResultEventLike = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type SpeechRecognitionErrorEventLike = {
+  error: string;
+};
+
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionCtor = new () => BrowserSpeechRecognition;
+
+type SpeechCapableWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+};
+
+type ParsedVoiceOrder = {
+  quantity: number;
+  size: string | null;
+  product: DisplayProduct | null;
+  transcript: string;
+};
+
+const normalizeVoiceText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\b(p)\s+(e)\b/g, "pe")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const numberWordMap: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+const parseVoiceQuantity = (normalizedTranscript: string) => {
+  const numericMatch = normalizedTranscript.match(/\b(\d{1,2})\b/);
+  if (numericMatch) return Math.max(1, Math.min(99, Number(numericMatch[1])));
+
+  for (const [word, value] of Object.entries(numberWordMap)) {
+    if (new RegExp(`\\b${word}\\b`, "i").test(normalizedTranscript)) {
+      return value;
+    }
+  }
+
+  return 1;
+};
+
+const sizeAliasMap: Array<{ canonical: string; aliases: string[] }> = [
+  { canonical: "Small", aliases: ["small", "sm"] },
+  { canonical: "Medium", aliases: ["medium", "med", "md"] },
+  { canonical: "Large", aliases: ["large", "lg"] },
+  { canonical: "X-Large", aliases: ["x large", "xl", "extra large", "x-large"] },
+  {
+    canonical: "XX-Large",
+    aliases: ["xx large", "2xl", "double extra large", "xxl", "xx-large"],
+  },
+];
+
+const parseVoiceSize = (normalizedTranscript: string) => {
+  for (const option of sizeAliasMap) {
+    if (option.aliases.some((alias) => normalizedTranscript.includes(alias))) {
+      return option.canonical;
+    }
+  }
+  return null;
+};
+
+const buildProductVoiceAliases = (product: DisplayProduct) => {
+  const normalizedName = normalizeVoiceText(product.name);
+  const aliases = new Set<string>([normalizedName]);
+  const withoutSchool = normalizedName.replace(/\bschool\b/g, "").replace(/\s+/g, " ").trim();
+  if (withoutSchool) aliases.add(withoutSchool);
+
+  if (/booklet/i.test(product.name)) aliases.add("booklet");
+  if (/id lace/i.test(product.name)) {
+    aliases.add("id lace");
+    aliases.add("lace");
+    aliases.add("lanyard");
+  }
+  if (/p\.?e/i.test(product.name)) {
+    aliases.add("pe uniform");
+    aliases.add("p e uniform");
+    aliases.add("pe uniform set");
+  }
+  if (/school uniform set/i.test(product.name)) {
+    aliases.add("school uniform");
+    aliases.add("uniform set");
+  }
+  if (/rotc/i.test(product.name)) {
+    aliases.add("rotc uniform");
+    aliases.add("nstp rotc");
+  }
+  if (/cwts/i.test(product.name)) {
+    aliases.add("cwts uniform");
+    aliases.add("nstp cwts");
+  }
+
+  return Array.from(aliases);
+};
+
+const parseVoiceOrder = (transcript: string, products: DisplayProduct[]): ParsedVoiceOrder => {
+  const normalized = normalizeVoiceText(transcript);
+  const quantity = parseVoiceQuantity(normalized);
+  const size = parseVoiceSize(normalized);
+  const product =
+    products.find((candidate) =>
+      buildProductVoiceAliases(candidate).some(
+        (alias) => alias && normalized.includes(alias),
+      ),
+    ) ?? null;
+
+  return { quantity, size, product, transcript };
+};
 
 // ── Product Card ──────────────────────────────────────────────────────────────
 const ProductCard = ({
@@ -93,6 +239,8 @@ const ProductCardSkeleton = () => (
 
 const BrowsePage = () => {
   const { navigate } = useTransitionNav();
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const recognitionTimeoutRef = useRef<number | null>(null);
   const [type] = useState<UserType>(() => {
     if (typeof window === "undefined") return "student";
 
@@ -105,6 +253,9 @@ const BrowsePage = () => {
       sessionStorage.getItem(kioskUserTypeStorageKey);
     return fromStorage === "visitor" ? "visitor" : "student";
   });
+  const [voiceState, setVoiceState] = useState<"idle" | "listening" | "processing">("idle");
+  const [lastTranscript, setLastTranscript] = useState("");
+  const [lastVoiceResult, setLastVoiceResult] = useState("");
   const { data: productsData, isLoading: isProductsLoading } = useQuery({
     ...orpc.product.list.queryOptions(),
     refetchInterval: kioskAutoRefreshMs,
@@ -139,7 +290,18 @@ const BrowsePage = () => {
     }
   }, [type]);
 
+  useEffect(
+    () => () => {
+      if (recognitionTimeoutRef.current != null) {
+        window.clearTimeout(recognitionTimeoutRef.current);
+      }
+      recognitionRef.current?.stop();
+    },
+    [],
+  );
+
   const cartQty = useCart((state) => state.getItemCount());
+  const addCartItem = useCart((state) => state.addItem);
 
   const stockByProductId = useMemo<Map<string, number>>(() => {
     const entries: Array<[string, number]> = (stocksData?.stocks ?? []).map(
@@ -195,6 +357,138 @@ const BrowsePage = () => {
       ? productsSource.filter((p) => p.visitorAccess)
       : productsSource;
   const showSkeleton = isProductsLoading && products.length === 0;
+  const isVoiceSupported =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as SpeechCapableWindow).SpeechRecognition ||
+        (window as SpeechCapableWindow).webkitSpeechRecognition,
+    );
+
+  const addVoiceParsedOrderToCart = (parsed: ParsedVoiceOrder) => {
+    if (!parsed.product) {
+      setLastVoiceResult("I couldn't match a product. Try saying the item name clearly.");
+      toast.error("Voice order failed: product not recognized");
+      return;
+    }
+
+    const product = parsed.product;
+    const availableSizes = product.sizes?.filter((size) => size !== NO_VARIANT_SIZE) ?? [];
+    let selectedVariant = NO_VARIANT_SIZE;
+
+    if (availableSizes.length > 0) {
+      if (!parsed.size) {
+        setLastVoiceResult(`Heard ${product.name}. Please include a size (small, medium, large).`);
+        toast.error(`Please say a size for ${product.name}`);
+        return;
+      }
+
+      const sizeMatch = availableSizes.find(
+        (size) => normalizeVoiceText(size) === normalizeVoiceText(parsed.size ?? ""),
+      );
+      if (!sizeMatch) {
+        setLastVoiceResult(
+          `${product.name} has sizes: ${availableSizes.join(", ")}. Please try again.`,
+        );
+        toast.error(`Invalid size for ${product.name}`);
+        return;
+      }
+
+      selectedVariant = sizeMatch;
+    }
+
+    if (!product.available && !product.preOrder) {
+      setLastVoiceResult(`${product.name} is not available right now.`);
+      toast.error(`${product.name} is unavailable`);
+      return;
+    }
+
+    addCartItem({
+      productId: product.backendId,
+      productName: product.name,
+      variant: selectedVariant,
+      pickupDate: new Date().toISOString().slice(0, 10),
+      quantity: parsed.quantity,
+    });
+
+    const sizeLabel = selectedVariant !== NO_VARIANT_SIZE ? ` (${selectedVariant})` : "";
+    setLastVoiceResult(`Added ${parsed.quantity} ${product.name}${sizeLabel} to cart.`);
+    toast.success(`Added ${parsed.quantity} ${product.name}${sizeLabel} to cart`);
+  };
+
+  const handleVoiceOrderClick = () => {
+    if (voiceState === "listening") {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const voiceWindow = window as SpeechCapableWindow;
+    const RecognitionCtor =
+      voiceWindow.SpeechRecognition ?? voiceWindow.webkitSpeechRecognition;
+
+    if (!RecognitionCtor) {
+      toast.error("Voice ordering is not supported on this browser.");
+      return;
+    }
+
+    try {
+      const recognition = new RecognitionCtor();
+      recognitionRef.current = recognition;
+      recognition.lang = "en-PH";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        setVoiceState("listening");
+        setLastVoiceResult("Listening... Say an order like '2 test booklet'.");
+      };
+
+      recognition.onerror = (event) => {
+        setVoiceState("idle");
+        if (event.error === "not-allowed") {
+          setLastVoiceResult("Microphone permission denied. Please allow microphone access.");
+          toast.error("Allow microphone permission for voice order");
+          return;
+        }
+        if (event.error === "no-speech") {
+          setLastVoiceResult("No speech detected. Please try again.");
+          return;
+        }
+        setLastVoiceResult(`Voice recognition error: ${event.error}`);
+        toast.error(`Voice recognition error: ${event.error}`);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0]?.transcript ?? "")
+          .join(" ")
+          .trim();
+
+        setLastTranscript(transcript);
+        setVoiceState("processing");
+        addVoiceParsedOrderToCart(parseVoiceOrder(transcript, products));
+        setVoiceState("idle");
+      };
+
+      recognition.onend = () => {
+        if (recognitionTimeoutRef.current != null) {
+          window.clearTimeout(recognitionTimeoutRef.current);
+          recognitionTimeoutRef.current = null;
+        }
+        setVoiceState((current) => (current === "processing" ? current : "idle"));
+      };
+
+      setLastTranscript("");
+      recognition.start();
+
+      recognitionTimeoutRef.current = window.setTimeout(() => {
+        recognition.stop();
+      }, kioskVoiceTimeoutMs);
+    } catch {
+      setVoiceState("idle");
+      toast.error("Unable to start voice recognition.");
+    }
+  };
 
   return (
     <>
@@ -211,18 +505,50 @@ const BrowsePage = () => {
             <ArrowLeft className="size-4" /> Back
           </button>
 
-          {/* Cart icon */}
-          <button
-            onClick={() => navigate("/kiosk/order/cart")}
-            className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40 transition-all active:scale-95"
-          >
-            <ShoppingCart className="size-5 text-white" />
-            {cartQty > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-emerald-500 font-serif text-[0.6rem] font-bold text-white shadow">
-                {cartQty}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleVoiceOrderClick}
+              disabled={!isVoiceSupported || isProductsLoading}
+              className={`relative flex h-11 items-center gap-2 rounded-full border px-3 backdrop-blur-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
+                voiceState === "listening"
+                  ? "border-red-300/40 bg-red-500/80 text-white animate-pulse"
+                  : "border-white/30 bg-black/50 text-white hover:bg-white/40"
+              }`}
+              title={
+                isVoiceSupported
+                  ? "Voice order (example: 2 test booklet)"
+                  : "Voice ordering not supported on this browser"
+              }
+            >
+              {voiceState === "processing" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : voiceState === "listening" ? (
+                <MicOff className="size-4" />
+              ) : (
+                <Mic className="size-4" />
+              )}
+              <span className="font-serif text-[0.65rem] font-semibold uppercase tracking-[0.15em]">
+                {voiceState === "listening"
+                  ? "Stop"
+                  : voiceState === "processing"
+                    ? "Parsing"
+                    : "Voice"}
               </span>
-            )}
-          </button>
+            </button>
+
+            <button
+              onClick={() => navigate("/kiosk/order/cart")}
+              className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40 transition-all active:scale-95"
+            >
+              <ShoppingCart className="size-5 text-white" />
+              {cartQty > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-emerald-500 font-serif text-[0.6rem] font-bold text-white shadow">
+                  {cartQty}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ── Title ── */}
@@ -235,6 +561,30 @@ const BrowsePage = () => {
               Showing items available for visitors
             </p>
           )}
+          <div className="mt-3 space-y-1">
+            <p className="font-serif text-xs uppercase tracking-[0.16em] text-[#07484A]/60">
+              Voice Order
+            </p>
+            <p className="font-serif text-sm text-[#07484A]/75">
+              Tap the mic and say: <span className="font-bold">2 test booklet</span> or{" "}
+              <span className="font-bold">1 PE uniform medium</span>
+            </p>
+            {(lastTranscript || lastVoiceResult) && (
+              <div className="rounded-xl border border-white/35 bg-white/35 px-3 py-2 shadow-[0_4px_14px_rgba(0,0,0,0.06)]">
+                {lastTranscript && (
+                  <p className="font-serif text-xs uppercase tracking-[0.14em] text-[#07484A]/60">
+                    Heard:{" "}
+                    <span className="normal-case tracking-normal">{lastTranscript}</span>
+                  </p>
+                )}
+                {lastVoiceResult && (
+                  <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]">
+                    {lastVoiceResult}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Product grid ── */}

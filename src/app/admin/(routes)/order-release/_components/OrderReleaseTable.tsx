@@ -8,22 +8,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, PackageCheck } from "lucide-react";
+import { CheckCircle2, Hammer, PackageCheck } from "lucide-react";
 import { Order, OrderStatus } from "./types";
 
 interface OrderReleaseTableProps {
   orders: Order[];
   status: OrderStatus;
   onReleaseClick?: (order: Order) => void;
+  onMarkReadyClick?: (order: Order) => void;
 }
 
 export const OrderReleaseTable = ({
   orders,
   status,
   onReleaseClick,
+  onMarkReadyClick,
 }: OrderReleaseTableProps) => {
   const emptyText =
-    status === "Ready" ? "No orders ready for pickup" : "No released orders";
+    status === "Processing"
+      ? "No orders currently being processed"
+      : status === "Ready"
+        ? "No orders ready for pickup"
+        : "No released orders";
 
   return (
     <Table>
@@ -47,7 +53,15 @@ export const OrderReleaseTable = ({
               <TableCell className="p-4 text-base">{order.quantity}</TableCell>
               <TableCell className="p-4 text-base">{order.pickupDate}</TableCell>
               <TableCell className="p-4">
-                {status === "Ready" && onReleaseClick ? (
+                {status === "Processing" && onMarkReadyClick ? (
+                  <Button
+                    onClick={() => onMarkReadyClick(order)}
+                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                  >
+                    <Hammer className="size-4" />
+                    Mark Ready
+                  </Button>
+                ) : status === "Ready" && onReleaseClick ? (
                   <Button
                     onClick={() => onReleaseClick(order)}
                     className="bg-[#07484A] hover:bg-[#07484A]/90 text-white"

@@ -17,6 +17,7 @@ enum OrderStage {
   TO_PAY
   PAID
   COMPLETED
+  CANCELLED
 }
 
 enum OrderReleaseStatus {
@@ -32,6 +33,7 @@ enum PaymentMethod {
 enum PaymentStatus {
   PENDING
   VERIFIED
+  DECLINED
 }
 
 enum StockStatus {

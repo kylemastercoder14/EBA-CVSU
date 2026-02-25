@@ -13,6 +13,7 @@ import { Order } from "./types";
 interface ReleaseOrderDialogProps {
   isOpen: boolean;
   order: Order | null;
+  mode?: "ready" | "release";
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isPending?: boolean;
@@ -21,19 +22,24 @@ interface ReleaseOrderDialogProps {
 export const ReleaseOrderDialog = ({
   isOpen,
   order,
+  mode = "release",
   onOpenChange,
   onConfirm,
   isPending = false,
 }: ReleaseOrderDialogProps) => {
+  const isMarkReady = mode === "ready";
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#D3E9FF] border-2 border-[#07484A]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-[#07484A]">
-            Release Order
+            {isMarkReady ? "Mark Order Ready" : "Release Order"}
           </DialogTitle>
           <DialogDescription className="text-[#07484A]/70">
-            Confirm that this order is being released to the customer.
+            {isMarkReady
+              ? "Confirm that this order has been processed and is now ready for pickup."
+              : "Confirm that this order is being released to the customer."}
           </DialogDescription>
         </DialogHeader>
         {order && (
@@ -78,10 +84,16 @@ export const ReleaseOrderDialog = ({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className={`${isMarkReady ? "bg-amber-500 hover:bg-amber-600" : "bg-green-600 hover:bg-green-700"} text-white`}
           >
             <PackageCheck className="h-4 w-4" />
-            {isPending ? "Releasing..." : "Release Order"}
+            {isPending
+              ? isMarkReady
+                ? "Updating..."
+                : "Releasing..."
+              : isMarkReady
+                ? "Mark Ready for Pickup"
+                : "Release Order"}
           </Button>
         </DialogFooter>
       </DialogContent>

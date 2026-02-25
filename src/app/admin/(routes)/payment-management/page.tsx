@@ -4,6 +4,7 @@ import { Heading } from "@/components/Heading";
 import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IconCash, IconCircleCheckFilled, IconDeviceMobile } from '@tabler/icons-react';
+import { DeclinePaymentDialog } from "./_components/DeclinePaymentDialog";
 import { PaymentTabContent } from "./_components/PaymentTabContent";
 import { VerifyPaymentDialog } from "./_components/VerifyPaymentDialog";
 import { Payment } from "./_components/types";
@@ -19,6 +20,7 @@ const Page = () => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [activeTab, setActiveTab] = useState<"gcash" | "cash">("gcash");
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+  const [isDeclineDialogOpen, setIsDeclineDialogOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery(orpc.payment.list.queryOptions());
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
@@ -30,11 +32,36 @@ const Page = () => {
         queryClient.invalidateQueries({
           queryKey: orpc.payment.list.queryKey(),
         });
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listMonitoring.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listRelease.queryKey(),
+        });
         setIsVerifyDialogOpen(false);
         setSelectedPayment(null);
       },
       onError: (error) => {
         toast.error(error.message || "Failed to verify payment");
+      },
+    }),
+  );
+
+  const declinePaymentMutation = useMutation(
+    orpc.payment.decline.mutationOptions({
+      onSuccess: (result) => {
+        toast.success(result.message || "Payment declined successfully");
+        queryClient.invalidateQueries({
+          queryKey: orpc.payment.list.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listMonitoring.queryKey(),
+        });
+        setIsDeclineDialogOpen(false);
+        setSelectedPayment(null);
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to decline payment");
       },
     }),
   );
@@ -82,12 +109,26 @@ const Page = () => {
     setIsVerifyDialogOpen(true);
   };
 
+  const handleDeclineClick = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setIsDeclineDialogOpen(true);
+  };
+
   const confirmVerify = () => {
     if (!selectedPayment) {
       return;
     }
 
     verifyPaymentMutation.mutate({
+      paymentId: selectedPayment.id,
+      actorName: "Admin",
+    });
+  };
+
+  const confirmDecline = () => {
+    if (!selectedPayment) return;
+
+    declinePaymentMutation.mutate({
       paymentId: selectedPayment.id,
       actorName: "Admin",
     });
@@ -140,6 +181,7 @@ const Page = () => {
               onPageChange={setCurrentPage}
               onItemsPerPageChange={handleItemsPerPageChange}
               onVerifyClick={handleVerifyClick}
+              onDeclineClick={handleDeclineClick}
             />
           </TabsContent>
 
@@ -160,6 +202,7 @@ const Page = () => {
               onPageChange={setCurrentPage}
               onItemsPerPageChange={handleItemsPerPageChange}
               onVerifyClick={handleVerifyClick}
+              onDeclineClick={handleDeclineClick}
             />
           </TabsContent>
         </Tabs>
@@ -179,6 +222,13 @@ const Page = () => {
         onOpenChange={setIsVerifyDialogOpen}
         onConfirm={confirmVerify}
         isPending={verifyPaymentMutation.isPending}
+      />
+      <DeclinePaymentDialog
+        isOpen={isDeclineDialogOpen}
+        payment={selectedPayment}
+        onOpenChange={setIsDeclineDialogOpen}
+        onConfirm={confirmDecline}
+        isPending={declinePaymentMutation.isPending}
       />
     </div>
   );

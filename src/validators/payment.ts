@@ -9,7 +9,7 @@ export const paymentListItemSchema = z.object({
   name: z.string(),
   amount: z.number(),
   reference: z.string(),
-  status: z.enum(["Pending", "Verified"]),
+  status: z.enum(["Pending", "Verified", "Declined"]),
   paymentMethod: z.enum(["GCash", "Cash"]),
 });
 
@@ -22,8 +22,16 @@ export const verifyPaymentInputSchema = z.object({
   actorName: z.string().min(1).optional(),
 });
 
+export const declinePaymentInputSchema = z.object({
+  paymentId: z.string().min(1, "Payment ID is required"),
+  actorName: z.string().min(1).optional(),
+  reason: z.string().trim().min(1).optional(),
+});
+
 export const verifyPaymentOutputSchema = z.object({
   success: z.boolean(),
   message: z.string(),
   payment: paymentListItemSchema,
 });
+
+export const declinePaymentOutputSchema = verifyPaymentOutputSchema;

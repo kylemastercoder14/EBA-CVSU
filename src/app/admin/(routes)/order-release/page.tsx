@@ -12,12 +12,16 @@ import { toast } from "sonner";
 const Page = () => {
   const queryClient = useQueryClient();
   const [readySearchQuery, setReadySearchQuery] = useState("");
+  const [processingSearchQuery, setProcessingSearchQuery] = useState("");
   const [releasedSearchQuery, setReleasedSearchQuery] = useState("");
+  const [processingCurrentPage, setProcessingCurrentPage] = useState(1);
   const [readyCurrentPage, setReadyCurrentPage] = useState(1);
   const [releasedCurrentPage, setReleasedCurrentPage] = useState(1);
+  const [processingItemsPerPage, setProcessingItemsPerPage] = useState(5);
   const [readyItemsPerPage, setReadyItemsPerPage] = useState(5);
   const [releasedItemsPerPage, setReleasedItemsPerPage] = useState(5);
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [releaseDialogMode, setReleaseDialogMode] = useState<"ready" | "release">("release");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { data, isLoading, isError } = useQuery(orpc.order.listRelease.queryOptions());
@@ -26,9 +30,19 @@ const Page = () => {
   const releaseOrderMutation = useMutation(
     orpc.order.updateStatus.mutationOptions({
       onSuccess: () => {
-        toast.success("Order released successfully");
+        toast.success(
+          releaseDialogMode === "ready"
+            ? "Order marked ready for pickup"
+            : "Order released successfully",
+        );
         queryClient.invalidateQueries({
           queryKey: orpc.order.listRelease.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listMonitoring.queryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: orpc.dashboard.summary.queryKey(),
         });
         setIsReleaseDialogOpen(false);
         setSelectedOrder(null);
@@ -37,6 +51,14 @@ const Page = () => {
         toast.error(error.message || "Failed to release order");
       },
     }),
+  );
+
+  const processingOrders = orders.filter(
+    (order) =>
+      order.status === "Processing" &&
+      (order.orderNumber.toLowerCase().includes(processingSearchQuery.toLowerCase()) ||
+        order.name.toLowerCase().includes(processingSearchQuery.toLowerCase()) ||
+        order.items.toLowerCase().includes(processingSearchQuery.toLowerCase()))
   );
 
   const readyOrders = orders.filter(
@@ -55,6 +77,14 @@ const Page = () => {
         order.items.toLowerCase().includes(releasedSearchQuery.toLowerCase()))
   );
 
+  const processingTotalPages = Math.ceil(processingOrders.length / processingItemsPerPage);
+  const processingStartIndex = (processingCurrentPage - 1) * processingItemsPerPage;
+  const processingEndIndex = processingStartIndex + processingItemsPerPage;
+  const currentProcessingOrders = processingOrders.slice(
+    processingStartIndex,
+    processingEndIndex,
+  );
+
   const readyTotalPages = Math.ceil(readyOrders.length / readyItemsPerPage);
   const readyStartIndex = (readyCurrentPage - 1) * readyItemsPerPage;
   const readyEndIndex = readyStartIndex + readyItemsPerPage;
@@ -68,6 +98,11 @@ const Page = () => {
     releasedEndIndex
   );
 
+  const handleProcessingItemsPerPageChange = (value: string) => {
+    setProcessingItemsPerPage(Number(value));
+    setProcessingCurrentPage(1);
+  };
+
   const handleReadyItemsPerPageChange = (value: string) => {
     setReadyItemsPerPage(Number(value));
     setReadyCurrentPage(1);
@@ -76,6 +111,11 @@ const Page = () => {
   const handleReleasedItemsPerPageChange = (value: string) => {
     setReleasedItemsPerPage(Number(value));
     setReleasedCurrentPage(1);
+  };
+
+  const handleProcessingSearchChange = (value: string) => {
+    setProcessingSearchQuery(value);
+    setProcessingCurrentPage(1);
   };
 
   const handleReadySearchChange = (value: string) => {
@@ -88,13 +128,30 @@ const Page = () => {
     setReleasedCurrentPage(1);
   };
 
+  const handleMarkReadyClick = (order: Order) => {
+    setSelectedOrder(order);
+    setReleaseDialogMode("ready");
+    setIsReleaseDialogOpen(true);
+  };
+
   const handleReleaseClick = (order: Order) => {
     setSelectedOrder(order);
+    setReleaseDialogMode("release");
     setIsReleaseDialogOpen(true);
   };
 
   const confirmRelease = () => {
     if (!selectedOrder) {
+      return;
+    }
+
+    if (releaseDialogMode === "ready") {
+      releaseOrderMutation.mutate({
+        orderId: selectedOrder.id,
+        stage: "PAID",
+        releaseStatus: "READY",
+        actorName: "Admin",
+      });
       return;
     }
 
@@ -112,6 +169,26 @@ const Page = () => {
         <Heading
           title="Order Release"
           description="Release orders that are ready for customer pickup"
+        />
+      </div>
+
+      <div className="mt-10">
+        <OrderReleaseSectionCard
+          title="Processing Orders"
+          description="Verified payments currently being processed by staff"
+          status="Processing"
+          orders={currentProcessingOrders}
+          searchQuery={processingSearchQuery}
+          currentPage={processingCurrentPage}
+          totalPages={processingTotalPages}
+          itemsPerPage={processingItemsPerPage}
+          startIndex={processingStartIndex}
+          endIndex={processingEndIndex}
+          totalFilteredItems={processingOrders.length}
+          onSearchChange={handleProcessingSearchChange}
+          onPageChange={setProcessingCurrentPage}
+          onItemsPerPageChange={handleProcessingItemsPerPageChange}
+          onMarkReadyClick={handleMarkReadyClick}
         />
       </div>
 
@@ -157,6 +234,7 @@ const Page = () => {
       <ReleaseOrderDialog
         isOpen={isReleaseDialogOpen}
         order={selectedOrder}
+        mode={releaseDialogMode}
         onOpenChange={setIsReleaseDialogOpen}
         onConfirm={confirmRelease}
         isPending={releaseOrderMutation.isPending}

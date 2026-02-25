@@ -20,7 +20,7 @@ export const dashboardRecentOrderSchema = z.object({
   schedule: z.string(),
   items: z.number().int().min(0),
   amount: z.number().min(0),
-  status: z.enum(["Pending", "Preparing", "Completed"]),
+  status: z.enum(["Pending", "To Pay", "Processing", "Ready", "Completed", "Cancelled"]),
 });
 
 export const listDashboardSummaryOutputSchema = z.object({

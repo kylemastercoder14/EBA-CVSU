@@ -26,10 +26,11 @@ import {
   createOrder,
   listOrdersByUser,
   listOrdersMonitoring,
+  listOrdersQueue,
   listOrdersRelease,
   updateOrderStatus,
 } from "@/router/order";
-import { listPayments, verifyPayment } from "@/router/payment";
+import { declinePayment, listPayments, verifyPayment } from "@/router/payment";
 import { listDashboardSummary } from "@/router/dashboard";
 import {
   createReplaceRequest,
@@ -76,12 +77,14 @@ export const router = {
     createKiosk: createKioskOrder,
     listByUser: listOrdersByUser,
     listMonitoring: listOrdersMonitoring,
+    listQueue: listOrdersQueue,
     listRelease: listOrdersRelease,
     updateStatus: updateOrderStatus,
   },
   payment: {
     list: listPayments,
     verify: verifyPayment,
+    decline: declinePayment,
   },
   dashboard: {
     summary: listDashboardSummary,

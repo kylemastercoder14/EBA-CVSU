@@ -11,6 +11,8 @@ import {
   createOrderOutputSchema,
   listOrdersMonitoringInputSchema,
   listOrdersMonitoringOutputSchema,
+  listOrdersQueueInputSchema,
+  listOrdersQueueOutputSchema,
   listOrdersReleaseInputSchema,
   listOrdersReleaseOutputSchema,
   listOrdersByUserInputSchema,
@@ -156,7 +158,12 @@ const createStaffNotifications = async (
   });
 };
 
-const mapOrderStageToTrackStage = (stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED", releaseStatus: "READY" | "RELEASED") => {
+const mapOrderStageToTrackStage = (
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
+  releaseStatus: "READY" | "RELEASED",
+  paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
+) => {
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "cancelled" as const;
   if (stage === "COMPLETED" || releaseStatus === "RELEASED") return "completed" as const;
   if (stage === "PAID" && releaseStatus === "READY") return "ready" as const;
   if (stage === "TO_PAY") return "preparing" as const;
@@ -164,12 +171,13 @@ const mapOrderStageToTrackStage = (stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "CO
 };
 
 const mapOrderStageToMonitoringStage = (
-  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED",
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
+  paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
 ) => {
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "Cancelled" as const;
+  if (stage === "TO_PAY" && paymentStatus === "VERIFIED") return "Processing" as const;
   if (stage === "TO_PAY") return "To Pay" as const;
-  if (stage === "PAID") return "Paid" as const;
-  if (stage === "COMPLETED") return "Completed" as const;
-  return "To Confirm" as const;
+  return "Pending" as const;
 };
 
 const formatOrderDate = (date: Date | null) => {
@@ -182,13 +190,55 @@ const formatOrderDate = (date: Date | null) => {
 };
 
 const mapOrderReleaseStatus = (
-  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED",
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
+  paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
   releaseStatus: "READY" | "RELEASED",
 ) => {
+  if (stage === "TO_PAY" && paymentStatus === "VERIFIED") {
+    return "Processing" as const;
+  }
   if (releaseStatus === "RELEASED" || stage === "COMPLETED") {
     return "Released" as const;
   }
   return "Ready" as const;
+};
+
+const mapOrderQueueStatus = (
+  stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
+  paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
+  releaseStatus: "READY" | "RELEASED",
+) => {
+  // Cancelled/declined orders are filtered out before queue mapping.
+  if (stage === "CANCELLED" || paymentStatus === "DECLINED") return "Pending" as const;
+  if (releaseStatus === "RELEASED") return "Released" as const;
+  if (stage === "COMPLETED") return "Released" as const;
+  if (stage === "TO_CONFIRM") return "Pending" as const;
+  if (stage === "TO_PAY") {
+    return paymentStatus === "VERIFIED" ? ("Preparing" as const) : ("To Pay" as const);
+  }
+  if (stage === "PAID") {
+    return releaseStatus === "READY" ? ("Ready" as const) : ("Preparing" as const);
+  }
+  return "Pending" as const;
+};
+
+const getManilaTodayRange = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const year = Number(parts.find((part) => part.type === "year")?.value ?? "0");
+  const month = Number(parts.find((part) => part.type === "month")?.value ?? "1");
+  const day = Number(parts.find((part) => part.type === "day")?.value ?? "1");
+
+  // Asia/Manila is UTC+08:00 (no DST)
+  const startUtc = new Date(Date.UTC(year, month - 1, day, -8, 0, 0, 0));
+  const endUtc = new Date(Date.UTC(year, month - 1, day + 1, -8, 0, 0, 0));
+
+  return { startUtc, endUtc };
 };
 
 const getStockStatus = (minStock: number, currentStock: number): StockStatus => {
@@ -212,6 +262,13 @@ export const listOrdersMonitoring = base
   .output(listOrdersMonitoringOutputSchema)
   .handler(async () => {
     const orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          { stage: "TO_CONFIRM" },
+          { stage: "TO_PAY" },
+          { stage: "CANCELLED" },
+        ],
+      },
       include: {
         user: {
           select: {
@@ -230,6 +287,7 @@ export const listOrdersMonitoring = base
         payment: {
           select: {
             method: true,
+            status: true,
           },
         },
       },
@@ -246,6 +304,7 @@ export const listOrdersMonitoring = base
           "-";
 
         const paymentMethod = order.paymentMethod ?? order.payment?.method ?? "CASH";
+        const paymentStatus = order.paymentStatus ?? order.payment?.status ?? "PENDING";
 
         return {
           id: order.id,
@@ -255,9 +314,13 @@ export const listOrdersMonitoring = base
           quantity: order.totalQuantity,
           paymentMethod: paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
           paymentStatus:
-            order.paymentStatus === "VERIFIED" ? ("Verified" as const) : ("Pending" as const),
+            paymentStatus === "VERIFIED"
+              ? ("Verified" as const)
+              : paymentStatus === "DECLINED"
+                ? ("Declined" as const)
+                : ("Pending" as const),
           pickupDate: formatOrderDate(order.pickupDate),
-          stage: mapOrderStageToMonitoringStage(order.stage),
+          stage: mapOrderStageToMonitoringStage(order.stage, paymentStatus),
         };
       }),
     };
@@ -277,6 +340,10 @@ export const listOrdersRelease = base
       where: {
         OR: [
           {
+            stage: "TO_PAY",
+            paymentStatus: "VERIFIED",
+          },
+          {
             stage: "PAID",
             releaseStatus: "READY",
           },
@@ -289,6 +356,11 @@ export const listOrdersRelease = base
         ],
       },
       include: {
+        payment: {
+          select: {
+            status: true,
+          },
+        },
         user: {
           select: {
             fullName: true,
@@ -323,9 +395,93 @@ export const listOrdersRelease = base
           items: itemsSummary,
           quantity: order.totalQuantity,
           pickupDate: formatOrderDate(order.pickupDate),
-          status: mapOrderReleaseStatus(order.stage, order.releaseStatus),
+          status: mapOrderReleaseStatus(
+            order.stage,
+            order.paymentStatus ?? order.payment?.status ?? "PENDING",
+            order.releaseStatus,
+          ),
         };
       }),
+    };
+  });
+
+export const listOrdersQueue = base
+  .route({
+    method: "GET",
+    path: "/orders/queue",
+    summary: "list orders for public queue display",
+    tags: ["orders"],
+  })
+  .input(listOrdersQueueInputSchema)
+  .output(listOrdersQueueOutputSchema)
+  .handler(async () => {
+    const { startUtc, endUtc } = getManilaTodayRange();
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: {
+          gte: startUtc,
+          lt: endUtc,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        payment: {
+          select: {
+            method: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 200,
+    });
+
+    return {
+      orders: orders
+        .map((order) => {
+          if (order.stage === "CANCELLED" || order.paymentStatus === "DECLINED") {
+            return null;
+          }
+        const itemsSummary =
+          order.itemsSummary?.trim() ||
+          order.orderItems.map((item) => item.product.name).join(", ") ||
+          "-";
+
+        const paymentMethod = order.paymentMethod ?? order.payment?.method ?? "CASH";
+        const paymentStatus = order.paymentStatus ?? order.payment?.status ?? "PENDING";
+
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.user.fullName,
+          itemsSummary,
+          quantity: order.totalQuantity,
+          paymentMethod: paymentMethod === "GCASH" ? ("GCash" as const) : ("Cash" as const),
+          paymentStatus:
+            paymentStatus === "VERIFIED" ? ("Verified" as const) : ("Pending" as const),
+          stage: order.stage,
+          releaseStatus: order.releaseStatus,
+          queueStatus: mapOrderQueueStatus(order.stage, paymentStatus, order.releaseStatus),
+          createdAt: order.createdAt.toISOString(),
+          pickupDate: formatOrderDate(order.pickupDate),
+        };
+      })
+        .filter((order): order is NonNullable<typeof order> => Boolean(order)),
     };
   });
 
@@ -370,7 +526,11 @@ export const listOrdersByUser = base
         orderedAt: order.createdAt.toISOString().slice(0, 10),
         paymentMethod: order.paymentMethod === "CASH" ? "Cash" : "GCash",
         paymentStatus: order.paymentStatus,
-        stage: mapOrderStageToTrackStage(order.stage, order.releaseStatus),
+        stage: mapOrderStageToTrackStage(
+          order.stage,
+          order.releaseStatus,
+          order.paymentStatus,
+        ),
         items: order.orderItems.map((item) => ({
           id: item.id,
           name: item.product.name,

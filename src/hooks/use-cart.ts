@@ -84,8 +84,8 @@ export const useCart = create<CartState>()(
         }));
       },
       clearCart: () => set({ items: [] }),
-      getItemCount: () =>
-        get().items.reduce((total, item) => total + item.quantity, 0),
+      // Badge/indicator count should reflect distinct cart lines, not summed quantity.
+      getItemCount: () => get().items.length,
     }),
     {
       name: CART_STORAGE_KEY,

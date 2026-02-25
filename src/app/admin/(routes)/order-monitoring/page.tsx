@@ -14,7 +14,7 @@ const Page = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [activeTab, setActiveTab] = useState<OrderStage>("To Confirm");
+  const [activeTab, setActiveTab] = useState<OrderStage>("Pending");
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
@@ -24,7 +24,7 @@ const Page = () => {
   const confirmOrderMutation = useMutation(
     orpc.order.updateStatus.mutationOptions({
       onSuccess: () => {
-        toast.success("Order confirmed successfully");
+        toast.success("Order moved to payment stage");
         queryClient.invalidateQueries({
           queryKey: orpc.order.listMonitoring.queryKey(),
         });
@@ -56,10 +56,10 @@ const Page = () => {
 
   // Count orders per stage
   const stageCounts: Record<OrderStage, number> = {
-    "To Confirm": orders.filter((o) => o.stage === "To Confirm").length,
+    Pending: orders.filter((o) => o.stage === "Pending").length,
     "To Pay": orders.filter((o) => o.stage === "To Pay").length,
-    "Paid": orders.filter((o) => o.stage === "Paid").length,
-    "Completed": orders.filter((o) => o.stage === "Completed").length,
+    Processing: orders.filter((o) => o.stage === "Processing").length,
+    Cancelled: orders.filter((o) => o.stage === "Cancelled").length,
   };
 
   // Reset to page 1 when items per page changes

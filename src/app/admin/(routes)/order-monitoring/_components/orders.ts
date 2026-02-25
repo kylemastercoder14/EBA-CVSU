@@ -10,7 +10,7 @@ export const initialOrders: Order[] = [
     paymentMethod: "GCash",
     paymentStatus: "Pending",
     pickupDate: "Dec 09, 2025",
-    stage: "To Confirm",
+    stage: "Pending",
   },
   {
     id: "2",
@@ -21,7 +21,7 @@ export const initialOrders: Order[] = [
     paymentMethod: "GCash",
     paymentStatus: "Pending",
     pickupDate: "Nov 26, 2025",
-    stage: "To Confirm",
+    stage: "Pending",
   },
   {
     id: "3",
@@ -32,7 +32,7 @@ export const initialOrders: Order[] = [
     paymentMethod: "Cash",
     paymentStatus: "Pending",
     pickupDate: "Nov 30, 2025",
-    stage: "To Confirm",
+    stage: "Pending",
   },
   {
     id: "4",
@@ -65,7 +65,7 @@ export const initialOrders: Order[] = [
     paymentMethod: "GCash",
     paymentStatus: "Verified",
     pickupDate: "Dec 18, 2025",
-    stage: "Paid",
+    stage: "Processing",
   },
   {
     id: "7",
@@ -76,7 +76,7 @@ export const initialOrders: Order[] = [
     paymentMethod: "Cash",
     paymentStatus: "Verified",
     pickupDate: "Dec 22, 2025",
-    stage: "Paid",
+    stage: "Processing",
   },
   {
     id: "8",
@@ -85,9 +85,9 @@ export const initialOrders: Order[] = [
     items: "School Uniform Set",
     quantity: 2,
     paymentMethod: "GCash",
-    paymentStatus: "Verified",
+    paymentStatus: "Declined",
     pickupDate: "Nov 15, 2025",
-    stage: "Completed",
+    stage: "Cancelled",
   },
   {
     id: "9",
@@ -96,9 +96,9 @@ export const initialOrders: Order[] = [
     items: "College Polo",
     quantity: 3,
     paymentMethod: "Cash",
-    paymentStatus: "Verified",
+    paymentStatus: "Declined",
     pickupDate: "Nov 20, 2025",
-    stage: "Completed",
+    stage: "Cancelled",
   },
   {
     id: "10",
@@ -107,8 +107,8 @@ export const initialOrders: Order[] = [
     items: "P.E. Uniform, Booklet",
     quantity: 4,
     paymentMethod: "GCash",
-    paymentStatus: "Verified",
+    paymentStatus: "Declined",
     pickupDate: "Nov 25, 2025",
-    stage: "Completed",
+    stage: "Cancelled",
   },
 ];

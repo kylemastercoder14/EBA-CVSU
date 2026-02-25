@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   IconClipboardCheck,
   IconCreditCard,
-  IconCircleCheck,
-  IconPackage,
+  IconProgressCheck,
+  IconX,
 } from "@tabler/icons-react";
 import { OrderTabContent } from "./OrderTabContent";
 import { Order, OrderStage } from "./types";
@@ -48,13 +48,13 @@ export const OrderStagesTabs = ({
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
       <TabsList className="w-full bg-[#E8E4DA] border-2 border-[#07484A] h-14! p-1 grid grid-cols-4">
         <TabsTrigger
-          value="To Confirm"
+          value="Pending"
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
           <IconClipboardCheck className="size-5" />
-          <span className="lg:block hidden">To Confirm</span>
+          <span className="lg:block hidden">Pending</span>
           <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs">
-            {stageCounts["To Confirm"]}
+            {stageCounts.Pending}
           </Badge>
         </TabsTrigger>
         <TabsTrigger
@@ -68,33 +68,33 @@ export const OrderStagesTabs = ({
           </Badge>
         </TabsTrigger>
         <TabsTrigger
-          value="Paid"
+          value="Processing"
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
-          <IconCircleCheck className="size-5" />
-          <span className="lg:block hidden">Paid</span>
+          <IconProgressCheck className="size-5" />
+          <span className="lg:block hidden">Processing</span>
           <Badge className="bg-purple-500 hover:bg-purple-500 text-white text-xs">
-            {stageCounts["Paid"]}
+            {stageCounts.Processing}
           </Badge>
         </TabsTrigger>
         <TabsTrigger
-          value="Completed"
+          value="Cancelled"
           className="h-full data-[state=active]:bg-white data-[state=active]:text-[#07484A] font-semibold text-sm"
         >
-          <IconPackage className="size-5" />
-          <span className="lg:block hidden">Completed</span>
-          <Badge className="bg-green-600 hover:bg-green-600 text-white text-xs">
-            {stageCounts["Completed"]}
+          <IconX className="size-5" />
+          <span className="lg:block hidden">Cancelled</span>
+          <Badge className="bg-red-500 hover:bg-red-500 text-white text-xs">
+            {stageCounts.Cancelled}
           </Badge>
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="To Confirm" className="mt-6">
+      <TabsContent value="Pending" className="mt-6">
         <OrderTabContent
           title="Order Confirmation"
-          description="Orders waiting for confirmation"
+          description="New orders awaiting admin confirmation"
           orders={currentOrders}
-          stage="To Confirm"
+          stage="Pending"
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -128,12 +128,12 @@ export const OrderStagesTabs = ({
         />
       </TabsContent>
 
-      <TabsContent value="Paid" className="mt-6">
+      <TabsContent value="Processing" className="mt-6">
         <OrderTabContent
-          title="Paid Orders"
-          description="Orders with verified payments ready for pickup"
+          title="Processing Orders"
+          description="Payments verified; staff are processing these orders"
           orders={currentOrders}
-          stage="Paid"
+          stage="Processing"
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}
@@ -147,12 +147,12 @@ export const OrderStagesTabs = ({
         />
       </TabsContent>
 
-      <TabsContent value="Completed" className="mt-6">
+      <TabsContent value="Cancelled" className="mt-6">
         <OrderTabContent
-          title="Completed Orders"
-          description="Successfully delivered orders"
+          title="Cancelled Orders"
+          description="Orders cancelled after payment review decline"
           orders={currentOrders}
-          stage="Completed"
+          stage="Cancelled"
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

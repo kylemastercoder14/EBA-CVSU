@@ -829,6 +829,7 @@ const Key = ({
     <div className={cn("rounded-[4px] p-[0.5px]", containerClassName)}>
       <button
         type="button"
+        data-keycode={keyCode}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
@@ -891,6 +892,7 @@ const ModifierKey = ({
     <div className={cn("rounded-[4px] p-[0.5px]", containerClassName)}>
       <button
         type="button"
+        data-keycode={keyCode}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}

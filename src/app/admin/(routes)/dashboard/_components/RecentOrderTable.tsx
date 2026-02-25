@@ -21,7 +21,7 @@ interface RecentOrderItem {
   schedule: string;
   items: number;
   amount: number;
-  status: "Pending" | "Preparing" | "Completed";
+  status: "Pending" | "To Pay" | "Processing" | "Ready" | "Completed" | "Cancelled";
 }
 
 interface RecentOrderTableProps {
@@ -36,8 +36,15 @@ const formatMoney = (value: number) =>
 
 const getBadgeVariant = (status: RecentOrderItem["status"]) => {
   if (status === "Completed") return "completed" as const;
-  if (status === "Preparing") return "preparing" as const;
+  if (status === "Processing" || status === "Ready") return "preparing" as const;
   return "pending" as const;
+};
+
+const getBadgeClassName = (status: RecentOrderItem["status"]) => {
+  if (status === "Cancelled") return "bg-red-500 text-white";
+  if (status === "To Pay") return "bg-orange-500 text-white";
+  if (status === "Ready") return "bg-emerald-600 text-white";
+  return "";
 };
 
 export const RecentOrderTable = ({ orders }: RecentOrderTableProps) => {
@@ -73,7 +80,12 @@ export const RecentOrderTable = ({ orders }: RecentOrderTableProps) => {
                     <TableCell className="p-4">{order.items}</TableCell>
                     <TableCell className="p-4">PHP {formatMoney(order.amount)}</TableCell>
                     <TableCell>
-                      <Badge variant={getBadgeVariant(order.status)}>{order.status}</Badge>
+                      <Badge
+                        variant={getBadgeVariant(order.status)}
+                        className={getBadgeClassName(order.status)}
+                      >
+                        {order.status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))

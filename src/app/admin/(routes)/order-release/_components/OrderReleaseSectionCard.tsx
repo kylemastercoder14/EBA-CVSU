@@ -26,6 +26,7 @@ interface OrderReleaseSectionCardProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onReleaseClick?: (order: Order) => void;
+  onMarkReadyClick?: (order: Order) => void;
 }
 
 export const OrderReleaseSectionCard = ({
@@ -44,6 +45,7 @@ export const OrderReleaseSectionCard = ({
   onPageChange,
   onItemsPerPageChange,
   onReleaseClick,
+  onMarkReadyClick,
 }: OrderReleaseSectionCardProps) => {
   return (
     <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
@@ -53,7 +55,12 @@ export const OrderReleaseSectionCard = ({
       </CardHeader>
       <CardContent className="p-0">
         <OrderReleaseSearchBar value={searchQuery} onChange={onSearchChange} />
-        <OrderReleaseTable orders={orders} status={status} onReleaseClick={onReleaseClick} />
+        <OrderReleaseTable
+          orders={orders}
+          status={status}
+          onReleaseClick={onReleaseClick}
+          onMarkReadyClick={onMarkReadyClick}
+        />
         <OrderReleasePagination
           currentPage={currentPage}
           totalPages={totalPages}

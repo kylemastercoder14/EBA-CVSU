@@ -20,6 +20,7 @@ interface PaymentTabContentProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onVerifyClick: (payment: Payment) => void;
+  onDeclineClick: (payment: Payment) => void;
 }
 
 export const PaymentTabContent = ({
@@ -38,6 +39,7 @@ export const PaymentTabContent = ({
   onPageChange,
   onItemsPerPageChange,
   onVerifyClick,
+  onDeclineClick,
 }: PaymentTabContentProps) => {
   return (
     <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
@@ -55,6 +57,7 @@ export const PaymentTabContent = ({
           payments={payments}
           paymentType={paymentType}
           onVerifyClick={onVerifyClick}
+          onDeclineClick={onDeclineClick}
         />
         <PaymentPagination
           currentPage={currentPage}

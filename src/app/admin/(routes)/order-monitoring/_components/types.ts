@@ -1,6 +1,6 @@
-export type OrderStage = "To Confirm" | "To Pay" | "Paid" | "Completed";
+export type OrderStage = "Pending" | "To Pay" | "Processing" | "Cancelled";
 export type PaymentMethod = "GCash" | "Cash";
-export type PaymentStatus = "Pending" | "Verified";
+export type PaymentStatus = "Pending" | "Verified" | "Declined";
 
 export type Order = {
   id: string;

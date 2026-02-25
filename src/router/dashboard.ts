@@ -70,6 +70,12 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
+          order: {
+            OR: [
+              { stage: "COMPLETED" },
+              { releaseStatus: "RELEASED" },
+            ],
+          },
         },
         _sum: {
           amount: true,
@@ -149,6 +155,12 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
+          order: {
+            OR: [
+              { stage: "COMPLETED" },
+              { releaseStatus: "RELEASED" },
+            ],
+          },
           createdAt: {
             gte: currentWindowStart,
           },
@@ -160,6 +172,12 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
+          order: {
+            OR: [
+              { stage: "COMPLETED" },
+              { releaseStatus: "RELEASED" },
+            ],
+          },
           createdAt: {
             gte: previousWindowStart,
             lt: currentWindowStart,
@@ -191,11 +209,17 @@ export const listDashboardSummary = base
       recentOrders: recentOrdersRaw.map((order) => {
         const amount = Number(order.payment?.amount ?? 0);
         const status =
-          order.stage === "COMPLETED" || order.releaseStatus === "RELEASED"
-            ? ("Completed" as const)
-            : order.stage === "PAID"
-              ? ("Preparing" as const)
-              : ("Pending" as const);
+          order.stage === "CANCELLED" || order.paymentStatus === "DECLINED"
+            ? ("Cancelled" as const)
+            : order.stage === "COMPLETED" || order.releaseStatus === "RELEASED"
+              ? ("Completed" as const)
+              : order.stage === "PAID"
+                ? ("Ready" as const)
+                : order.stage === "TO_PAY" && order.paymentStatus === "VERIFIED"
+                  ? ("Processing" as const)
+                  : order.stage === "TO_PAY"
+                    ? ("To Pay" as const)
+                    : ("Pending" as const);
 
         return {
           id: order.id,

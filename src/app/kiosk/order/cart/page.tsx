@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Check,
   EditIcon,
+  Minus,
+  Plus,
   ShoppingBag,
   ShoppingCart,
   Trash2,
@@ -139,12 +141,104 @@ const CartRow = ({
   </div>
 );
 
+const EditQuantityDialog = ({
+  open,
+  item,
+  quantity,
+  onClose,
+  onDecrease,
+  onIncrease,
+  onSave,
+}: {
+  open: boolean;
+  item: CartItemResolved | null;
+  quantity: number;
+  onClose: () => void;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  onSave: () => void;
+}) => (
+  <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+    <DialogContent className="w-[88vw]! max-w-lg! overflow-hidden rounded-3xl border border-white/30 bg-linear-to-b from-[#cce5f5] to-[#a8d0ee] p-0 shadow-[0_24px_60px_rgba(0,0,0,0.25)]">
+      <DialogHeader className="border-b border-[#07484A]/20 px-6 py-5">
+        <DialogTitle className="font-serif text-2xl font-extrabold tracking-tight text-[#07484A]">
+          Edit Quantity
+        </DialogTitle>
+      </DialogHeader>
+
+      <div className="space-y-5 px-6 py-5">
+        <div className="rounded-2xl border border-white/40 bg-white/35 p-4 shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
+          <p className="font-serif text-2xl font-bold leading-tight text-[#07484A]">
+            {item?.productName ?? "-"}
+          </p>
+          <p className="mt-1 font-serif text-base text-[#07484A]/65">
+            Size: {item?.variant ?? "-"}
+          </p>
+          <p className="font-serif text-base text-[#07484A]/65">
+            Pickup: {item?.pickupDate ?? "-"}
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/40 bg-white/30 p-5">
+          <span className="font-serif text-sm uppercase tracking-[0.22em] text-[#07484A]/60">
+            Quantity
+          </span>
+          <div className="flex items-center gap-4 rounded-full border border-white/50 bg-white/40 px-2 py-2 shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
+            <button
+              type="button"
+              onClick={onDecrease}
+              disabled={quantity <= 1}
+              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A] transition-all hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
+            >
+              <Minus className="size-5" />
+            </button>
+            <span className="w-10 text-center font-serif text-3xl font-bold text-[#07484A]">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              onClick={onIncrease}
+              disabled={quantity >= 99}
+              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A] transition-all hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
+            >
+              <Plus className="size-5" />
+            </button>
+          </div>
+          <p className="font-serif text-sm italic text-[#07484A]/55">
+            Maximum quantity per item is 99.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 border-t border-white/25 px-6 py-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-13 flex-1 rounded-2xl border-2 border-white/50 bg-white/35 font-serif text-sm font-semibold uppercase tracking-[0.14em] text-[#07484A] transition-all hover:bg-white/55 active:scale-[0.98]"
+        >
+          Cancel
+        </button>
+        <Button
+          type="button"
+          onClick={onSave}
+          className="h-13 flex-1 rounded-2xl border-0 bg-[#07484A] font-serif text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_24px_rgba(7,72,74,0.3)] transition-all hover:bg-[#0a5e60] active:scale-[0.98]"
+        >
+          Update
+        </Button>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 const CartPage = () => {
   const { navigate } = useTransitionNav();
   const cartItems = useCart((state) => state.items);
   const removeItem = useCart((state) => state.removeItem);
+  const updateItemQuantity = useCart((state) => state.updateItemQuantity);
   const [accepted, setAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CartItemResolved | null>(null);
+  const [editingQuantity, setEditingQuantity] = useState(1);
 
   const { data: productsData } = useQuery(orpc.product.list.queryOptions());
 
@@ -174,6 +268,29 @@ const CartPage = () => {
   const total = resolvedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const canProceed = resolvedItems.length > 0 && accepted;
 
+  const openEditDialog = (item: CartItemResolved) => {
+    setEditingItem(item);
+    setEditingQuantity(item.quantity);
+  };
+
+  const closeEditDialog = () => {
+    setEditingItem(null);
+    setEditingQuantity(1);
+  };
+
+  const saveEditedQuantity = () => {
+    if (!editingItem) return;
+    updateItemQuantity(
+      {
+        productId: editingItem.productId,
+        variant: editingItem.variant,
+        pickupDate: editingItem.pickupDate,
+      },
+      editingQuantity,
+    );
+    closeEditDialog();
+  };
+
   return (
     <>
       <main className="relative z-10 flex h-full flex-col overflow-hidden">
@@ -198,11 +315,7 @@ const CartPage = () => {
               <CartRow
                 key={`${item.productId}-${item.variant}-${item.pickupDate}`}
                 item={item}
-                onEdit={() =>
-                  navigate(
-                    `/kiosk/order/browse/${encodeURIComponent(item.productId)}?type=${type}&productId=${encodeURIComponent(item.productId)}`,
-                  )
-                }
+                onEdit={() => openEditDialog(item)}
                 onRemove={() =>
                   removeItem({
                     productId: item.productId,
@@ -274,6 +387,15 @@ const CartPage = () => {
         )}
       </main>
 
+      <EditQuantityDialog
+        open={Boolean(editingItem)}
+        item={editingItem}
+        quantity={editingQuantity}
+        onClose={closeEditDialog}
+        onDecrease={() => setEditingQuantity((qty) => Math.max(1, qty - 1))}
+        onIncrease={() => setEditingQuantity((qty) => Math.min(99, qty + 1))}
+        onSave={saveEditedQuantity}
+      />
       <TermsDialog open={termsOpen} onClose={() => setTermsOpen(false)} />
 
       <style>{`

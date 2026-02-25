@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { orpc } from "@/lib/orpc";
 
-type TrackStage = "to-pay" | "preparing" | "ready" | "completed";
+type TrackStage = "to-pay" | "preparing" | "ready" | "completed" | "cancelled";
 type PaymentMethod = "GCash" | "Cash";
 
 type TrackOrderItem = {
@@ -46,6 +46,7 @@ const tabs: Array<{ key: TrackStage; label: string }> = [
   { key: "preparing", label: "Preparing" },
   { key: "ready", label: "Ready for Pick Up" },
   { key: "completed", label: "Completed" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
 const formatMoney = (value: number) =>

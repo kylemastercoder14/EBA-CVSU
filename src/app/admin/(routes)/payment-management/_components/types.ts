@@ -1,4 +1,4 @@
-export type PaymentStatus = "Pending" | "Verified";
+export type PaymentStatus = "Pending" | "Verified" | "Declined";
 
 export type Payment = {
   id: string;

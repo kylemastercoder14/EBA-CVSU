@@ -18,6 +18,9 @@ interface OrderTableProps {
 
 export const OrderTable = ({ orders, stage, onConfirmClick }: OrderTableProps) => {
   const getPaymentStatusColor = (status: PaymentStatus) => {
+    if (status === "Declined") {
+      return "bg-red-500 hover:bg-red-500 text-white";
+    }
     return status === "Verified"
       ? "bg-green-500 hover:bg-green-500 text-white"
       : "bg-orange-400 hover:bg-orange-400 text-white";
@@ -27,7 +30,7 @@ export const OrderTable = ({ orders, stage, onConfirmClick }: OrderTableProps) =
     return method === "GCash" ? "text-blue-600" : "text-gray-700";
   };
 
-  const showActionColumn = stage === "To Confirm";
+  const showActionColumn = stage === "Pending";
   const colSpan = showActionColumn ? 8 : 7;
 
   return (

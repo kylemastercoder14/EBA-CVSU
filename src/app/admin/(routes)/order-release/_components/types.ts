@@ -1,4 +1,4 @@
-export type OrderStatus = "Ready" | "Released";
+export type OrderStatus = "Processing" | "Ready" | "Released";
 
 export type Order = {
   id: string;

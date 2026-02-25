@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
+  declinePaymentInputSchema,
+  declinePaymentOutputSchema,
   listPaymentsInputSchema,
   listPaymentsOutputSchema,
   verifyPaymentInputSchema,
@@ -13,7 +15,7 @@ const toPaymentListItem = (payment: {
   orderId: string;
   amount: number;
   reference: string;
-  status: "PENDING" | "VERIFIED";
+  status: "PENDING" | "VERIFIED" | "DECLINED";
   method: "GCASH" | "CASH";
   order: {
     orderNumber: string;
@@ -28,7 +30,12 @@ const toPaymentListItem = (payment: {
   name: payment.order.user.fullName,
   amount: payment.amount,
   reference: payment.reference,
-  status: payment.status === "VERIFIED" ? ("Verified" as const) : ("Pending" as const),
+  status:
+    payment.status === "VERIFIED"
+      ? ("Verified" as const)
+      : payment.status === "DECLINED"
+        ? ("Declined" as const)
+        : ("Pending" as const),
   paymentMethod: payment.method === "CASH" ? ("Cash" as const) : ("GCash" as const),
 });
 
@@ -193,8 +200,8 @@ export const verifyPayment = base
       });
 
       const nextStage =
-        payment.order.stage === "TO_PAY" || payment.order.stage === "TO_CONFIRM"
-          ? "PAID"
+        payment.order.stage === "TO_CONFIRM" || payment.order.stage === "TO_PAY"
+          ? "TO_PAY"
           : payment.order.stage;
 
       await tx.order.update({
@@ -219,7 +226,7 @@ export const verifyPayment = base
       await createSystemLog(tx, {
         type: "ORDER",
         category: "ORDER_RELEASED",
-        description: `Order "${payment.order.orderNumber}" payment marked verified and stage moved to ${nextStage}.`,
+        description: `Order "${payment.order.orderNumber}" payment marked verified and moved to processing.`,
         status: "INFO",
         actorName: input.actorName ?? "Admin",
         actorUserId: payment.order.userId,
@@ -238,6 +245,115 @@ export const verifyPayment = base
     return {
       success: true,
       message: "Payment verified successfully",
+      payment: toPaymentListItem({
+        id: updatedPayment.id,
+        orderId: updatedPayment.orderId,
+        amount: Number(updatedPayment.amount),
+        reference: updatedPayment.reference,
+        status: updatedPayment.status,
+        method: updatedPayment.method,
+        order: {
+          orderNumber: updatedPayment.order.orderNumber,
+          user: {
+            fullName: updatedPayment.order.user.fullName,
+          },
+        },
+      }),
+    };
+  });
+
+export const declinePayment = base
+  .route({
+    method: "PUT",
+    path: "/payments/{paymentId}/decline",
+    summary: "decline a payment and cancel the related order",
+    tags: ["payments"],
+  })
+  .input(declinePaymentInputSchema)
+  .output(declinePaymentOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const existingPayment = await prisma.payment.findUnique({
+      where: {
+        id: input.paymentId,
+      },
+      include: {
+        order: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existingPayment) {
+      throw errors.NOT_FOUND();
+    }
+
+    const updatedPayment = await prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.update({
+        where: { id: input.paymentId },
+        data: {
+          status: "DECLINED",
+          verifiedAt: null,
+        },
+        include: {
+          order: {
+            include: {
+              user: {
+                select: {
+                  fullName: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      await tx.order.update({
+        where: { id: payment.orderId },
+        data: {
+          paymentStatus: "DECLINED",
+          stage: "CANCELLED",
+        },
+      });
+
+      await createSystemLog(tx, {
+        type: "PAYMENT",
+        category: "PAYMENT_PENDING",
+        description: `Payment declined for order "${payment.order.orderNumber}" (${payment.reference})${input.reason ? `: ${input.reason}` : "."}`,
+        status: "WARNING",
+        actorName: input.actorName ?? "Admin",
+        actorUserId: payment.order.userId,
+        orderId: payment.orderId,
+        paymentId: payment.id,
+      });
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_RELEASED",
+        description: `Order "${payment.order.orderNumber}" was cancelled after payment review was declined.`,
+        status: "WARNING",
+        actorName: input.actorName ?? "Admin",
+        actorUserId: payment.order.userId,
+        orderId: payment.orderId,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "Payment Declined",
+        message: `Payment for order ${payment.order.orderNumber} was declined and the order was cancelled.`,
+        type: "WARNING",
+      });
+
+      return payment;
+    });
+
+    return {
+      success: true,
+      message: "Payment declined and order cancelled successfully",
       payment: toPaymentListItem({
         id: updatedPayment.id,
         orderId: updatedPayment.orderId,
