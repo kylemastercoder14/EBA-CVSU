@@ -621,6 +621,7 @@ const BrowsePage = () => {
   const [lastVoiceResult, setLastVoiceResult] = useState("");
   const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
   const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
+  const [isSpeakingVoiceSummary, setIsSpeakingVoiceSummary] = useState(false);
   const [voiceLogs, setVoiceLogs] = useState<VoiceOrderLog[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -787,6 +788,7 @@ const BrowsePage = () => {
       summaryAudioRef.current.pause();
       summaryAudioRef.current = null;
     }
+    setIsSpeakingVoiceSummary(false);
     if (summaryAudioUrlRef.current) {
       const staleUrl = summaryAudioUrlRef.current;
       summaryAudioUrlRef.current = null;
@@ -1075,6 +1077,7 @@ const BrowsePage = () => {
   };
 
   const speakVoiceDraftSummary = async () => {
+    if (isSpeakingVoiceSummary) return;
     if (voiceDrafts.length === 0) return;
 
     const summary = voiceDrafts
@@ -1091,7 +1094,9 @@ const BrowsePage = () => {
     const summaryText = `I heard: ${summary}. Please review before confirming.`;
 
     try {
+      setIsSpeakingVoiceSummary(true);
       cleanupSummaryAudio();
+      setIsSpeakingVoiceSummary(true);
 
       const response = await fetch("/api/queue/announce", {
         method: "POST",
@@ -1109,6 +1114,7 @@ const BrowsePage = () => {
       summaryAudioRef.current = audio;
       summaryAudioUrlRef.current = audioUrl;
       audio.onended = () => {
+        setIsSpeakingVoiceSummary(false);
         if (summaryAudioRef.current === audio) {
           summaryAudioRef.current = null;
         }
@@ -1120,8 +1126,12 @@ const BrowsePage = () => {
           }
         }
       };
+      audio.onerror = () => {
+        setIsSpeakingVoiceSummary(false);
+      };
       await audio.play();
     } catch {
+      setIsSpeakingVoiceSummary(false);
       speakVoiceDraftSummaryFallback(summary);
     }
   };
@@ -1480,11 +1490,15 @@ const BrowsePage = () => {
                     type="button"
                     variant="outline"
                     onClick={speakVoiceDraftSummary}
-                    disabled={voiceDrafts.length === 0}
+                    disabled={voiceDrafts.length === 0 || isSpeakingVoiceSummary}
                     className="h-11 rounded-2xl border-[#07484A]/20 bg-white/70 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white"
                   >
-                    <Volume2 className="mr-2 size-4" />
-                    Speak Summary
+                    {isSpeakingVoiceSummary ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Volume2 className="mr-2 size-4" />
+                    )}
+                    {isSpeakingVoiceSummary ? "Generating..." : "Speak Summary"}
                   </Button>
                 </div>
               )}
