@@ -1,3 +1,4 @@
+import "@/lib/orpc.server";
 import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
 import { LogsClient } from "./_components/LogsClient";
 import { orpc } from "@/lib/orpc";

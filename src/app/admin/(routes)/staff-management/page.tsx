@@ -1,3 +1,4 @@
+import "@/lib/orpc.server";
 import { StaffClient } from "./_components/StaffClient";
 import { orpc } from "@/lib/orpc";
 import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
