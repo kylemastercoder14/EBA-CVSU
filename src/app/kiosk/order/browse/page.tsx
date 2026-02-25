@@ -22,6 +22,7 @@ import { useCart } from "@/hooks/use-cart";
 import { toast } from "sonner";
 import { NO_VARIANT_SIZE } from "@/validators/products";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -227,7 +228,9 @@ const parseVoiceQuantity = (normalizedTranscript: string) => {
     }
 
     if (/^\d{1,2}$/.test(token)) {
-      const nextIsSizeToken = /^(xl|xxl|xxxl|\dxl|2xl|3xl|4xl|5xl)$/i.test(nextToken);
+      const nextIsSizeToken = /^(xl|xxl|xxxl|\dxl|2xl|3xl|4xl|5xl)$/i.test(
+        nextToken,
+      );
       if (nextIsSizeToken) {
         // "2 xl" is probably a size, not quantity.
         continue;
@@ -280,19 +283,22 @@ const fillerTokens = new Set([
 const genericProductTokens = new Set(["school", "official", "item"]);
 
 const tokenizeVoiceText = (value: string) =>
-  normalizeVoiceText(value)
-    .split(" ")
-    .filter(Boolean);
+  normalizeVoiceText(value).split(" ").filter(Boolean);
 
 const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
   const spacedNumericXl = normalizedTranscript.match(/\b([2-5])\s+xl\b/i)?.[1];
   if (spacedNumericXl) {
     return `${spacedNumericXl}xl`;
   }
+  if (/\b(to|too)\s+xl\b/i.test(normalizedTranscript)) {
+    return "2xl";
+  }
 
-  const tokenMatch = normalizedTranscript.match(
-    /\b(5xl|4xl|3xl|2xl|xxxl|xxl|xl|small|medium|large|sm|md|lg)\b/i,
-  )?.[1]?.toLowerCase();
+  const tokenMatch = normalizedTranscript
+    .match(
+      /\b(5xl|4xl|3xl|2xl|xxxl|xxl|xl|small|medium|large|sm|md|lg)\b/i,
+    )?.[1]
+    ?.toLowerCase();
   if (tokenMatch) {
     if (tokenMatch === "sm") return "small";
     if (tokenMatch === "md") return "medium";
@@ -328,7 +334,9 @@ const extractRequestedSizeFromTranscript = (normalizedTranscript: string) => {
     return raw;
   }
 
-  const shortMatch = normalizedTranscript.match(/\b(xs|sm|md|lg)\b/i)?.[1]?.toLowerCase();
+  const shortMatch = normalizedTranscript
+    .match(/\b(xs|sm|md|lg)\b/i)?.[1]
+    ?.toLowerCase();
   if (shortMatch) {
     if (shortMatch === "sm") return "small";
     if (shortMatch === "md") return "medium";
@@ -345,7 +353,8 @@ const buildSizeAliasKeys = (size: string) => {
 
   if (/\bsmall\b/.test(normalized)) aliases.add("small");
   if (/\bmedium\b/.test(normalized)) aliases.add("medium");
-  if (/\blarge\b/.test(normalized) && !/\bextra\b/.test(normalized)) aliases.add("large");
+  if (/\blarge\b/.test(normalized) && !/\bextra\b/.test(normalized))
+    aliases.add("large");
 
   const compact = normalized.replace(/[\s-]/g, "");
   const compactToKey: Record<string, string> = {
@@ -369,8 +378,13 @@ const buildSizeAliasKeys = (size: string) => {
   return aliases;
 };
 
-const resolveProductSizeFromTranscript = (product: DisplayProduct, normalizedTranscript: string) => {
-  const availableSizes = (product.sizes ?? []).filter((size) => size !== NO_VARIANT_SIZE);
+const resolveProductSizeFromTranscript = (
+  product: DisplayProduct,
+  normalizedTranscript: string,
+) => {
+  const availableSizes = (product.sizes ?? []).filter(
+    (size) => size !== NO_VARIANT_SIZE,
+  );
   if (availableSizes.length === 0) {
     return {
       requestedSize: null as string | null,
@@ -379,7 +393,8 @@ const resolveProductSizeFromTranscript = (product: DisplayProduct, normalizedTra
     };
   }
 
-  const requestedSize = extractRequestedSizeFromTranscript(normalizedTranscript);
+  const requestedSize =
+    extractRequestedSizeFromTranscript(normalizedTranscript);
   if (!requestedSize) {
     return {
       requestedSize: null,
@@ -388,7 +403,9 @@ const resolveProductSizeFromTranscript = (product: DisplayProduct, normalizedTra
     };
   }
 
-  const matchedSize = availableSizes.find((size) => buildSizeAliasKeys(size).has(requestedSize));
+  const matchedSize = availableSizes.find((size) =>
+    buildSizeAliasKeys(size).has(requestedSize),
+  );
   return {
     requestedSize,
     resolvedVariant: matchedSize ?? "",
@@ -396,7 +413,10 @@ const resolveProductSizeFromTranscript = (product: DisplayProduct, normalizedTra
   };
 };
 
-const scoreProductMatch = (product: DisplayProduct, normalizedTranscript: string) => {
+const scoreProductMatch = (
+  product: DisplayProduct,
+  normalizedTranscript: string,
+) => {
   const transcriptTokens = tokenizeVoiceText(normalizedTranscript).filter(
     (token) =>
       !fillerTokens.has(token) &&
@@ -421,7 +441,10 @@ const scoreProductMatch = (product: DisplayProduct, normalizedTranscript: string
   }
 
   const productTokens = new Set(
-    [...tokenizeVoiceText(product.name), ...tokenizeVoiceText(product.category)].filter(
+    [
+      ...tokenizeVoiceText(product.name),
+      ...tokenizeVoiceText(product.category),
+    ].filter(
       (token) => !fillerTokens.has(token) && !genericProductTokens.has(token),
     ),
   );
@@ -436,18 +459,32 @@ const scoreProductMatch = (product: DisplayProduct, normalizedTranscript: string
   const tokenCount = productTokens.size || 1;
   const hasUniformHint =
     productTokens.has("uniform") && normalizedTranscript.includes("uniform");
-  const hasPoloHint = productTokens.has("polo") && normalizedTranscript.includes("polo");
-  const hasCategoryHint = categoryNormalized && normalizedTranscript.includes(categoryNormalized);
+  const hasPoloHint =
+    productTokens.has("polo") && normalizedTranscript.includes("polo");
+  const hasCategoryHint =
+    categoryNormalized && normalizedTranscript.includes(categoryNormalized);
 
-  return overlap * 100 + Math.round((overlap / tokenCount) * 10) + (hasUniformHint ? 20 : 0) + (hasPoloHint ? 20 : 0) + (hasCategoryHint ? 10 : 0);
+  return (
+    overlap * 100 +
+    Math.round((overlap / tokenCount) * 10) +
+    (hasUniformHint ? 20 : 0) +
+    (hasPoloHint ? 20 : 0) +
+    (hasCategoryHint ? 10 : 0)
+  );
 };
 
-const parseVoiceOrder = (transcript: string, products: DisplayProduct[]): ParsedVoiceOrder => {
+const parseVoiceOrder = (
+  transcript: string,
+  products: DisplayProduct[],
+): ParsedVoiceOrder => {
   const normalized = normalizeVoiceText(transcript);
   const quantity = parseVoiceQuantity(normalized);
 
   const scored = products
-    .map((product) => ({ product, score: scoreProductMatch(product, normalized) }))
+    .map((product) => ({
+      product,
+      score: scoreProductMatch(product, normalized),
+    }))
     .sort((a, b) => b.score - a.score);
 
   const best = scored[0];
@@ -493,7 +530,12 @@ const ProductCard = ({
       {/* Image */}
       <div className="relative h-65 w-full overflow-hidden bg-white/40">
         {product.image ? (
-          <Image src={product.image} alt={product.name} fill className="object-contain p-3" />
+          <Image
+            src={product.image}
+            alt={product.name}
+            fill
+            className="object-contain p-3"
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <ShoppingBag className="size-12 text-[#07484A]/20" />
@@ -555,7 +597,9 @@ const BrowsePage = () => {
       sessionStorage.getItem(kioskUserTypeStorageKey);
     return fromStorage === "visitor" ? "visitor" : "student";
   });
-  const [voiceState, setVoiceState] = useState<"idle" | "listening" | "processing">("idle");
+  const [voiceState, setVoiceState] = useState<
+    "idle" | "listening" | "processing"
+  >("idle");
   const [lastTranscript, setLastTranscript] = useState("");
   const [lastVoiceResult, setLastVoiceResult] = useState("");
   const [voiceDrafts, setVoiceDrafts] = useState<VoiceOrderDraft[]>([]);
@@ -636,7 +680,10 @@ const BrowsePage = () => {
   const backendProducts = useMemo<DisplayProduct[]>(() => {
     const rows = productsData?.products ?? [];
     const staticIdByNameCategory = new Map(
-      PRODUCTS.map((p) => [`${p.name.toLowerCase()}::${p.category.toLowerCase()}`, p.id]),
+      PRODUCTS.map((p) => [
+        `${p.name.toLowerCase()}::${p.category.toLowerCase()}`,
+        p.id,
+      ]),
     );
 
     return rows
@@ -686,6 +733,19 @@ const BrowsePage = () => {
       (window as SpeechCapableWindow).SpeechRecognition ||
         (window as SpeechCapableWindow).webkitSpeechRecognition,
     );
+  const interpretedVoiceSummary = useMemo(() => {
+    if (voiceDrafts.length === 0) return "";
+    return voiceDrafts
+      .map((draft) => {
+        const productName = draft.product?.name ?? "Unknown item";
+        const size =
+          draft.resolvedVariant && draft.resolvedVariant !== NO_VARIANT_SIZE
+            ? ` (${draft.resolvedVariant})`
+            : "";
+        return `${draft.quantity} x ${productName}${size}`;
+      })
+      .join(", ");
+  }, [voiceDrafts]);
 
   const buildVoiceDraft = (parsed: ParsedVoiceOrder): VoiceOrderDraft => {
     if (!parsed.product) {
@@ -697,7 +757,8 @@ const BrowsePage = () => {
         resolvedVariant: "",
         availableSizes: [],
         canConfirm: false,
-        message: "I couldn't match a product. Try saying the item name clearly.",
+        message:
+          "I couldn't match a product. Try saying the item name clearly.",
       };
     }
 
@@ -720,7 +781,10 @@ const BrowsePage = () => {
       };
     }
 
-    if (sizeResolution.availableSizes.length > 0 && !sizeResolution.requestedSize) {
+    if (
+      sizeResolution.availableSizes.length > 0 &&
+      !sizeResolution.requestedSize
+    ) {
       return {
         transcript: parsed.transcript,
         quantity: parsed.quantity,
@@ -733,7 +797,10 @@ const BrowsePage = () => {
       };
     }
 
-    if (sizeResolution.availableSizes.length > 0 && !sizeResolution.resolvedVariant) {
+    if (
+      sizeResolution.availableSizes.length > 0 &&
+      !sizeResolution.resolvedVariant
+    ) {
       return {
         transcript: parsed.transcript,
         quantity: parsed.quantity,
@@ -770,7 +837,9 @@ const BrowsePage = () => {
     }
 
     const product = draft.product;
-    const availableSizes = (product.sizes ?? []).filter((size) => size !== NO_VARIANT_SIZE);
+    const availableSizes = (product.sizes ?? []).filter(
+      (size) => size !== NO_VARIANT_SIZE,
+    );
 
     if (!product.available && !product.preOrder) {
       return {
@@ -816,14 +885,16 @@ const BrowsePage = () => {
   };
 
   const appendVoiceLog = (entry: Omit<VoiceOrderLog, "id" | "timestamp">) => {
-    setVoiceLogs((current) => [
-      {
-        ...entry,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        timestamp: new Date().toISOString(),
-      },
-      ...current,
-    ].slice(0, 10));
+    setVoiceLogs((current) =>
+      [
+        {
+          ...entry,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          timestamp: new Date().toISOString(),
+        },
+        ...current,
+      ].slice(0, 10),
+    );
   };
 
   const updateVoiceDraftAt = (
@@ -837,7 +908,10 @@ const BrowsePage = () => {
     );
   };
 
-  const handleVoiceDraftQuantityChange = (index: number, nextQuantity: number) => {
+  const handleVoiceDraftQuantityChange = (
+    index: number,
+    nextQuantity: number,
+  ) => {
     updateVoiceDraftAt(index, (draft) => ({
       ...draft,
       quantity: Math.max(1, Math.min(99, nextQuantity)),
@@ -845,10 +919,16 @@ const BrowsePage = () => {
   };
 
   const handleVoiceDraftProductChange = (index: number, backendId: string) => {
-    const selectedProduct = products.find((product) => product.backendId === backendId) ?? null;
+    const selectedProduct =
+      products.find((product) => product.backendId === backendId) ?? null;
     updateVoiceDraftAt(index, (draft) => {
       if (!selectedProduct) {
-        return { ...draft, product: null, resolvedVariant: "", availableSizes: [] };
+        return {
+          ...draft,
+          product: null,
+          resolvedVariant: "",
+          availableSizes: [],
+        };
       }
       const availableSizes = (selectedProduct.sizes ?? []).filter(
         (size) => size !== NO_VARIANT_SIZE,
@@ -882,7 +962,9 @@ const BrowsePage = () => {
   };
 
   const removeVoiceDraftAt = (index: number) => {
-    setVoiceDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
+    setVoiceDrafts((current) =>
+      current.filter((_, draftIndex) => draftIndex !== index),
+    );
   };
 
   const speakVoiceDraftSummary = () => {
@@ -906,7 +988,10 @@ const BrowsePage = () => {
   };
 
   const confirmVoiceDraftAddToCart = () => {
-    if (voiceDrafts.length === 0 || voiceDrafts.some((draft) => !draft.canConfirm || !draft.product)) {
+    if (
+      voiceDrafts.length === 0 ||
+      voiceDrafts.some((draft) => !draft.canConfirm || !draft.product)
+    ) {
       return;
     }
 
@@ -971,7 +1056,9 @@ const BrowsePage = () => {
         setVoiceState("idle");
         setIsVoiceDialogOpen(true);
         if (event.error === "not-allowed") {
-          setLastVoiceResult("Microphone permission denied. Please allow microphone access.");
+          setLastVoiceResult(
+            "Microphone permission denied. Please allow microphone access.",
+          );
           appendVoiceLog({
             transcript: lastTranscript,
             status: "error",
@@ -1010,10 +1097,14 @@ const BrowsePage = () => {
         setVoiceDrafts(drafts);
         appendVoiceLog({
           transcript,
-          status: drafts.length > 0 && drafts.every((draft) => draft.canConfirm) ? "parsed" : "error",
+          status:
+            drafts.length > 0 && drafts.every((draft) => draft.canConfirm)
+              ? "parsed"
+              : "error",
           itemCount: drafts.length,
         });
-        const allValid = drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
+        const allValid =
+          drafts.length > 0 && drafts.every((draft) => draft.canConfirm);
         setLastVoiceResult(
           allValid
             ? "Review the parsed voice order and confirm to add to cart."
@@ -1028,7 +1119,9 @@ const BrowsePage = () => {
           window.clearTimeout(recognitionTimeoutRef.current);
           recognitionTimeoutRef.current = null;
         }
-        setVoiceState((current) => (current === "processing" ? current : "idle"));
+        setVoiceState((current) =>
+          current === "processing" ? current : "idle",
+        );
       };
 
       setLastTranscript("");
@@ -1048,9 +1141,7 @@ const BrowsePage = () => {
 
   return (
     <>
-
       <main className="relative z-10 flex h-full flex-col overflow-hidden">
-
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
           {/* Back */}
@@ -1173,28 +1264,29 @@ const BrowsePage = () => {
                   Voice Order Review
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm text-[#07484A]/70">
-                  Speak your order, review what was detected, then confirm to add it to cart.
+                  Speak your order, review what was detected, then confirm to
+                  add it to cart.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           <div className="space-y-4 px-6 py-5">
+            <div
+              className={`rounded-2xl border px-4 py-3 font-serif text-sm shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${
+                voiceState === "listening"
+                  ? "border-red-200 bg-red-50/95 text-red-900"
+                  : voiceState === "processing"
+                    ? "border-cyan-200 bg-cyan-50/95 text-cyan-900"
+                    : voiceDrafts.length > 0 &&
+                        voiceDrafts.every((draft) => draft.canConfirm)
+                      ? "border-emerald-200 bg-emerald-50/95 text-emerald-900"
+                      : "border-amber-200 bg-amber-50/95 text-amber-900"
+              }`}
+            >
+              {lastVoiceResult || "Tap the voice button to start speaking."}
+            </div>
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div
-                className={`rounded-2xl border px-4 py-3 font-serif text-sm shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${
-                  voiceState === "listening"
-                    ? "border-red-200 bg-red-50/95 text-red-900"
-                    : voiceState === "processing"
-                      ? "border-cyan-200 bg-cyan-50/95 text-cyan-900"
-                      : voiceDrafts.length > 0 && voiceDrafts.every((draft) => draft.canConfirm)
-                        ? "border-emerald-200 bg-emerald-50/95 text-emerald-900"
-                        : "border-amber-200 bg-amber-50/95 text-amber-900"
-                }`}
-              >
-                {lastVoiceResult || "Tap the voice button to start speaking."}
-              </div>
-
               {voiceState === "listening" && (
                 <Button
                   type="button"
@@ -1231,11 +1323,21 @@ const BrowsePage = () => {
 
             <div className="rounded-2xl border border-white/40 bg-white/55 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)] backdrop-blur-sm">
               <p className="font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
-                Heard
+                Heard (Raw Speech Transcript)
               </p>
               <p className="mt-1 font-serif text-base font-semibold text-[#07484A]">
                 {lastTranscript || "-"}
               </p>
+              {interpretedVoiceSummary && (
+                <>
+                  <p className="mt-2 font-serif text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#07484A]/55">
+                    Interpreted Order
+                  </p>
+                  <p className="mt-1 font-serif text-sm font-semibold text-[#07484A]/85">
+                    {interpretedVoiceSummary}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="rounded-2xl border border-white/40 bg-white/55 px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.04)] backdrop-blur-sm">
@@ -1250,8 +1352,9 @@ const BrowsePage = () => {
                     : "No parsed items yet."}
                 </p>
               ) : (
-                <div className="mt-3 space-y-3">
-                  {voiceDrafts.map((draft, index) => (
+                <ScrollArea className="mt-3 h-[340px] min-h-[220px] rounded-2xl border border-white/35 bg-white/25 p-2">
+                  <div className="space-y-3 pr-2">
+                    {voiceDrafts.map((draft, index) => (
                     <div
                       key={`${draft.transcript}-${index}`}
                       className={`rounded-2xl border p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03)] ${
@@ -1291,13 +1394,19 @@ const BrowsePage = () => {
                               <select
                                 value={draft.product?.backendId ?? ""}
                                 onChange={(event) =>
-                                  handleVoiceDraftProductChange(index, event.target.value)
+                                  handleVoiceDraftProductChange(
+                                    index,
+                                    event.target.value,
+                                  )
                                 }
                                 className="h-9 rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A] outline-none ring-0"
                               >
                                 <option value="">Select product...</option>
                                 {products.map((product) => (
-                                  <option key={product.backendId} value={product.backendId}>
+                                  <option
+                                    key={product.backendId}
+                                    value={product.backendId}
+                                  >
                                     {product.name}
                                   </option>
                                 ))}
@@ -1312,7 +1421,10 @@ const BrowsePage = () => {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleVoiceDraftQuantityChange(index, draft.quantity - 1)
+                                    handleVoiceDraftQuantityChange(
+                                      index,
+                                      draft.quantity - 1,
+                                    )
                                   }
                                   className="flex size-7 items-center justify-center rounded-md bg-[#EEF6F6] text-[#07484A] hover:bg-[#E4F0F0]"
                                 >
@@ -1324,7 +1436,10 @@ const BrowsePage = () => {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleVoiceDraftQuantityChange(index, draft.quantity + 1)
+                                    handleVoiceDraftQuantityChange(
+                                      index,
+                                      draft.quantity + 1,
+                                    )
                                   }
                                   className="flex size-7 items-center justify-center rounded-md bg-[#EEF6F6] text-[#07484A] hover:bg-[#E4F0F0]"
                                 >
@@ -1341,9 +1456,12 @@ const BrowsePage = () => {
                                 <select
                                   value={draft.resolvedVariant || ""}
                                   onChange={(event) =>
-                                    handleVoiceDraftSizeChange(index, event.target.value)
+                                    handleVoiceDraftSizeChange(
+                                      index,
+                                      event.target.value,
+                                    )
                                   }
-                                  className="h-9 min-w-[120px] rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A] outline-none ring-0"
+                                  className="h-9 min-w-30 rounded-lg border border-[#07484A]/15 bg-white px-2 text-sm text-[#07484A] outline-none ring-0"
                                 >
                                   <option value="">Select size...</option>
                                   {draft.availableSizes.map((size) => (
@@ -1361,7 +1479,8 @@ const BrowsePage = () => {
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
                             <p className="rounded-lg bg-white/65 px-2 py-1">
-                              <span className="font-semibold">Qty:</span> {draft.quantity}
+                              <span className="font-semibold">Qty:</span>{" "}
+                              {draft.quantity}
                             </p>
                             <p className="rounded-lg bg-white/65 px-2 py-1">
                               <span className="font-semibold">Requested:</span>{" "}
@@ -1401,8 +1520,9 @@ const BrowsePage = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </div>
 
@@ -1418,7 +1538,9 @@ const BrowsePage = () => {
                       className="rounded-lg bg-white/70 px-2 py-1 text-[#07484A]/85"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold capitalize">{log.status}</span>
+                        <span className="font-semibold capitalize">
+                          {log.status}
+                        </span>
                         <span className="text-[#07484A]/55">
                           {new Date(log.timestamp).toLocaleTimeString("en-US", {
                             hour: "2-digit",
@@ -1427,7 +1549,9 @@ const BrowsePage = () => {
                           })}
                         </span>
                       </div>
-                      <p className="truncate">{log.transcript || "(no transcript)"}</p>
+                      <p className="truncate">
+                        {log.transcript || "(no transcript)"}
+                      </p>
                     </div>
                   ))}
                 </div>
