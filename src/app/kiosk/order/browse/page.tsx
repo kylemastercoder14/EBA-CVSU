@@ -1531,7 +1531,7 @@ const BrowsePage = () => {
                     : "No parsed items yet."}
                 </p>
               ) : (
-                <ScrollArea className="mt-3 h-85 min-h-55 rounded-2xl border border-white/35 bg-white/25 p-2">
+                <ScrollArea className="mt-3 h-100 min-h-70 rounded-2xl border border-white/35 bg-white/25 p-2">
                   <div className="space-y-3 pr-2">
                     {voiceDrafts.map((draft, index) => (
                     <div
