@@ -1,22 +1,46 @@
 "use client";
 
-import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, QrCode } from "lucide-react";
 import Image from "next/image";
 
-// In production, generate QR dynamically based on order total
-const MOCK_TOTAL = 400;
-
-const steps = [
-  "Open your GCash app and scan the QR code above",
-  `Confirm the payment amount of ₱${MOCK_TOTAL.toFixed(2)}`,
-  "Complete the payment on your phone",
-  'Tap "Continue" below after payment is complete',
-];
+import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/use-cart";
+import { orpc } from "@/lib/orpc";
 
 const GCashQRPage = () => {
   const { navigate } = useTransitionNav();
+  const cartItems = useCart((state) => state.items);
+  const { data: productsData } = useQuery(orpc.product.list.queryOptions());
+
+  const totalAmount = useMemo(() => {
+    const products = productsData?.products ?? [];
+
+    return cartItems.reduce((sum, item) => {
+      const product = products.find((p) => p.id === item.productId);
+      const variantPrice = product?.variants.find(
+        (variant) => variant.size === item.variant,
+      )?.price;
+      const minPrice =
+        product && product.variants.length > 0
+          ? Math.min(...product.variants.map((variant) => variant.price))
+          : 0;
+      const unitPrice = Number(variantPrice ?? minPrice ?? 0);
+      return sum + unitPrice * item.quantity;
+    }, 0);
+  }, [cartItems, productsData?.products]);
+
+  const steps = useMemo(
+    () => [
+      "Open your GCash app and scan the QR code above",
+      `Confirm the payment amount of P${totalAmount.toFixed(2)}`,
+      "Complete the payment on your phone",
+      'Tap "Continue" below after payment is complete',
+    ],
+    [totalAmount],
+  );
 
   return (
     <>
@@ -47,7 +71,7 @@ const GCashQRPage = () => {
                 Scan QR Code to Pay
               </p>
               <p className="font-serif text-5xl font-extrabold text-white">
-                ₱{MOCK_TOTAL.toFixed(2)}
+                P{totalAmount.toFixed(2)}
               </p>
             </div>
 

@@ -198,7 +198,7 @@ export const buildReceiptHtml = (
       <div class="totals">TOTAL: PHP ${formatReceiptMoney(receipt.total)}</div>
 
       <div class="footer">
-        This receipt serves as proof of order and payment confirmation.
+        This receipt serves as proof of order.
       </div>
     </section>
   </body>
