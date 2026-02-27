@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeftIcon, EyeIcon, EyeOffIcon, UserIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { orpc } from "@/lib/orpc";
 
-const Page = () => {
+const PageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialIdentifier = searchParams.get("identifier")?.trim() ?? "";
@@ -235,5 +235,11 @@ const Page = () => {
     </div>
   );
 };
+
+const Page = () => (
+  <Suspense fallback={<div className="min-h-dvh bg-[#C8D6E4]" />}>
+    <PageContent />
+  </Suspense>
+);
 
 export default Page;

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -147,7 +147,7 @@ const statusBadgeClass = (status: MyReplaceRequest["status"]) => {
   return "bg-[#E8F0FA] text-[#245B6B]";
 };
 
-const Page = () => {
+const PageContent = () => {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [studentSession] = useState<StudentSession>(() => {
@@ -676,6 +676,12 @@ const Page = () => {
     </main>
   );
 };
+
+const Page = () => (
+  <Suspense fallback={<main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8" />}>
+    <PageContent />
+  </Suspense>
+);
 
 const replaceStatusLabelFromTrack = (stage: TrackStage) => {
   if (stage === "completed") return "Completed";
