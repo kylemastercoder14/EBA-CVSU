@@ -3,6 +3,7 @@ import { ReplacePagination } from "./ReplacePagination";
 import { ReplaceSearchBar } from "./ReplaceSearchBar";
 import { ReplaceTable } from "./ReplaceTable";
 import { ReplaceRequest, ReplaceRequestStatus } from "./types";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 interface ReplaceTabContentProps {
   title: string;
@@ -41,20 +42,27 @@ export const ReplaceTabContent = ({
   onItemsPerPageChange,
   onReviewClick,
 }: ReplaceTabContentProps) => {
+  const tableId = `admin-replace-${status.toLowerCase()}`;
+
   return (
     <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
       <CardHeader className="border-b-2 pb-4 border-[#07484A]">
-        <CardTitle className="text-[#07484A] text-xl">{title}</CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-[#07484A] text-xl">{title}</CardTitle>
+          <TablePrintButton targetId={tableId} title={title} />
+        </div>
         <CardDescription className="text-[#07484A]/70">{description}</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <ReplaceSearchBar value={searchQuery} onChange={onSearchChange} />
-        <ReplaceTable
-          requests={requests}
-          status={status}
-          isLoading={isLoading}
-          onReviewClick={onReviewClick}
-        />
+        <div id={tableId}>
+          <ReplaceTable
+            requests={requests}
+            status={status}
+            isLoading={isLoading}
+            onReviewClick={onReviewClick}
+          />
+        </div>
         <ReplacePagination
           currentPage={currentPage}
           totalPages={totalPages}

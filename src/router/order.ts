@@ -2,7 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { sendEbaSmsQueued, type EbaSmsSendResult } from "@/lib/eba-sms";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
-import { type StockStatus, type UserType } from "@/generated/prisma";
+import {
+  type PaymentMethod,
+  type StockStatus,
+  type UserType,
+} from "@/generated/prisma";
 import {
   checkOrderNumberExistsInputSchema,
   checkOrderNumberExistsOutputSchema,
@@ -209,7 +213,11 @@ const mapOrderStageToTrackStage = (
 ) => {
   if (stage === "CANCELLED" || paymentStatus === "DECLINED")
     return "cancelled" as const;
-  if (stage === "COMPLETED" || releaseStatus === "RELEASED")
+  if (
+    stage === "COMPLETED" &&
+    releaseStatus === "RELEASED" &&
+    paymentStatus === "VERIFIED"
+  )
     return "completed" as const;
   if (stage === "PAID" && releaseStatus === "READY") return "ready" as const;
   if (stage === "TO_PAY") return "preparing" as const;
@@ -219,10 +227,15 @@ const mapOrderStageToTrackStage = (
 const mapOrderStageToMonitoringStage = (
   stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
   paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
+  paymentMethod: PaymentMethod,
 ) => {
   if (stage === "CANCELLED" || paymentStatus === "DECLINED")
     return "Cancelled" as const;
-  if (stage === "TO_PAY" && paymentStatus === "VERIFIED")
+  if (
+    stage === "TO_PAY" &&
+    paymentStatus === "VERIFIED" &&
+    paymentMethod === "GCASH"
+  )
     return "Processing" as const;
   if (stage === "TO_PAY") return "To Pay" as const;
   return "Pending" as const;
@@ -241,11 +254,20 @@ const mapOrderReleaseStatus = (
   stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
   paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
   releaseStatus: "READY" | "RELEASED",
+  paymentMethod: PaymentMethod,
 ) => {
-  if (stage === "TO_PAY" && paymentStatus === "VERIFIED") {
+  if (
+    stage === "TO_PAY" &&
+    paymentStatus === "VERIFIED" &&
+    paymentMethod === "GCASH"
+  ) {
     return "Processing" as const;
   }
-  if (releaseStatus === "RELEASED" || stage === "COMPLETED") {
+  if (
+    stage === "COMPLETED" &&
+    releaseStatus === "RELEASED" &&
+    paymentStatus === "VERIFIED"
+  ) {
     return "Released" as const;
   }
   return "Ready" as const;
@@ -255,14 +277,21 @@ const mapOrderQueueStatus = (
   stage: "TO_CONFIRM" | "TO_PAY" | "PAID" | "COMPLETED" | "CANCELLED",
   paymentStatus: "PENDING" | "VERIFIED" | "DECLINED",
   releaseStatus: "READY" | "RELEASED",
+  paymentMethod: PaymentMethod,
 ) => {
   // Cancelled/declined orders are filtered out before queue mapping.
   if (stage === "CANCELLED" || paymentStatus === "DECLINED")
     return "Pending" as const;
-  if (releaseStatus === "RELEASED") return "Released" as const;
-  if (stage === "COMPLETED") return "Released" as const;
+  if (
+    stage === "COMPLETED" &&
+    releaseStatus === "RELEASED" &&
+    paymentStatus === "VERIFIED"
+  ) {
+    return "Released" as const;
+  }
   if (stage === "TO_CONFIRM") return "Pending" as const;
   if (stage === "TO_PAY") {
+    if (paymentMethod === "CASH") return "To Pay" as const;
     return paymentStatus === "VERIFIED"
       ? ("Preparing" as const)
       : ("To Pay" as const);
@@ -381,7 +410,11 @@ export const listOrdersMonitoring = base
                 ? ("Declined" as const)
                 : ("Pending" as const),
           pickupDate: formatOrderDate(order.pickupDate),
-          stage: mapOrderStageToMonitoringStage(order.stage, paymentStatus),
+          stage: mapOrderStageToMonitoringStage(
+            order.stage,
+            paymentStatus,
+            paymentMethod,
+          ),
         };
       }),
     };
@@ -403,6 +436,7 @@ export const listOrdersRelease = base
           {
             stage: "TO_PAY",
             paymentStatus: "VERIFIED",
+            paymentMethod: "GCASH",
           },
           {
             stage: "PAID",
@@ -460,6 +494,7 @@ export const listOrdersRelease = base
             order.stage,
             order.paymentStatus ?? order.payment?.status ?? "PENDING",
             order.releaseStatus,
+            order.paymentMethod ?? "CASH",
           ),
         };
       }),
@@ -551,6 +586,7 @@ export const listOrdersQueue = base
               order.stage,
               paymentStatus,
               order.releaseStatus,
+              paymentMethod,
             ),
             createdAt: order.createdAt.toISOString(),
             pickupDate: formatOrderDate(order.pickupDate),
@@ -705,6 +741,28 @@ export const createOrder = base
         };
       }),
     );
+
+    const orderProductIds = Array.from(
+      new Set(itemsWithPricing.map((item) => item.productId)),
+    );
+    const stockRows = await prisma.stockItem.findMany({
+      where: { productId: { in: orderProductIds } },
+      select: { productId: true, currentStock: true },
+    });
+
+    if (stockRows.length !== orderProductIds.length) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const stockByProductId = new Map(
+      stockRows.map((row) => [row.productId, row.currentStock]),
+    );
+    const hasPreOrderItems = orderProductIds.some(
+      (productId) => (stockByProductId.get(productId) ?? 0) <= 0,
+    );
+    if (hasPreOrderItems && input.paymentMethod !== "GCASH") {
+      throw errors.BAD_REQUEST();
+    }
 
     const totalQuantity = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity,
@@ -962,6 +1020,29 @@ export const createKioskOrder = base
       }),
     );
 
+    const orderProductIds = Array.from(
+      new Set(itemsWithPricing.map((item) => item.productId)),
+    );
+    const stockRows = await prisma.stockItem.findMany({
+      where: { productId: { in: orderProductIds } },
+      select: { productId: true, currentStock: true },
+    });
+
+    if (stockRows.length !== orderProductIds.length) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const stockByProductId = new Map(
+      stockRows.map((row) => [row.productId, row.currentStock]),
+    );
+    const hasPreOrderItems = orderProductIds.some(
+      (productId) => (stockByProductId.get(productId) ?? 0) <= 0,
+    );
+    // Kiosk mode does not allow pre-orders.
+    if (hasPreOrderItems) {
+      throw errors.BAD_REQUEST();
+    }
+
     const totalQuantity = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity,
       0,
@@ -1131,9 +1212,25 @@ export const updateOrderStatus = base
       throw errors.NOT_FOUND();
     }
 
-    const nextStage = input.stage ?? existingOrder.stage;
+    const requestedStage = input.stage ?? existingOrder.stage;
+    const requestedReleaseStatus =
+      input.releaseStatus ?? existingOrder.releaseStatus;
+    const requestedPaymentStatus =
+      input.paymentStatus ?? existingOrder.paymentStatus;
+    const nextStage = requestedStage;
+    const nextReleaseStatus =
+      requestedStage === "COMPLETED" ? "RELEASED" : requestedReleaseStatus;
+    const nextPaymentStatus =
+      requestedStage === "COMPLETED" ? "VERIFIED" : requestedPaymentStatus;
     const shouldDeductStock =
-      existingOrder.stage !== "COMPLETED" && nextStage === "COMPLETED";
+      !(
+        existingOrder.stage === "COMPLETED" &&
+        existingOrder.releaseStatus === "RELEASED" &&
+        existingOrder.paymentStatus === "VERIFIED"
+      ) &&
+      nextStage === "COMPLETED" &&
+      nextReleaseStatus === "RELEASED" &&
+      nextPaymentStatus === "VERIFIED";
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       if (shouldDeductStock) {
@@ -1217,13 +1314,9 @@ export const updateOrderStatus = base
       const order = await tx.order.update({
         where: { id: input.orderId },
         data: {
-          ...(input.stage ? { stage: input.stage } : {}),
-          ...(input.releaseStatus
-            ? { releaseStatus: input.releaseStatus }
-            : {}),
-          ...(input.paymentStatus
-            ? { paymentStatus: input.paymentStatus }
-            : {}),
+          stage: nextStage,
+          releaseStatus: nextReleaseStatus,
+          paymentStatus: nextPaymentStatus,
         },
       });
 

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 type StockSortOption = "product_asc" | "id_asc" | "stock_desc" | "stock_asc";
 
@@ -180,12 +181,17 @@ export const StockClient = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="mt-3 flex justify-end">
+              <TablePrintButton targetId="admin-stock-table" title="Stock Management" />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <StockTable
-              stockData={currentStockData}
-              onEdit={handleEdit}
-            />
+            <div id="admin-stock-table">
+              <StockTable
+                stockData={currentStockData}
+                onEdit={handleEdit}
+              />
+            </div>
             <StockPagination
               currentPage={currentPage}
               totalPages={totalPages}

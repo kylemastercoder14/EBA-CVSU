@@ -91,7 +91,8 @@ const Page = () => {
     return realVariants.find((variant) => variant.size === activeSize);
   }, [activeSize, realVariants]);
 
-  const available = Boolean(product?.isActive) && currentStock > 0;
+  const isOrderable = Boolean(product?.isActive);
+  const isPreOrder = isOrderable && currentStock <= 0;
   const unitPrice =
     selectedVariant?.price ??
     (hasVariants ? realVariants[0]?.price ?? 0 : fallbackVariant?.price ?? 0);
@@ -172,12 +173,16 @@ const Page = () => {
                   </span>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold sm:text-sm ${
-                      available
+                      isOrderable
                         ? "bg-[#075A5C] text-[#DDFFFE]"
                         : "bg-[#8F8F8F] text-[#F1F1F1]"
                     }`}
                   >
-                    {available ? `Available • Stock ${currentStock}` : "Not Available"}
+                    {isOrderable
+                      ? isPreOrder
+                        ? "Pre-Order"
+                        : `Available • Stock ${currentStock}`
+                      : "Not Available"}
                   </span>
                 </div>
               </section>
@@ -262,22 +267,31 @@ const Page = () => {
                     <button
                       type="button"
                       onClick={handleAddOrder}
-                      disabled={!available}
+                      disabled={!isOrderable}
                       className={`inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold sm:h-14 sm:gap-3 sm:text-base lg:text-lg ${
-                        available
+                        isOrderable
                           ? "bg-[#075A5C] text-white hover:bg-[#064F51]"
                           : "cursor-not-allowed bg-[#8F8F8F] text-[#E8E8E8]"
                       }`}
                     >
                       <ShoppingCartIcon className="size-5 sm:size-6" />
-                      {available ? "Add Order" : "Not Available"}
+                      {isOrderable
+                        ? isPreOrder
+                          ? "Add Pre-Order"
+                          : "Add Order"
+                        : "Not Available"}
                     </button>
                     <p className="text-xs text-[#335D69] sm:text-sm">
                       Cart items: <span className="font-semibold">{getItemCount()}</span>
                     </p>
-                    {!available && (
+                    {!isOrderable && (
                       <p className="text-sm text-[#7D2D2D]">
-                        This product is currently out of stock.
+                        This product is currently not available for ordering.
+                      </p>
+                    )}
+                    {isOrderable && isPreOrder && (
+                      <p className="text-sm text-[#0B525B]">
+                        This item is available as pre-order only.
                       </p>
                     )}
                   </div>

@@ -96,7 +96,14 @@ const Page = () => {
   const clearCart = useCart((state) => state.clearCart);
 
   const { data } = useQuery(orpc.product.list.queryOptions());
+  const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
   const products = useMemo(() => data?.products ?? [], [data?.products]);
+  const stockByProductId = useMemo<Map<string, number>>(() => {
+    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
+      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
+    );
+    return new Map<string, number>(entries);
+  }, [stockData]);
 
   const itemSummaries = useMemo<ItemSummary[]>(() => {
     return items.map((item) => {
@@ -115,6 +122,14 @@ const Page = () => {
     return itemSummaries.reduce((sum, item) => sum + item.lineTotal, 0);
   }, [itemSummaries]);
 
+  const hasPreOrderItems = useMemo(
+    () =>
+      items.some(
+        (item) => (stockByProductId.get(item.productId) ?? Number.POSITIVE_INFINITY) <= 0,
+      ),
+    [items, stockByProductId],
+  );
+
   const displayItems = confirmedItems.length > 0 ? confirmedItems : itemSummaries;
   const displayTotal = createdOrder ? confirmedTotal : totalAmount;
   const displayOrderNumber = createdOrder?.orderNumber ?? fallbackOrderNumber;
@@ -131,6 +146,11 @@ const Page = () => {
     if (!studentSession.id) {
       toast.error("Session expired. Please login again.");
       router.push("/");
+      return null;
+    }
+
+    if (hasPreOrderItems && paymentMethod === "CASH") {
+      toast.error("Pre-order items require GCash payment.");
       return null;
     }
 
@@ -222,6 +242,28 @@ const Page = () => {
             className="mt-6 rounded-full bg-[#075A5C] px-6 py-2.5 text-base font-semibold sm:py-3 sm:text-lg"
           >
             Back to payment methods
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (isCash && hasPreOrderItems) {
+    return (
+      <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto mt-8 max-w-3xl rounded-[24px] border-2 border-[#0B525B] bg-[#BBD2E7] p-5 text-center sm:mt-10 sm:rounded-[30px] sm:border-3 sm:p-6 lg:mt-12 lg:rounded-[34px] lg:border-4 lg:p-8">
+          <h1 className="font-serif text-2xl font-bold text-[#0B525B] sm:text-3xl lg:text-4xl">
+            GCash Required
+          </h1>
+          <p className="mt-4 text-base text-[#285F6B] sm:text-lg lg:text-xl">
+            Your cart contains pre-order items. Please use GCash to continue.
+          </p>
+          <Button
+            type="button"
+            onClick={() => router.push("/payment-method/gcash")}
+            className="mt-8 rounded-full bg-[#075A5C] px-6 py-2.5 text-base font-semibold sm:py-3 sm:text-lg"
+          >
+            Continue with GCash
           </Button>
         </div>
       </main>

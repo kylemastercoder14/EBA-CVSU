@@ -80,6 +80,9 @@ const Page = () => {
       input: { userId },
     }),
     enabled: Boolean(userId),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 
   const orders = useMemo<TrackOrder[]>(() => {

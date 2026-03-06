@@ -520,7 +520,7 @@ const ProductCard = ({
   product: DisplayProduct;
   onClick: () => void;
 }) => {
-  const isUnavailableOnly = !product.available && !product.preOrder;
+  const isUnavailableOnly = !product.available;
 
   return (
     <button
@@ -566,15 +566,9 @@ const ProductCard = ({
         <span className="mt-1 font-serif text-sm font-semibold text-[#07484A]/80">
           ₱{product.price.toFixed(2)}
         </span>
-        {product.preOrder ? (
-          <span className="mt-1.5 rounded-lg bg-[#07484A] py-3 text-center font-serif text-[0.6rem] font-bold uppercase tracking-wider text-white">
-            Pre-Order Available
-          </span>
-        ) : (
-          <span className="mt-1.5 rounded-lg bg-[#07484A] py-3 text-center font-serif text-[0.6rem] font-bold uppercase tracking-wider text-white">
-            Order Now
-          </span>
-        )}
+        <span className="mt-1.5 rounded-lg bg-[#07484A] py-3 text-center font-serif text-[0.6rem] font-bold uppercase tracking-wider text-white">
+          Order Now
+        </span>
       </div>
     </button>
   );
@@ -737,7 +731,7 @@ const BrowsePage = () => {
           image: product.image || "",
           visitorAccess: product.isVisitorOrderable,
           available: stock > 0,
-          preOrder: stock <= 0,
+          preOrder: false,
           stockCount: stock,
           sizes: product.variants.map((variant) => variant.size),
         };
@@ -879,7 +873,7 @@ const BrowsePage = () => {
       normalizeVoiceText(parsed.transcript),
     );
 
-    if (!product.available && !product.preOrder) {
+    if (!product.available) {
       return {
         transcript: parsed.transcript,
         quantity: parsed.quantity,
@@ -952,7 +946,7 @@ const BrowsePage = () => {
       (size) => size !== NO_VARIANT_SIZE,
     );
 
-    if (!product.available && !product.preOrder) {
+    if (!product.available) {
       return {
         ...draft,
         availableSizes,

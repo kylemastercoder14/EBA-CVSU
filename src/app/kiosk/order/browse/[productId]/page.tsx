@@ -78,7 +78,7 @@ const ProductDetailPage = () => {
         price: Number(variant.price),
       })),
       available: row.isActive && stockCount > 0,
-      preOrder: stockCount <= 0,
+      preOrder: false,
       stockCount,
     };
   }, [backendId, productsData, stockByProductId]);
@@ -224,11 +224,6 @@ const ProductDetailPage = () => {
                   In Stock
                 </span>
               )}
-              {product.preOrder && (
-                <span className="rounded-full bg-[#07484A] px-2.5 py-0.5 font-serif text-[0.6rem] font-bold uppercase tracking-wider text-white">
-                  Pre-Order
-                </span>
-              )}
             </div>
 
             <h1 className="font-serif text-5xl font-extrabold leading-tight tracking-tight text-[#07484A] drop-shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
@@ -321,7 +316,7 @@ const ProductDetailPage = () => {
                 ? "Added!"
                 : product.available
                   ? "Add to Order"
-                  : "Pre-Order"}
+                  : "Unavailable"}
             </Button>
           </div>
         </div>

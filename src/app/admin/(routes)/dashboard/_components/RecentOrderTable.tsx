@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 interface RecentOrderItem {
   id: string;
@@ -57,12 +58,15 @@ export const RecentOrderTable = ({
     <div className="mt-10">
       <Card className="border-3 border-[#07484A] bg-[#D3E9FF]">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold tracking-tight text-[#07484A]">
-            Recent Orders
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-2xl font-semibold tracking-tight text-[#07484A]">
+              Recent Orders
+            </CardTitle>
+            <TablePrintButton targetId="admin-dashboard-recent-orders" title="Recent Orders" />
+          </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent id="admin-dashboard-recent-orders">
           <Table>
             <TableHeader className="bg-[#07484A38]">
               <TableRow>

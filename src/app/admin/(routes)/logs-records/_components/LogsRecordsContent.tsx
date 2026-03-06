@@ -4,6 +4,7 @@ import { LogsRecordsPagination } from "./LogsRecordsPagination";
 import { LogsRecordsTable } from "./LogsRecordsTable";
 import { LogRecord } from "./types";
 import { LogCategory, LogType } from "@/generated/prisma";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 type TypeFilter = LogType | "all";
 type CategoryFilter = LogCategory | "all";
@@ -65,7 +66,12 @@ export const LogsRecordsContent = ({
 
       <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
         <CardContent className="p-0">
-          <LogsRecordsTable logs={logs} isLoading={isLoading} />
+          <div className="flex justify-end px-4 pt-4">
+            <TablePrintButton targetId="admin-logs-table" title="Logs and Records" />
+          </div>
+          <div id="admin-logs-table">
+            <LogsRecordsTable logs={logs} isLoading={isLoading} />
+          </div>
           <LogsRecordsPagination
             currentPage={currentPage}
             totalPages={totalPages}

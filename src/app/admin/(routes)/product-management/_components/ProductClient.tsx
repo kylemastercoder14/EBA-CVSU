@@ -30,6 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 type ProductSortOption = "name_asc" | "name_desc" | "id_asc" | "category_asc";
 
@@ -177,13 +178,18 @@ export const ProductClient = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="mt-3 flex justify-end">
+              <TablePrintButton targetId="admin-product-table" title="Product Management" />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ProductTable
-              products={currentProducts}
-              onEdit={handleEditProduct}
-              onDelete={handleDeleteProduct}
-            />
+            <div id="admin-product-table">
+              <ProductTable
+                products={currentProducts}
+                onEdit={handleEditProduct}
+                onDelete={handleDeleteProduct}
+              />
+            </div>
             <ProductPagination
               currentPage={currentPage}
               totalPages={totalPages}

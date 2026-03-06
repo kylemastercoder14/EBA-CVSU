@@ -21,6 +21,7 @@ import { Staff } from "./types";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 type StaffSortOption = "name_asc" | "id_asc" | "access_key_asc" | "created_desc";
 
@@ -276,13 +277,18 @@ export const StaffClient = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="mt-3 flex justify-end">
+              <TablePrintButton targetId="admin-staff-table" title="Staff Management" />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <StaffTable
-              staff={currentStaff}
-              onEdit={handleEditStaff}
-              onDelete={handleDeleteStaff}
-            />
+            <div id="admin-staff-table">
+              <StaffTable
+                staff={currentStaff}
+                onEdit={handleEditStaff}
+                onDelete={handleDeleteStaff}
+              />
+            </div>
             <StaffPagination
               currentPage={currentPage}
               totalPages={totalPages}

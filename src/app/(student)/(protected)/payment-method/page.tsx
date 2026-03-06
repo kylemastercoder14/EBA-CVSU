@@ -2,6 +2,10 @@
 
 import { HandCoinsIcon, SmartphoneIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCart } from "@/hooks/use-cart";
+import { orpc } from "@/lib/orpc";
 
 type PaymentOption = {
   id: "cash" | "gcash";
@@ -33,6 +37,27 @@ const options: PaymentOption[] = [
 
 const Page = () => {
   const router = useRouter();
+  const items = useCart((state) => state.items);
+  const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
+
+  const stockByProductId = useMemo<Map<string, number>>(() => {
+    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
+      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
+    );
+    return new Map<string, number>(entries);
+  }, [stockData]);
+
+  const hasPreOrderItems = useMemo(
+    () =>
+      items.some(
+        (item) => (stockByProductId.get(item.productId) ?? Number.POSITIVE_INFINITY) <= 0,
+      ),
+    [items, stockByProductId],
+  );
+
+  const visibleOptions = hasPreOrderItems
+    ? options.filter((option) => option.id === "gcash")
+    : options;
 
   return (
     <main className="min-h-[calc(100dvh-80px)] bg-[#C8D6E4] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -40,9 +65,14 @@ const Page = () => {
       <h1 className="text-center font-serif text-2xl font-bold text-[#0B525B] sm:text-3xl lg:text-4xl">
         Select Payment Method
       </h1>
+      {hasPreOrderItems && (
+        <p className="mt-2 text-center text-sm text-[#0B525B] sm:text-base">
+          Pre-order items require GCash payment.
+        </p>
+      )}
 
       <section className="mx-auto mt-6 grid w-full max-w-5xl grid-cols-1 gap-5 sm:mt-8 sm:gap-6 lg:mt-10 lg:grid-cols-2 lg:gap-6">
-        {options.map((option) => (
+        {visibleOptions.map((option) => (
           <button
             key={option.id}
             type="button"

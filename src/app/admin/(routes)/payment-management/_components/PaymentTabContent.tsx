@@ -3,6 +3,7 @@ import { PaymentSearchBar } from "./PaymentSearchBar";
 import { PaymentTable } from "./PaymentTable";
 import { PaymentPagination } from "./PaymentPagination";
 import { Payment } from "./types";
+import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 interface PaymentTabContentProps {
   title: string;
@@ -43,25 +44,32 @@ export const PaymentTabContent = ({
   onVerifyClick,
   onDeclineClick,
 }: PaymentTabContentProps) => {
+  const tableId = `admin-payments-${paymentType.toLowerCase()}`;
+
   return (
     <Card className="border-2 gap-0! border-[#07484A] bg-[#D3E9FF]">
       <CardHeader className="border-b-2 pb-4 border-[#07484A]">
-        <CardTitle className="text-[#07484A] text-xl">
-          {title}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-[#07484A] text-xl">
+            {title}
+          </CardTitle>
+          <TablePrintButton targetId={tableId} title={title} />
+        </div>
         <CardDescription className="text-[#07484A]/70">
           {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
         <PaymentSearchBar value={searchQuery} onChange={onSearchChange} />
-        <PaymentTable
-          payments={payments}
-          paymentType={paymentType}
-          isLoading={isLoading}
-          onVerifyClick={onVerifyClick}
-          onDeclineClick={onDeclineClick}
-        />
+        <div id={tableId}>
+          <PaymentTable
+            payments={payments}
+            paymentType={paymentType}
+            isLoading={isLoading}
+            onVerifyClick={onVerifyClick}
+            onDeclineClick={onDeclineClick}
+          />
+        </div>
         <PaymentPagination
           currentPage={currentPage}
           totalPages={totalPages}

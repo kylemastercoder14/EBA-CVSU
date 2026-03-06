@@ -147,7 +147,8 @@ const Page = () => {
           <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3 xl:gap-6">
             {filteredProducts.map((product) => {
               const stockCount = stockByProductId.get(product.id) ?? 0;
-              const available = product.isActive && stockCount > 0;
+              const isOrderable = product.isActive;
+              const isPreOrder = isOrderable && stockCount <= 0;
               const category = normalizeCategory(product.category);
               const price = getLowestPrice(product.variants);
               const visibleVariantCount = product.variants.filter(
@@ -161,12 +162,16 @@ const Page = () => {
                 >
                   <span
                     className={`absolute top-3 right-3 z-10 rounded-full px-3 py-1 text-xs font-semibold sm:right-4 sm:px-4 sm:text-sm lg:text-base ${
-                      available
+                      isOrderable
                         ? "bg-[#075A5C] text-[#DDFFFE]"
                         : "bg-[#8E2C1B] text-[#FFF2ED]"
                     }`}
                   >
-                    {available ? "Available" : "Not Available"}
+                    {isOrderable
+                      ? isPreOrder
+                        ? "Pre-Order"
+                        : "Available"
+                      : "Not Available"}
                   </span>
                   <div className="relative mx-auto h-44 w-full max-w-65 overflow-hidden rounded-2xl bg-transparent sm:h-52 sm:rounded-3xl lg:h-56">
                     {product.image ? (

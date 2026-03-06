@@ -1,9 +1,13 @@
+"use client";
+
 import KioskStatusBar from '@/components/kiosk/KioskStatusBar';
 import { PageTransitionProvider } from "@/components/kiosk/PageTransitionProvider";
+import { KioskInteractionGuard } from "@/components/kiosk/KioskInteractionGuard";
 
 const KioskLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-linear-to-b from-[#ddebf7] via-[#9dc1e5] to-[#4a8ccf]">
+      <KioskInteractionGuard />
       {/* Dot-grid texture */}
       <div
         className="pointer-events-none absolute inset-0 z-0"
