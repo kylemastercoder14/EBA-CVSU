@@ -89,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [currentUser, setCurrentUser] = React.useState({
     name: "Staff User",
     email: "No session loaded",
-    avatar: "https://github.com/shadcn.png",
+    avatar: "/logo.png",
   });
 
   React.useEffect(() => {
@@ -106,7 +106,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       setCurrentUser({
         name: session.fullName || "Staff User",
         email: `${session.role || "STAFF"} | ${session.mobileNumber || "No mobile"}`,
-        avatar: "https://github.com/shadcn.png",
+        avatar: "/logo.png",
       });
     } catch {
       // Keep fallback user data if session parsing fails.

@@ -5,6 +5,7 @@ import {
   IconLogout,
   IconNotification,
 } from "@tabler/icons-react";
+import Image from "next/image";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -93,8 +94,8 @@ export function NavUser({
         <div className='flex items-center rounded-md text-white hover:bg-white/10 cursor-pointer gap-3 p-3'>
           <Avatar className="size-10">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="rounded-full text-black bg-[#25E42C]">
-              AU
+            <AvatarFallback className="rounded-full bg-white p-0">
+              <Image src="/logo.png" alt="Logo" width={40} height={40} className="size-full object-cover" />
             </AvatarFallback>
           </Avatar>
           <div className="grid flex-1 text-left text-sm leading-tight">
@@ -121,7 +122,9 @@ export function NavUser({
           <div className="flex items-center text-white gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="size-10">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-full text-black bg-[#25E42C]">AU</AvatarFallback>
+              <AvatarFallback className="rounded-full bg-white p-0">
+                <Image src="/logo.png" alt="Logo" width={40} height={40} className="size-full object-cover" />
+              </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium font-serif">{user.name}</span>
