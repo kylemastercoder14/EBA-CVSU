@@ -100,7 +100,7 @@ const Page = () => {
   const handleAddOrder = () => {
     if (!product) return;
 
-    if (!pickupDate) {
+    if (!isPreOrder && !pickupDate) {
       toast.error("Please select a pickup date");
       return;
     }
@@ -117,7 +117,7 @@ const Page = () => {
       productName: product.name,
       variant: variantLabel,
       quantity,
-      pickupDate,
+      pickupDate: isPreOrder ? "" : pickupDate,
     });
 
     toast.success(
@@ -196,19 +196,25 @@ const Page = () => {
                 </p>
 
                 <div className="mt-6 space-y-6">
-                  <div>
-                    <p className="font-serif text-base text-[#0B525B] sm:text-lg lg:text-xl">
-                      Preferred Pickup Date <span className="text-[#D05555]">*</span>
+                  {!isPreOrder ? (
+                    <div>
+                      <p className="font-serif text-base text-[#0B525B] sm:text-lg lg:text-xl">
+                        Preferred Pickup Date <span className="text-[#D05555]">*</span>
+                      </p>
+                      <label className="mx-auto mt-3 flex h-12 w-full max-w-xl items-center rounded-full bg-[#F1F4F6] px-4 sm:h-14 sm:px-6 lg:mx-0">
+                        <input
+                          type="date"
+                          value={pickupDate}
+                          onChange={(event) => setPickupDate(event.target.value)}
+                          className="w-full bg-transparent text-center text-sm text-[#0B525B] outline-none sm:text-base lg:text-lg"
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#0B525B] sm:text-base">
+                      Pickup date will be set after stock confirmation.
                     </p>
-                    <label className="mx-auto mt-3 flex h-12 w-full max-w-xl items-center rounded-full bg-[#F1F4F6] px-4 sm:h-14 sm:px-6 lg:mx-0">
-                      <input
-                        type="date"
-                        value={pickupDate}
-                        onChange={(event) => setPickupDate(event.target.value)}
-                      className="w-full bg-transparent text-center text-sm text-[#0B525B] outline-none sm:text-base lg:text-lg"
-                      />
-                    </label>
-                  </div>
+                  )}
 
                   {hasVariants ? (
                     <div>

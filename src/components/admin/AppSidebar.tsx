@@ -62,6 +62,11 @@ const data = {
       icon: IconFileText,
     },
     {
+      title: "Pre-Order Management",
+      url: "/admin/pre-order-management",
+      icon: IconFileText,
+    },
+    {
       title: "Order Release",
       url: "/admin/order-release",
       icon: IconCar,

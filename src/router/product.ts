@@ -273,9 +273,11 @@ export const updateProduct = base
       throw errors.BAD_REQUEST();
     }
 
-    // Keep existing image unless a new one is uploaded
+    // Keep existing image unless a new one is uploaded.
     let imageUrl = existingProduct.imageUrl;
-    if (input.imageUrl) {
+    const hasNewImage =
+      typeof File !== "undefined" && input.imageUrl instanceof File;
+    if (hasNewImage && input.imageUrl) {
       try {
         imageUrl = await saveFileLocally(input.imageUrl);
       } catch (error) {
@@ -371,6 +373,27 @@ export const updateProduct = base
 
       return product;
     });
+
+    if (
+      hasNewImage &&
+      existingProduct.imageUrl &&
+      updatedProduct.imageUrl &&
+      existingProduct.imageUrl !== updatedProduct.imageUrl
+    ) {
+      const filename = basename(existingProduct.imageUrl);
+      const imagePath = join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "products",
+        filename,
+      );
+      try {
+        await unlink(imagePath);
+      } catch (error) {
+        console.error("Failed to delete old product image file:", error);
+      }
+    }
 
     return {
       id: updatedProduct.id,

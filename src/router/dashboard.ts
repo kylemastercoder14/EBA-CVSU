@@ -57,8 +57,9 @@ export const listDashboardSummary = base
       prisma.order.count(),
       prisma.order.count({
         where: {
+          pickupDate: null,
           stage: {
-            in: ["TO_CONFIRM", "TO_PAY"],
+            not: "CANCELLED",
           },
         },
       }),
@@ -70,12 +71,6 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
-          order: {
-            OR: [
-              { stage: "COMPLETED" },
-              { releaseStatus: "RELEASED" },
-            ],
-          },
         },
         _sum: {
           amount: true,
@@ -116,8 +111,9 @@ export const listDashboardSummary = base
       }),
       prisma.order.count({
         where: {
+          pickupDate: null,
           stage: {
-            in: ["TO_CONFIRM", "TO_PAY"],
+            not: "CANCELLED",
           },
           createdAt: {
             gte: currentWindowStart,
@@ -126,8 +122,9 @@ export const listDashboardSummary = base
       }),
       prisma.order.count({
         where: {
+          pickupDate: null,
           stage: {
-            in: ["TO_CONFIRM", "TO_PAY"],
+            not: "CANCELLED",
           },
           createdAt: {
             gte: previousWindowStart,
@@ -155,12 +152,6 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
-          order: {
-            OR: [
-              { stage: "COMPLETED" },
-              { releaseStatus: "RELEASED" },
-            ],
-          },
           createdAt: {
             gte: currentWindowStart,
           },
@@ -172,12 +163,6 @@ export const listDashboardSummary = base
       prisma.payment.aggregate({
         where: {
           status: "VERIFIED",
-          order: {
-            OR: [
-              { stage: "COMPLETED" },
-              { releaseStatus: "RELEASED" },
-            ],
-          },
           createdAt: {
             gte: previousWindowStart,
             lt: currentWindowStart,

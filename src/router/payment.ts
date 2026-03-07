@@ -5,11 +5,18 @@ import { base } from "@/middlewares/base";
 import {
   declinePaymentInputSchema,
   declinePaymentOutputSchema,
+  getGcashQrInputSchema,
+  getGcashQrOutputSchema,
   listPaymentsInputSchema,
   listPaymentsOutputSchema,
+  uploadGcashQrInputSchema,
+  uploadGcashQrOutputSchema,
   verifyPaymentInputSchema,
   verifyPaymentOutputSchema,
 } from "@/validators/payment";
+
+const GCASH_QR_SETTING_KEY = "GCASH_QR_IMAGE";
+const DEFAULT_GCASH_QR_IMAGE_URL = "/gcash-qr.png";
 
 type PaymentSmsInput = {
   kind: "verified" | "declined";
@@ -30,7 +37,7 @@ const sendPaymentStatusSms = async (
     : "";
   const message =
     input.kind === "verified"
-      ? `Hello, your payment for order #${input.orderNumber} has been successfully verified. We are now processing your order. Thank you!`
+      ? `Hello, your payment for order #${input.orderNumber} has been successfully verified. Please wait for the next order update from EBA. Thank you!`
       : `Hello, your payment for order #${input.orderNumber} was declined due to ${shortReason || "payment validation failed"}. Please contact EBA support`;
 
   return sendEbaSmsQueued({
@@ -236,9 +243,13 @@ export const verifyPayment = base
       });
 
       const nextStage =
-        payment.order.stage === "TO_CONFIRM" || payment.order.stage === "TO_PAY"
-          ? "TO_PAY"
-          : payment.order.stage;
+        payment.order.stage === "TO_CONFIRM"
+          ? payment.order.pickupDate
+            ? "TO_PAY"
+            : "TO_CONFIRM"
+          : payment.order.stage === "TO_PAY"
+            ? "TO_PAY"
+            : payment.order.stage;
 
       await tx.order.update({
         where: { id: payment.orderId },
@@ -262,7 +273,7 @@ export const verifyPayment = base
       await createSystemLog(tx, {
         type: "ORDER",
         category: "ORDER_RELEASED",
-        description: `Order "${payment.order.orderNumber}" payment marked verified and moved to processing.`,
+        description: `Order "${payment.order.orderNumber}" payment marked verified and moved to ${nextStage}.`,
         status: "INFO",
         actorName: input.actorName ?? "Admin",
         actorUserId: payment.order.userId,
@@ -425,5 +436,67 @@ export const declinePayment = base
         },
       }),
       smsNotification,
+    };
+  });
+
+export const uploadGcashQr = base
+  .route({
+    method: "POST",
+    path: "/payments/gcash-qr",
+    summary: "upload and replace GCash QR code image",
+    tags: ["payments"],
+  })
+  .input(uploadGcashQrInputSchema)
+  .output(uploadGcashQrOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const file = input.image;
+    if (!file.type.startsWith("image/")) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const dataUrl = `data:${file.type};base64,${buffer.toString("base64")}`;
+
+    await prisma.systemSetting.upsert({
+      where: { key: GCASH_QR_SETTING_KEY },
+      update: { value: dataUrl },
+      create: {
+        key: GCASH_QR_SETTING_KEY,
+        value: dataUrl,
+      },
+    });
+
+    await createSystemLog(prisma, {
+      type: "PAYMENT",
+      category: "PAYMENT_VERIFIED",
+      description: "GCash QR code image was updated.",
+      status: "SUCCESS",
+      actorName: input.actorName ?? "Admin",
+    });
+
+    return {
+      success: true,
+      message: "GCash QR code updated successfully",
+    };
+  });
+
+export const getGcashQr = base
+  .route({
+    method: "GET",
+    path: "/payments/gcash-qr",
+    summary: "get active global GCash QR code image",
+    tags: ["payments"],
+  })
+  .input(getGcashQrInputSchema)
+  .output(getGcashQrOutputSchema)
+  .handler(async () => {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: GCASH_QR_SETTING_KEY },
+      select: { value: true },
+    });
+
+    return {
+      imageUrl: setting?.value || DEFAULT_GCASH_QR_IMAGE_URL,
     };
   });

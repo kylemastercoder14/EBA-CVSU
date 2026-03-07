@@ -155,16 +155,19 @@ export const ProductDialog = ({
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      form.setValue("imageUrl", file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) {
+      form.setValue("imageUrl", undefined);
+      setUploadedImagePreview(null);
+      return;
     }
+
+    form.setValue("imageUrl", file, { shouldDirty: true, shouldValidate: true });
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setUploadedImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const onSubmit = (data: ProductFormValues) => {

@@ -54,7 +54,7 @@ export const StatsSection = ({ stats }: StatsSectionProps) => {
     },
     {
       title: "Total Sales",
-      data: `PHP ${formatCurrency(stats.totalSales)}`,
+      data: `₱${formatCurrency(stats.totalSales)}`,
       icon: IconChartArrowsVertical,
       iconBgColor: "bg-[#837F00]/30",
       iconColor: "text-[#837F00]",

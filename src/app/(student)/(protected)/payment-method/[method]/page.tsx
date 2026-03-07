@@ -97,6 +97,7 @@ const Page = () => {
 
   const { data } = useQuery(orpc.product.list.queryOptions());
   const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
+  const { data: gcashQrData } = useQuery(orpc.payment.getGcashQr.queryOptions());
   const products = useMemo(() => data?.products ?? [], [data?.products]);
   const stockByProductId = useMemo<Map<string, number>>(() => {
     const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
@@ -133,6 +134,7 @@ const Page = () => {
   const displayItems = confirmedItems.length > 0 ? confirmedItems : itemSummaries;
   const displayTotal = createdOrder ? confirmedTotal : totalAmount;
   const displayOrderNumber = createdOrder?.orderNumber ?? fallbackOrderNumber;
+  const gcashQrUrl = gcashQrData?.imageUrl || "/gcash-qr.png";
 
   const createOrderMutation = useMutation(
     orpc.order.create.mutationOptions({
@@ -309,7 +311,14 @@ const Page = () => {
 
               <div className="mt-5 rounded-[18px] bg-[#DFE0E2] p-3 sm:rounded-[20px] sm:p-4 lg:rounded-[22px] lg:p-5">
                 <div className="relative mx-auto flex h-40 w-40 items-center justify-center rounded-[14px] bg-[#07555C] sm:h-46 sm:w-46 sm:rounded-[16px] lg:h-50 lg:w-50 lg:rounded-[18px]">
-                  <Image priority fill src="/gcash-qr.png" alt="Gcash QR" className="size-full" />
+                  <Image
+                    priority
+                    unoptimized
+                    fill
+                    src={gcashQrUrl}
+                    alt="Gcash QR"
+                    className="size-full"
+                  />
                 </div>
               </div>
             </section>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDaysIcon,
   PrinterIcon,
@@ -15,7 +15,13 @@ import { orpc } from "@/lib/orpc";
 import { buildReceiptHtml } from "@/lib/receipt-template";
 import type { KioskReceiptPayload } from "@/types/kiosk-receipt";
 
-type TrackStage = "to-pay" | "preparing" | "ready" | "completed" | "cancelled";
+type TrackStage =
+  | "all"
+  | "to-pay"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled";
 type PaymentMethod = "GCash" | "Cash";
 
 type TrackOrderItem = {
@@ -34,6 +40,7 @@ type TrackOrder = {
   orderedAt: string;
   paymentMethod: PaymentMethod;
   stage: TrackStage;
+  canSetPickupDate: boolean;
   items: TrackOrderItem[];
 };
 
@@ -46,6 +53,7 @@ type StudentSession = {
 };
 
 const tabs: Array<{ key: TrackStage; label: string }> = [
+  { key: "all", label: "All" },
   { key: "to-pay", label: "To Pay" },
   { key: "preparing", label: "Preparing" },
   { key: "ready", label: "Ready for Pick Up" },
@@ -60,7 +68,11 @@ const formatMoney = (value: number) =>
   }).format(value);
 
 const Page = () => {
-  const [activeTab, setActiveTab] = useState<TrackStage>("to-pay");
+  const [activeTab, setActiveTab] = useState<TrackStage>("all");
+  const [pickupDateByOrder, setPickupDateByOrder] = useState<
+    Record<string, string>
+  >({});
+  const queryClient = useQueryClient();
   const [studentSession] = useState<StudentSession>(() => {
     if (typeof window === "undefined") return {};
 
@@ -90,8 +102,23 @@ const Page = () => {
   }, [data?.orders]);
 
   const filteredOrders = useMemo(
-    () => orders.filter((order) => order.stage === activeTab),
+    () =>
+      activeTab === "all"
+        ? orders
+        : orders.filter((order) => order.stage === activeTab),
     [orders, activeTab],
+  );
+
+  const setPickupDateMutation = useMutation(
+    orpc.order.updatePickupDate.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: orpc.order.listByUser.queryKey({
+            input: { userId },
+          }),
+        });
+      },
+    }),
   );
 
   const handleDownloadOrderReceipt = (order: TrackOrder) => {
@@ -204,10 +231,46 @@ const Page = () => {
                   <h2 className="font-serif text-xl leading-none sm:text-2xl lg:text-2xl">
                     Order #{order.orderNumber}
                   </h2>
-                  <p className="mb-3 mt-1 text-sm text-[#D6ECFF] sm:text-base lg:text-xl">
-                    Ordered on {order.orderedAt}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+                    <p className="mb-3 mt-1 text-sm text-[#D6ECFF] sm:text-base lg:text-xl">
+                      Ordered on {order.orderedAt}
+                    </p>
+                    {order.canSetPickupDate && (
+                      <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                        <input
+                          type="date"
+                          value={pickupDateByOrder[order.id] ?? ""}
+                          onChange={(event) =>
+                            setPickupDateByOrder((prev) => ({
+                              ...prev,
+                              [order.id]: event.target.value,
+                            }))
+                          }
+                          className="h-9 rounded-md border border-[#A2CDD3] bg-white px-2 text-sm text-[#0B525B]"
+                        />
+                        <button
+                          type="button"
+                          disabled={
+                            setPickupDateMutation.isPending ||
+                            !pickupDateByOrder[order.id]
+                          }
+                          onClick={() => {
+                            const pickupDate = pickupDateByOrder[order.id];
+                            if (!pickupDate || !userId) return;
+
+                            setPickupDateMutation.mutate({
+                              orderId: order.id,
+                              userId,
+                              pickupDate,
+                              actorName: "Student",
+                            });
+                          }}
+                          className="inline-flex h-9 items-center rounded-md bg-[#2AA72A] px-3 text-sm font-semibold text-white hover:bg-[#239423] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Set Pickup Date
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => handleDownloadOrderReceipt(order)}

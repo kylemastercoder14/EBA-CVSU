@@ -179,7 +179,10 @@ export const ProductClient = () => {
               </Select>
             </div>
             <div className="mt-3 flex justify-end">
-              <TablePrintButton targetId="admin-product-table" title="Product Management" />
+              <TablePrintButton
+                targetId="admin-product-table-print-all"
+                title="Product Management"
+              />
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -200,6 +203,13 @@ export const ProductClient = () => {
               onPageChange={setCurrentPage}
               onItemsPerPageChange={handleItemsPerPageChange}
             />
+            <div id="admin-product-table-print-all" className="hidden">
+              <ProductTable
+                products={sortedProducts}
+                onEdit={() => {}}
+                onDelete={() => {}}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>

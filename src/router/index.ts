@@ -28,11 +28,20 @@ import {
   createOrder,
   listOrdersByUser,
   listOrdersMonitoring,
+  listPreOrders,
   listOrdersQueue,
   listOrdersRelease,
+  markPreOrderStockAvailable,
+  updateOrderPickupDate,
   updateOrderStatus,
 } from "@/router/order";
-import { declinePayment, listPayments, verifyPayment } from "@/router/payment";
+import {
+  declinePayment,
+  getGcashQr,
+  listPayments,
+  uploadGcashQr,
+  verifyPayment,
+} from "@/router/payment";
 import { listDashboardSummary } from "@/router/dashboard";
 import {
   createReplaceRequest,
@@ -81,14 +90,19 @@ export const router = {
     createKiosk: createKioskOrder,
     listByUser: listOrdersByUser,
     listMonitoring: listOrdersMonitoring,
+    listPreOrders,
     listQueue: listOrdersQueue,
     listRelease: listOrdersRelease,
+    markPreOrderStockAvailable,
+    updatePickupDate: updateOrderPickupDate,
     updateStatus: updateOrderStatus,
   },
   payment: {
     list: listPayments,
+    getGcashQr,
     verify: verifyPayment,
     decline: declinePayment,
+    uploadGcashQr,
   },
   dashboard: {
     summary: listDashboardSummary,

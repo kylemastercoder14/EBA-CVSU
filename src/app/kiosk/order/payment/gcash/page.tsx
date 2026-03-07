@@ -14,6 +14,7 @@ const GCashQRPage = () => {
   const { navigate } = useTransitionNav();
   const cartItems = useCart((state) => state.items);
   const { data: productsData } = useQuery(orpc.product.list.queryOptions());
+  const { data: gcashQrData } = useQuery(orpc.payment.getGcashQr.queryOptions());
 
   const totalAmount = useMemo(() => {
     const products = productsData?.products ?? [];
@@ -41,6 +42,7 @@ const GCashQRPage = () => {
     ],
     [totalAmount],
   );
+  const gcashQrUrl = gcashQrData?.imageUrl || "/gcash-qr.png";
 
   return (
     <>
@@ -80,9 +82,10 @@ const GCashQRPage = () => {
               {/* Replace with actual QR image: <Image src="/qr-gcash.png" fill /> */}
               <div className="relative h-full w-full">
                 <Image
-                  src="/gcash-qr.png"
+                  src={gcashQrUrl}
                   alt="GCash QR Code"
                   fill
+                  unoptimized
                   className="object-contain"
                 />
               </div>

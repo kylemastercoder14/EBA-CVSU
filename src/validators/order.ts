@@ -4,7 +4,7 @@ export const createOrderItemInputSchema = z.object({
   productId: z.string().min(1, "Product is required"),
   variant: z.string().min(1, "Variant is required"),
   quantity: z.number().int().min(1, "Quantity must be at least 1"),
-  pickupDate: z.string().min(1, "Pickup date is required"),
+  pickupDate: z.string().optional(),
 });
 
 export const createOrderInputSchema = z
@@ -131,6 +131,24 @@ export const listOrdersReleaseOutputSchema = z.object({
 
 export const listOrdersQueueInputSchema = z.void();
 
+export const listPreOrdersInputSchema = z.void();
+
+export const listPreOrdersOutputSchema = z.object({
+  orders: z.array(
+    z.object({
+      id: z.string(),
+      orderNumber: z.string(),
+      name: z.string(),
+      items: z.string(),
+      quantity: z.number(),
+      paymentMethod: z.enum(["GCash", "Cash"]),
+      paymentStatus: z.enum(["Pending", "Verified", "Declined"]),
+      createdAt: z.string(),
+      canMarkStockAvailable: z.boolean(),
+    }),
+  ),
+});
+
 export const listOrdersQueueOutputSchema = z.object({
   orders: z.array(
     z.object({
@@ -165,6 +183,7 @@ export const listOrdersByUserOutputSchema = z.object({
       paymentMethod: z.enum(["GCash", "Cash"]),
       paymentStatus: z.enum(["PENDING", "VERIFIED", "DECLINED"]),
       stage: z.enum(["to-pay", "preparing", "ready", "completed", "cancelled"]),
+      canSetPickupDate: z.boolean(),
       items: z.array(
         z.object({
           id: z.string(),
@@ -178,6 +197,47 @@ export const listOrdersByUserOutputSchema = z.object({
       ),
     }),
   ),
+});
+
+export const updateOrderPickupDateInputSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  userId: z.string().min(1, "User ID is required"),
+  pickupDate: z.string().min(1, "Pickup date is required"),
+  actorName: z.string().min(1).optional(),
+});
+
+export const updateOrderPickupDateOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  order: z.object({
+    id: z.string(),
+    orderNumber: z.string(),
+    pickupDate: z.string(),
+  }),
+});
+
+export const markPreOrderStockAvailableInputSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+  actorName: z.string().min(1).optional(),
+});
+
+export const markPreOrderStockAvailableOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  order: z.object({
+    id: z.string(),
+    orderNumber: z.string(),
+    stage: z.enum(["TO_CONFIRM", "TO_PAY", "PAID", "COMPLETED", "CANCELLED"]),
+  }),
+  smsNotification: z
+    .object({
+      attempted: z.boolean(),
+      sent: z.boolean(),
+      recipientNumber: z.string().optional(),
+      error: z.string().optional(),
+      statusCode: z.number().optional(),
+    })
+    .optional(),
 });
 
 export const updateOrderStatusInputSchema = z

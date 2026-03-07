@@ -1,7 +1,7 @@
 "use client";
 
 import { Heading } from "@/components/Heading";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IconCash, IconCircleCheckFilled, IconDeviceMobile } from '@tabler/icons-react';
 import { DeclinePaymentDialog } from "./_components/DeclinePaymentDialog";
@@ -21,6 +21,7 @@ const Page = () => {
   const [activeTab, setActiveTab] = useState<"gcash" | "cash">("gcash");
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [isDeclineDialogOpen, setIsDeclineDialogOpen] = useState(false);
+  const gcashQrInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data, isLoading, isError } = useQuery(orpc.payment.list.queryOptions());
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
@@ -80,6 +81,17 @@ const Page = () => {
       },
       onError: (error) => {
         toast.error(error.message || "Failed to decline payment");
+      },
+    }),
+  );
+
+  const uploadGcashQrMutation = useMutation(
+    orpc.payment.uploadGcashQr.mutationOptions({
+      onSuccess: () => {
+        toast.success("GCash QR code updated successfully");
+      },
+      onError: (error) => {
+        toast.error(error.message || "Failed to update GCash QR code");
       },
     }),
   );
@@ -160,6 +172,29 @@ const Page = () => {
           title="Payment Management"
           description="Verify and manage customer payments"
         />
+        <input
+          ref={gcashQrInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            uploadGcashQrMutation.mutate({
+              image: file,
+              actorName: "Admin",
+            });
+            event.currentTarget.value = "";
+          }}
+        />
+        <button
+          type="button"
+          disabled={uploadGcashQrMutation.isPending}
+          onClick={() => gcashQrInputRef.current?.click()}
+          className="inline-flex h-10 items-center rounded-md bg-[#07484A] px-3 text-sm font-semibold text-white hover:bg-[#07484A]/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {uploadGcashQrMutation.isPending ? "Uploading..." : "Upload GCash QR"}
+        </button>
       </div>
 
       <div className="mt-10">

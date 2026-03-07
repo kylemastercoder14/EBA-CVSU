@@ -14,6 +14,8 @@ import {
   createKioskOrderOutputSchema,
   createOrderInputSchema,
   createOrderOutputSchema,
+  listPreOrdersInputSchema,
+  listPreOrdersOutputSchema,
   listOrdersMonitoringInputSchema,
   listOrdersMonitoringOutputSchema,
   listOrdersQueueInputSchema,
@@ -22,6 +24,10 @@ import {
   listOrdersReleaseOutputSchema,
   listOrdersByUserInputSchema,
   listOrdersByUserOutputSchema,
+  markPreOrderStockAvailableInputSchema,
+  markPreOrderStockAvailableOutputSchema,
+  updateOrderPickupDateInputSchema,
+  updateOrderPickupDateOutputSchema,
   updateOrderStatusInputSchema,
   updateOrderStatusOutputSchema,
 } from "@/validators/order";
@@ -44,6 +50,20 @@ const sendOrderReadySms = async (
   input: ReadySmsInput,
 ): Promise<ReadySmsResult> => {
   const message = `Hello ${input.customerName}, your order #${input.orderNumber} is now ready for pickup at the EBA Counter. Please bring your receipt for confirmation.`;
+
+  return sendEbaSmsQueued({
+    orderNumber: input.orderNumber,
+    recipientNumber: input.recipientNumber,
+    message,
+  });
+};
+
+const sendPreOrderStockAvailableSms = async (input: {
+  orderNumber: string;
+  recipientNumber: string;
+  customerName: string;
+}): Promise<ReadySmsResult> => {
+  const message = `Hello ${input.customerName}, your pre-order #${input.orderNumber} now has available stock. Please login and set your pickup date to continue.`;
 
   return sendEbaSmsQueued({
     orderNumber: input.orderNumber,
@@ -234,7 +254,7 @@ const mapOrderStageToMonitoringStage = (
   if (
     stage === "TO_PAY" &&
     paymentStatus === "VERIFIED" &&
-    paymentMethod === "GCASH"
+    (paymentMethod === "GCASH" || paymentMethod === "CASH")
   )
     return "Processing" as const;
   if (stage === "TO_PAY") return "To Pay" as const;
@@ -259,7 +279,7 @@ const mapOrderReleaseStatus = (
   if (
     stage === "TO_PAY" &&
     paymentStatus === "VERIFIED" &&
-    paymentMethod === "GCASH"
+    (paymentMethod === "GCASH" || paymentMethod === "CASH")
   ) {
     return "Processing" as const;
   }
@@ -350,6 +370,9 @@ export const listOrdersMonitoring = base
   .handler(async () => {
     const orders = await prisma.order.findMany({
       where: {
+        pickupDate: {
+          not: null,
+        },
         OR: [
           { stage: "TO_CONFIRM" },
           { stage: "TO_PAY" },
@@ -432,11 +455,13 @@ export const listOrdersRelease = base
   .handler(async () => {
     const orders = await prisma.order.findMany({
       where: {
+        pickupDate: {
+          not: null,
+        },
         OR: [
           {
             stage: "TO_PAY",
             paymentStatus: "VERIFIED",
-            paymentMethod: "GCASH",
           },
           {
             stage: "PAID",
@@ -514,6 +539,9 @@ export const listOrdersQueue = base
     const { startUtc, endUtc } = getManilaTodayRange();
     const orders = await prisma.order.findMany({
       where: {
+        pickupDate: {
+          not: null,
+        },
         createdAt: {
           gte: startUtc,
           lt: endUtc,
@@ -642,6 +670,7 @@ export const listOrdersByUser = base
           order.releaseStatus,
           order.paymentStatus,
         ),
+        canSetPickupDate: order.stage === "TO_PAY" && !order.pickupDate,
         items: order.orderItems.map((item) => ({
           id: item.id,
           name: item.product.name,
@@ -763,6 +792,10 @@ export const createOrder = base
     if (hasPreOrderItems && input.paymentMethod !== "GCASH") {
       throw errors.BAD_REQUEST();
     }
+    const requestedPickupDate = input.items[0]?.pickupDate?.trim() ?? "";
+    if (!hasPreOrderItems && !requestedPickupDate) {
+      throw errors.BAD_REQUEST();
+    }
 
     const totalQuantity = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity,
@@ -773,8 +806,8 @@ export const createOrder = base
       0,
     );
 
-    const pickupDateIso = input.items[0]?.pickupDate
-      ? new Date(`${input.items[0].pickupDate}T00:00:00.000Z`).toISOString()
+    const pickupDateIso = requestedPickupDate
+      ? new Date(`${requestedPickupDate}T00:00:00.000Z`).toISOString()
       : null;
 
     const itemsSummary = itemsWithPricing
@@ -1042,6 +1075,10 @@ export const createKioskOrder = base
     if (hasPreOrderItems) {
       throw errors.BAD_REQUEST();
     }
+    const requestedPickupDate = input.items[0]?.pickupDate?.trim() ?? "";
+    if (!requestedPickupDate) {
+      throw errors.BAD_REQUEST();
+    }
 
     const totalQuantity = itemsWithPricing.reduce(
       (sum, item) => sum + item.quantity,
@@ -1052,8 +1089,8 @@ export const createKioskOrder = base
       0,
     );
 
-    const pickupDateIso = input.items[0]?.pickupDate
-      ? new Date(`${input.items[0].pickupDate}T00:00:00.000Z`).toISOString()
+    const pickupDateIso = requestedPickupDate
+      ? new Date(`${requestedPickupDate}T00:00:00.000Z`).toISOString()
       : null;
 
     const itemsSummary = itemsWithPricing
@@ -1362,6 +1399,19 @@ export const updateOrderStatus = base
         })
       : undefined;
 
+    const isPreOrderStockConfirmedTransition =
+      !existingOrder.pickupDate &&
+      existingOrder.stage === "TO_CONFIRM" &&
+      updatedOrder.stage === "TO_PAY";
+
+    if (isPreOrderStockConfirmedTransition) {
+      await sendPreOrderStockAvailableSms({
+        orderNumber: updatedOrder.orderNumber,
+        recipientNumber: existingOrder.user.mobileNumber,
+        customerName: existingOrder.user.fullName,
+      });
+    }
+
     return {
       success: true,
       message: "Order status updated successfully",
@@ -1373,5 +1423,293 @@ export const updateOrderStatus = base
         paymentStatus: updatedOrder.paymentStatus,
       },
       smsNotification,
+    };
+  });
+
+export const markPreOrderStockAvailable = base
+  .route({
+    method: "PUT",
+    path: "/orders/{orderId}/stock-available",
+    summary: "mark pre-order as stock available and notify customer",
+    tags: ["orders"],
+  })
+  .input(markPreOrderStockAvailableInputSchema)
+  .output(markPreOrderStockAvailableOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: input.orderId },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            mobileNumber: true,
+          },
+        },
+        orderItems: {
+          select: {
+            productId: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+
+    if (!existingOrder) {
+      throw errors.NOT_FOUND();
+    }
+
+    if (existingOrder.pickupDate || existingOrder.stage !== "TO_CONFIRM") {
+      throw errors.BAD_REQUEST();
+    }
+
+    const requiredByProduct = new Map<string, number>();
+    for (const item of existingOrder.orderItems) {
+      requiredByProduct.set(
+        item.productId,
+        (requiredByProduct.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    const stockRows = await prisma.stockItem.findMany({
+      where: {
+        productId: { in: Array.from(requiredByProduct.keys()) },
+      },
+      select: {
+        id: true,
+        productId: true,
+        currentStock: true,
+      },
+    });
+
+    const stockByProductId = new Map(
+      stockRows.map((row) => [row.productId, row.currentStock]),
+    );
+    const isStockAvailable = Array.from(requiredByProduct.entries()).every(
+      ([productId, requiredQty]) =>
+        (stockByProductId.get(productId) ?? 0) >= requiredQty,
+    );
+
+    if (!isStockAvailable) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id: input.orderId },
+        data: {
+          stage: "TO_PAY",
+        },
+      });
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_RELEASED",
+        description: `Pre-order "${order.orderNumber}" marked stock available and moved to TO_PAY.`,
+        status: "SUCCESS",
+        actorName: input.actorName ?? "Admin",
+        actorUserId: existingOrder.userId,
+        orderId: order.id,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "Pre-Order Stock Available",
+        message: `Order ${order.orderNumber} is now ready for pickup date selection.`,
+        type: "SUCCESS",
+      });
+
+      return order;
+    });
+
+    const smsNotification = await sendPreOrderStockAvailableSms({
+      orderNumber: updatedOrder.orderNumber,
+      recipientNumber: existingOrder.user.mobileNumber,
+      customerName: existingOrder.user.fullName,
+    });
+
+    return {
+      success: true,
+      message: "Pre-order marked as stock available",
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        stage: updatedOrder.stage,
+      },
+      smsNotification,
+    };
+  });
+
+export const listPreOrders = base
+  .route({
+    method: "GET",
+    path: "/orders/admin/pre-orders",
+    summary: "list pre-orders waiting for stock availability",
+    tags: ["orders"],
+  })
+  .input(listPreOrdersInputSchema)
+  .output(listPreOrdersOutputSchema)
+  .handler(async () => {
+    const orders = await prisma.order.findMany({
+      where: {
+        pickupDate: null,
+        stage: "TO_CONFIRM",
+      },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+          },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        payment: {
+          select: {
+            method: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const requiredProductIds = Array.from(
+      new Set(
+        orders.flatMap((order) => order.orderItems.map((item) => item.productId)),
+      ),
+    );
+    const stockItems = await prisma.stockItem.findMany({
+      where: { productId: { in: requiredProductIds } },
+      select: { productId: true, currentStock: true },
+    });
+    const stockByProductId = new Map(
+      stockItems.map((item) => [item.productId, item.currentStock]),
+    );
+
+    return {
+      orders: orders.map((order) => {
+        const itemsSummary =
+          order.itemsSummary?.trim() ||
+          order.orderItems.map((item) => item.product.name).join(", ") ||
+          "-";
+        const paymentMethod =
+          order.paymentMethod ?? order.payment?.method ?? "GCASH";
+        const paymentStatus =
+          order.paymentStatus ?? order.payment?.status ?? "PENDING";
+
+        const requiredByProduct = new Map<string, number>();
+        for (const item of order.orderItems) {
+          requiredByProduct.set(
+            item.productId,
+            (requiredByProduct.get(item.productId) ?? 0) + item.quantity,
+          );
+        }
+
+        const canMarkStockAvailable = Array.from(requiredByProduct.entries()).every(
+          ([productId, requiredQty]) =>
+            (stockByProductId.get(productId) ?? 0) >= requiredQty,
+        );
+
+        return {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          name: order.user.fullName,
+          items: itemsSummary,
+          quantity: order.totalQuantity,
+          paymentMethod:
+            paymentMethod === "CASH" ? ("Cash" as const) : ("GCash" as const),
+          paymentStatus:
+            paymentStatus === "VERIFIED"
+              ? ("Verified" as const)
+              : paymentStatus === "DECLINED"
+                ? ("Declined" as const)
+                : ("Pending" as const),
+          createdAt: formatOrderDate(order.createdAt),
+          canMarkStockAvailable,
+        };
+      }),
+    };
+  });
+
+export const updateOrderPickupDate = base
+  .route({
+    method: "PUT",
+    path: "/orders/{orderId}/pickup-date",
+    summary: "set pickup date for an existing order",
+    tags: ["orders"],
+  })
+  .input(updateOrderPickupDateInputSchema)
+  .output(updateOrderPickupDateOutputSchema)
+  .handler(async ({ input, errors }) => {
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: input.orderId },
+      select: {
+        id: true,
+        orderNumber: true,
+        userId: true,
+        stage: true,
+        pickupDate: true,
+      },
+    });
+
+    if (!existingOrder) {
+      throw errors.NOT_FOUND();
+    }
+
+    if (existingOrder.userId !== input.userId) {
+      throw errors.FORBIDDEN();
+    }
+
+    if (existingOrder.stage !== "TO_PAY" || existingOrder.pickupDate) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const nextPickupDate = new Date(`${input.pickupDate}T00:00:00.000Z`);
+    if (Number.isNaN(nextPickupDate.getTime())) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id: input.orderId },
+        data: { pickupDate: nextPickupDate },
+      });
+
+      await createSystemLog(tx, {
+        type: "ORDER",
+        category: "ORDER_RELEASED",
+        description: `Pickup date set for order "${order.orderNumber}" to ${input.pickupDate}.`,
+        status: "SUCCESS",
+        actorName: input.actorName ?? "Student",
+        actorUserId: input.userId,
+        orderId: order.id,
+      });
+
+      await createStaffNotifications(tx, {
+        title: "Pickup Date Set",
+        message: `Order ${order.orderNumber} now has a pickup date: ${input.pickupDate}.`,
+        type: "INFO",
+      });
+
+      return order;
+    });
+
+    return {
+      success: true,
+      message: "Pickup date set successfully",
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        pickupDate: updatedOrder.pickupDate
+          ? updatedOrder.pickupDate.toISOString().slice(0, 10)
+          : input.pickupDate,
+      },
     };
   });

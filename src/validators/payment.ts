@@ -44,3 +44,19 @@ export const verifyPaymentOutputSchema = z.object({
 });
 
 export const declinePaymentOutputSchema = verifyPaymentOutputSchema;
+
+export const uploadGcashQrInputSchema = z.object({
+  image: z.instanceof(File),
+  actorName: z.string().min(1).optional(),
+});
+
+export const uploadGcashQrOutputSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export const getGcashQrInputSchema = z.void();
+
+export const getGcashQrOutputSchema = z.object({
+  imageUrl: z.string(),
+});

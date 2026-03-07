@@ -89,7 +89,7 @@ const Page = () => {
             Browse Products
           </h1>
           <p className="mt-2 text-sm text-[#4E7F89] sm:mt-3 sm:text-base lg:text-lg">
-            Find uniforms, pajamas, and merchandise for CvSU students
+            Find uniforms and merchandise for CvSU students
           </p>
         </div>
       </section>

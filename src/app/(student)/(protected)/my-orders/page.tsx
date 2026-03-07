@@ -134,7 +134,10 @@ const Page = () => {
                     Quantity: {item.quantity}
                   </p>
                   <p className="text-sm leading-tight text-[#2F6F79] sm:text-base lg:text-lg">
-                    Pickup: {formatPickupDate(item.pickupDate)}
+                    Pickup:{" "}
+                    {item.pickupDate
+                      ? formatPickupDate(item.pickupDate)
+                      : "To be scheduled after stock confirmation"}
                   </p>
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -248,10 +251,11 @@ const Page = () => {
                     <h3 className="text-base font-bold sm:text-lg lg:text-xl">3. Pickup Schedule</h3>
                     <p className="text-sm leading-6 text-[#E2E2E2] sm:text-base sm:leading-7">
                       Customers must select a pickup date during checkout.
-                      Orders must be collected at the EBA office during official
-                      operating hours on the selected date. If an order is not
-                      claimed on the scheduled date, EBA reserves the right to
-                      reschedule or cancel the order.
+                      Pre-orders may skip this during initial checkout and set
+                      pickup once stock is confirmed. Orders must be collected
+                      at the EBA office during official operating hours on the
+                      selected date. If an order is not claimed on schedule, EBA
+                      reserves the right to reschedule or cancel the order.
                     </p>
                   </div>
 

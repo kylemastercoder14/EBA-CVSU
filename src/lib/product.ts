@@ -56,7 +56,7 @@ export const PRODUCTS: Product[] = [
     name: "Test Booklet",
     category: "Booklet",
     price: 4,
-    image: "/products/booklet.png",
+    image: "/uploads/products/product-1771408180333-806226630.png",
     description:
       "Standard examination booklet used for written tests and quizzes.",
     visitorAccess: true,

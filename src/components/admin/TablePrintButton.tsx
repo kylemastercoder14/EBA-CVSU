@@ -29,6 +29,14 @@ const buildPrintHtml = (title: string, tableHtml: string) => {
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
     th { background: #f5f5f5; }
+    td img {
+      width: 64px;
+      height: 64px;
+      max-width: 64px;
+      max-height: 64px;
+      object-fit: contain;
+      display: block;
+    }
     button, svg { display: none !important; }
   </style>
 </head>
@@ -46,15 +54,67 @@ export const TablePrintButton = ({ targetId, title }: TablePrintButtonProps) => 
     const table = container?.querySelector("table");
     if (!table) return;
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (!printWindow) return;
+    const printableTable = table.cloneNode(true) as HTMLTableElement;
 
-    printWindow.document.write(buildPrintHtml(title, table.outerHTML));
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.onload = () => {
-      printWindow.print();
-      printWindow.close();
+    // Next.js fill images rely on runtime CSS classes. Normalize them to static images for printing.
+    printableTable.querySelectorAll("img").forEach((img) => {
+      const plain = document.createElement("img");
+      plain.src = img.currentSrc || img.src;
+      plain.alt = img.alt || "";
+      plain.width = 64;
+      plain.height = 64;
+      plain.style.width = "64px";
+      plain.style.height = "64px";
+      plain.style.objectFit = "contain";
+      plain.style.display = "block";
+
+      const wrapper = img.parentElement;
+      if (wrapper && wrapper !== printableTable) {
+        wrapper.replaceWith(plain);
+      } else {
+        img.replaceWith(plain);
+      }
+    });
+
+    const html = buildPrintHtml(title, printableTable.outerHTML);
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.onload = () => {
+        printWindow.print();
+        printWindow.close();
+      };
+      return;
+    }
+
+    // Popup blockers can prevent window.open; fallback to a hidden iframe.
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      window.setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 200);
     };
   };
 
@@ -71,4 +131,3 @@ export const TablePrintButton = ({ targetId, title }: TablePrintButtonProps) => 
     </Button>
   );
 };
-
