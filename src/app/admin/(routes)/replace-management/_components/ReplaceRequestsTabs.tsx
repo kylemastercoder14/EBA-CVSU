@@ -21,6 +21,9 @@ interface ReplaceRequestsTabsProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onReviewClick: (request: ReplaceRequest) => void;
+  sortKey: "id" | "orderNumber" | "reason" | "createdAt";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const ReplaceRequestsTabs = ({
@@ -40,6 +43,9 @@ export const ReplaceRequestsTabs = ({
   onPageChange,
   onItemsPerPageChange,
   onReviewClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: ReplaceRequestsTabsProps) => {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
@@ -94,6 +100,9 @@ export const ReplaceRequestsTabs = ({
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
           onReviewClick={onReviewClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
 
@@ -115,6 +124,9 @@ export const ReplaceRequestsTabs = ({
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
           onReviewClick={onReviewClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
 
@@ -136,6 +148,9 @@ export const ReplaceRequestsTabs = ({
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
           onReviewClick={onReviewClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
     </Tabs>

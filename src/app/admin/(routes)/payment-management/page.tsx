@@ -12,6 +12,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 
+type PaymentSortKey = "orderNum" | "name" | "amount" | "reference";
+type SortDirection = "asc" | "desc";
+
 const Page = () => {
   const queryClient = useQueryClient();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
@@ -19,6 +22,8 @@ const Page = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [activeTab, setActiveTab] = useState<"gcash" | "cash">("gcash");
+  const [sortKey, setSortKey] = useState<PaymentSortKey>("orderNum");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [isDeclineDialogOpen, setIsDeclineDialogOpen] = useState(false);
   const gcashQrInputRef = useRef<HTMLInputElement | null>(null);
@@ -110,11 +115,22 @@ const Page = () => {
     return matchesTab && matchesSearch;
   });
 
+  const sortedPayments = [...filteredPayments].sort((a, b) => {
+    if (sortKey === "amount") {
+      return sortDirection === "asc" ? a.amount - b.amount : b.amount - a.amount;
+    }
+    const aValue = a[sortKey].toLowerCase();
+    const bValue = b[sortKey].toLowerCase();
+    return sortDirection === "asc"
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedPayments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPayments = filteredPayments.slice(startIndex, endIndex);
+  const currentPayments = sortedPayments.slice(startIndex, endIndex);
 
   // Reset to page 1 when items per page changes
   const handleItemsPerPageChange = (value: string) => {
@@ -131,6 +147,17 @@ const Page = () => {
   // Reset to page 1 when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value as "gcash" | "cash");
+    setCurrentPage(1);
+  };
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as PaymentSortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
     setCurrentPage(1);
   };
 
@@ -237,6 +264,9 @@ const Page = () => {
               onItemsPerPageChange={handleItemsPerPageChange}
               onVerifyClick={handleVerifyClick}
               onDeclineClick={handleDeclineClick}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
           </TabsContent>
 
@@ -259,6 +289,9 @@ const Page = () => {
               onItemsPerPageChange={handleItemsPerPageChange}
               onVerifyClick={handleVerifyClick}
               onDeclineClick={handleDeclineClick}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
           </TabsContent>
         </Tabs>

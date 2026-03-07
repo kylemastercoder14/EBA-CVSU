@@ -26,6 +26,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 type PreOrderRow = {
   id: string;
@@ -49,6 +50,10 @@ const Page = () => {
   const skeletonRows = 5;
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<"orderNumber" | "name" | "quantity" | "createdAt">(
+    "orderNumber",
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedOrder, setSelectedOrder] = useState<PreOrderRow | null>(null);
 
   const { data, isLoading, isError } = useQuery(
@@ -66,6 +71,36 @@ const Page = () => {
         row.items.toLowerCase().includes(keyword),
     );
   }, [rows, search]);
+
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((a, b) => {
+      if (sortKey === "quantity") {
+        return sortDirection === "asc" ? a.quantity - b.quantity : b.quantity - a.quantity;
+      }
+      if (sortKey === "createdAt") {
+        const timeA = Date.parse(a.createdAt);
+        const timeB = Date.parse(b.createdAt);
+        const aValue = Number.isNaN(timeA) ? 0 : timeA;
+        const bValue = Number.isNaN(timeB) ? 0 : timeB;
+        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      const aValue = a[sortKey].toLowerCase();
+      const bValue = b[sortKey].toLowerCase();
+      return sortDirection === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+  }, [filteredRows, sortDirection, sortKey]);
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as typeof sortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
+  };
 
   const markStockAvailableMutation = useMutation(
     orpc.order.markPreOrderStockAvailable.mutationOptions({
@@ -117,13 +152,45 @@ const Page = () => {
         <Table>
           <TableHeader className="bg-[#07484A]">
             <TableRow className="hover:bg-[#07484A]">
-              <TableHead className="text-white">Order Number</TableHead>
-              <TableHead className="text-white">Customer</TableHead>
+              <TableHead className="text-white">
+                <SortableHeader
+                  label="Order Number"
+                  sortKey="orderNumber"
+                  activeSortKey={sortKey}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="text-white">
+                <SortableHeader
+                  label="Customer"
+                  sortKey="name"
+                  activeSortKey={sortKey}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+              </TableHead>
               <TableHead className="text-white">Items</TableHead>
-              <TableHead className="text-white">Qty</TableHead>
+              <TableHead className="text-white">
+                <SortableHeader
+                  label="Qty"
+                  sortKey="quantity"
+                  activeSortKey={sortKey}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+              </TableHead>
               <TableHead className="text-white">Payment</TableHead>
               <TableHead className="text-white">Payment Status</TableHead>
-              <TableHead className="text-white">Created</TableHead>
+              <TableHead className="text-white">
+                <SortableHeader
+                  label="Created"
+                  sortKey="createdAt"
+                  activeSortKey={sortKey}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+              </TableHead>
               <TableHead className="text-white">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -163,14 +230,14 @@ const Page = () => {
                   Unable to load pre-orders right now.
                 </TableCell>
               </TableRow>
-            ) : filteredRows.length === 0 ? (
+            ) : sortedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center text-[#07484A]/70">
                   No pre-orders found.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRows.map((row) => (
+              sortedRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.orderNumber}</TableCell>
                   <TableCell>{row.name}</TableCell>

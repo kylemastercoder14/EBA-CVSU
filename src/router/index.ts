@@ -5,7 +5,7 @@ import {
   updateProduct,
 } from "@/router/product";
 import { listLogs } from "@/router/logs";
-import { listStocks, updateStock } from "@/router/stock";
+import { listStocks, updateStock, updateStocksByProduct } from "@/router/stock";
 import { createStaff, deleteStaff, listStaff, updateStaff } from "@/router/staff";
 import {
   getStaffSession,
@@ -59,6 +59,7 @@ export const router = {
   stock: {
     list: listStocks,
     update: updateStock,
+    updateByProduct: updateStocksByProduct,
   },
   logs: {
     list: listLogs,

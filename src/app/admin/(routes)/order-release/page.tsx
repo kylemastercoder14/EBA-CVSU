@@ -9,6 +9,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 
+type OrderReleaseSortKey = "orderNumber" | "name" | "pickupDate";
+type SortDirection = "asc" | "desc";
+
 const Page = () => {
   const queryClient = useQueryClient();
   const [readySearchQuery, setReadySearchQuery] = useState("");
@@ -23,6 +26,8 @@ const Page = () => {
   const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
   const [releaseDialogMode, setReleaseDialogMode] = useState<"ready" | "release">("release");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sortKey, setSortKey] = useState<OrderReleaseSortKey>("orderNumber");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { data, isLoading, isError } = useQuery(orpc.order.listRelease.queryOptions());
   const orders = useMemo(() => data?.orders ?? [], [data?.orders]);
@@ -62,29 +67,45 @@ const Page = () => {
     }),
   );
 
-  const processingOrders = orders.filter(
+  const sortOrders = (list: Order[]) =>
+    [...list].sort((a, b) => {
+      if (sortKey === "pickupDate") {
+        const timeA = Date.parse(a.pickupDate);
+        const timeB = Date.parse(b.pickupDate);
+        const aValue = Number.isNaN(timeA) ? 0 : timeA;
+        const bValue = Number.isNaN(timeB) ? 0 : timeB;
+        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+      }
+      const aValue = a[sortKey].toLowerCase();
+      const bValue = b[sortKey].toLowerCase();
+      return sortDirection === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+
+  const processingOrders = sortOrders(orders.filter(
     (order) =>
       order.status === "Processing" &&
       (order.orderNumber.toLowerCase().includes(processingSearchQuery.toLowerCase()) ||
         order.name.toLowerCase().includes(processingSearchQuery.toLowerCase()) ||
         order.items.toLowerCase().includes(processingSearchQuery.toLowerCase()))
-  );
+  ));
 
-  const readyOrders = orders.filter(
+  const readyOrders = sortOrders(orders.filter(
     (order) =>
       order.status === "Ready" &&
       (order.orderNumber.toLowerCase().includes(readySearchQuery.toLowerCase()) ||
         order.name.toLowerCase().includes(readySearchQuery.toLowerCase()) ||
         order.items.toLowerCase().includes(readySearchQuery.toLowerCase()))
-  );
+  ));
 
-  const releasedOrders = orders.filter(
+  const releasedOrders = sortOrders(orders.filter(
     (order) =>
       order.status === "Released" &&
       (order.orderNumber.toLowerCase().includes(releasedSearchQuery.toLowerCase()) ||
         order.name.toLowerCase().includes(releasedSearchQuery.toLowerCase()) ||
         order.items.toLowerCase().includes(releasedSearchQuery.toLowerCase()))
-  );
+  ));
 
   const processingTotalPages = Math.ceil(processingOrders.length / processingItemsPerPage);
   const processingStartIndex = (processingCurrentPage - 1) * processingItemsPerPage;
@@ -134,6 +155,19 @@ const Page = () => {
 
   const handleReleasedSearchChange = (value: string) => {
     setReleasedSearchQuery(value);
+    setReleasedCurrentPage(1);
+  };
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as OrderReleaseSortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
+    setProcessingCurrentPage(1);
+    setReadyCurrentPage(1);
     setReleasedCurrentPage(1);
   };
 
@@ -199,6 +233,9 @@ const Page = () => {
           onPageChange={setProcessingCurrentPage}
           onItemsPerPageChange={handleProcessingItemsPerPageChange}
           onMarkReadyClick={handleMarkReadyClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
 
@@ -220,6 +257,9 @@ const Page = () => {
           onPageChange={setReadyCurrentPage}
           onItemsPerPageChange={handleReadyItemsPerPageChange}
           onReleaseClick={handleReleaseClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
 
@@ -240,6 +280,9 @@ const Page = () => {
           onSearchChange={handleReleasedSearchChange}
           onPageChange={setReleasedCurrentPage}
           onItemsPerPageChange={handleReleasedItemsPerPageChange}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
 

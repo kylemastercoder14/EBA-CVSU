@@ -66,13 +66,26 @@ const Page = () => {
     | undefined;
 
   const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
-      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
-    );
-    return new Map<string, number>(entries);
+    const map = new Map<string, number>();
+    for (const stock of stockData?.stocks ?? []) {
+      map.set(
+        stock.productId,
+        (map.get(stock.productId) ?? 0) + Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
   }, [stockData]);
 
-  const currentStock = product ? (stockByProductId.get(product.id) ?? 0) : 0;
+  const stockByVariantKey = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    for (const stock of stockData?.stocks ?? []) {
+      map.set(
+        `${stock.productId}::${stock.variant ?? NO_VARIANT_SIZE}`,
+        Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
+  }, [stockData]);
   const realVariants = useMemo(
     () =>
       product?.variants.filter((variant) => variant.size !== NO_VARIANT_SIZE) ??
@@ -90,6 +103,16 @@ const Page = () => {
     if (!activeSize) return undefined;
     return realVariants.find((variant) => variant.size === activeSize);
   }, [activeSize, realVariants]);
+
+  const currentStock = useMemo(() => {
+    if (!product) return 0;
+    if (!hasVariants) {
+      return stockByVariantKey.get(`${product.id}::${NO_VARIANT_SIZE}`) ?? 0;
+    }
+    return stockByVariantKey.get(`${product.id}::${activeSize}`) ?? 0;
+  }, [activeSize, hasVariants, product, stockByVariantKey]);
+
+  const totalProductStock = product ? (stockByProductId.get(product.id) ?? 0) : 0;
 
   const isOrderable = Boolean(product?.isActive);
   const isPreOrder = isOrderable && currentStock <= 0;
@@ -297,7 +320,9 @@ const Page = () => {
                     )}
                     {isOrderable && isPreOrder && (
                       <p className="text-sm text-[#0B525B]">
-                        This item is available as pre-order only.
+                        This item is currently out of stock
+                        {hasVariants ? ` for size ${activeSize}` : ""}. Total
+                        product stock: {totalProductStock}.
                       </p>
                     )}
                   </div>

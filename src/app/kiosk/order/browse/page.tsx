@@ -693,10 +693,14 @@ const BrowsePage = () => {
   const addCartItem = useCart((state) => state.addItem);
 
   const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stocksData?.stocks ?? []).map(
-      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
-    );
-    return new Map<string, number>(entries);
+    const map = new Map<string, number>();
+    for (const stock of stocksData?.stocks ?? []) {
+      map.set(
+        stock.productId,
+        (map.get(stock.productId) ?? 0) + Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
   }, [stocksData]);
 
   const backendProducts = useMemo<DisplayProduct[]>(() => {

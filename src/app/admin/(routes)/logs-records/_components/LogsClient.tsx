@@ -10,7 +10,13 @@ import { LogCategory, LogType } from "@/generated/prisma";
 
 type TypeFilter = LogType | "all";
 type CategoryFilter = LogCategory | "all";
-type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_asc";
+type SortOption =
+  | "createdAt_desc"
+  | "createdAt_asc"
+  | "id_asc"
+  | "id_desc"
+  | "description_asc"
+  | "description_desc";
 
 export const LogsClient = () => {
   const {
@@ -45,8 +51,12 @@ export const LogsClient = () => {
         );
       case "id_asc":
         return a.id.localeCompare(b.id);
+      case "id_desc":
+        return b.id.localeCompare(a.id);
       case "description_asc":
         return a.description.localeCompare(b.description);
+      case "description_desc":
+        return b.description.localeCompare(a.description);
       case "createdAt_desc":
       default:
         return (
@@ -85,6 +95,21 @@ export const LogsClient = () => {
     setCurrentPage(1);
   };
 
+  const handleHeaderSort = (key: string) => {
+    if (key === "id") {
+      setSortBy((prev) => (prev === "id_asc" ? "id_desc" : "id_asc"));
+    } else if (key === "description") {
+      setSortBy((prev) =>
+        prev === "description_asc" ? "description_desc" : "description_asc",
+      );
+    } else if (key === "createdAt") {
+      setSortBy((prev) =>
+        prev === "createdAt_asc" ? "createdAt_desc" : "createdAt_asc",
+      );
+    }
+    setCurrentPage(1);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between">
@@ -113,6 +138,7 @@ export const LogsClient = () => {
           onSortChange={handleSortChange}
           onPageChange={setCurrentPage}
           onItemsPerPageChange={handleItemsPerPageChange}
+          onHeaderSort={handleHeaderSort}
         />
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Payment, PaymentStatus } from "./types";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface PaymentTableProps {
   payments: Payment[];
@@ -17,6 +18,9 @@ interface PaymentTableProps {
   isLoading?: boolean;
   onVerifyClick: (payment: Payment) => void;
   onDeclineClick: (payment: Payment) => void;
+  sortKey: "orderNum" | "name" | "amount" | "reference";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const PaymentTable = ({
@@ -25,6 +29,9 @@ export const PaymentTable = ({
   isLoading = false,
   onVerifyClick,
   onDeclineClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: PaymentTableProps) => {
   const skeletonRows = 4;
   const getStatusColor = (status: PaymentStatus) => {
@@ -42,10 +49,42 @@ export const PaymentTable = ({
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
-          <TableHead className="px-4 text-white font-semibold">Order Number</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Name</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Amount</TableHead>
-          <TableHead className="px-4 text-white font-semibold">{referenceLabel}</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Order Number"
+              sortKey="orderNum"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Name"
+              sortKey="name"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Amount"
+              sortKey="amount"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label={referenceLabel}
+              sortKey="reference"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Status</TableHead>
           <TableHead className="px-4 text-white font-semibold">Action</TableHead>
         </TableRow>

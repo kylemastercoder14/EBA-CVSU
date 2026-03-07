@@ -7,7 +7,6 @@ import { LowStockAlert } from "./LowStockAlert";
 import { StockTable } from "./StockTable";
 import { StockPagination } from "./StockPagination";
 import { EditStockDialog } from "./EditStockDialog";
-import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { StockSearchBar } from "./StockSearchBar";
 import { StockItem } from "./types";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
@@ -22,38 +21,86 @@ import {
 } from "@/components/ui/select";
 import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
-type StockSortOption = "product_asc" | "id_asc" | "stock_desc" | "stock_asc";
+type StockSortOption =
+  | "product_asc"
+  | "product_desc"
+  | "id_asc"
+  | "id_desc"
+  | "stock_desc"
+  | "stock_asc";
 
 export const StockClient = () => {
   const queryClient = useQueryClient();
   const {
     data: { stocks },
   } = useSuspenseQuery(orpc.stock.list.queryOptions());
-  const [stockData, setStockData] = useState<StockItem[]>(stocks);
+  const [stockRows, setStockRows] = useState(stocks);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<StockSortOption>("product_asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState({
-    minStock: 0,
-    maxStock: 0,
-    currentStock: 0,
-  });
+  const [editValues, setEditValues] = useState<
+    Array<{
+      id: string;
+      variant: string | null;
+      minStock: number;
+      maxStock: number;
+      currentStock: number;
+    }>
+  >([]);
+
+  const groupedStockData = stockRows.reduce<Record<string, StockItem>>((acc, row) => {
+    if (!acc[row.productId]) {
+      acc[row.productId] = {
+        productId: row.productId,
+        productName: row.productName,
+        category: row.category,
+        variants: [],
+        minStock: 0,
+        maxStock: 0,
+        currentStock: 0,
+        status: "NORMAL",
+      };
+    }
+
+    const group = acc[row.productId];
+    group.variants.push({
+      id: row.id,
+      variant: row.variant,
+      minStock: row.minStock,
+      maxStock: row.maxStock,
+      currentStock: row.currentStock,
+      status: row.status,
+    });
+    group.minStock += row.minStock;
+    group.maxStock += row.maxStock;
+    group.currentStock += row.currentStock;
+    if (row.status === "CRITICAL") {
+      group.status = "CRITICAL";
+    } else if (row.status === "LOW" && group.status !== "CRITICAL") {
+      group.status = "LOW";
+    }
+
+    return acc;
+  }, {});
+
+  const stockData = Object.values(groupedStockData);
 
   const updateStockMutation = useMutation(
-    orpc.stock.update.mutationOptions({
-      onSuccess: (updatedItem) => {
-        setStockData((prev) =>
-          prev.map((item) => (item.id === updatedItem.id ? updatedItem : item)),
+    orpc.stock.updateByProduct.mutationOptions({
+      onSuccess: (result) => {
+        setStockRows((prev) =>
+          prev.map((item) => {
+            const updated = result.stocks.find((updatedRow) => updatedRow.id === item.id);
+            return updated ?? item;
+          }),
         );
         queryClient.invalidateQueries({
           queryKey: orpc.stock.list.queryKey(),
         });
-        toast.success(`Stock updated for "${updatedItem.productName}"`);
+        toast.success("Product stock updated successfully");
         setIsEditDialogOpen(false);
         setEditingItem(null);
       },
@@ -67,6 +114,9 @@ export const StockClient = () => {
   const filteredStockData = stockData.filter(
     (item) =>
       item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.variants.some((variant) =>
+        (variant.variant ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+      ) ||
       item.productId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -75,13 +125,19 @@ export const StockClient = () => {
     switch (sortBy) {
       case "id_asc":
         return a.productId.localeCompare(b.productId);
+      case "id_desc":
+        return b.productId.localeCompare(a.productId);
       case "stock_desc":
         return b.currentStock - a.currentStock;
       case "stock_asc":
         return a.currentStock - b.currentStock;
+      case "product_desc":
+        return b.productName.localeCompare(a.productName);
       case "product_asc":
       default:
-        return a.productName.localeCompare(b.productName);
+        return `${a.productName}-${a.productId}`.localeCompare(
+          `${b.productName}-${b.productId}`,
+        );
     }
   });
 
@@ -95,7 +151,6 @@ export const StockClient = () => {
   const lowStockItems = stockData.filter(
     (item) => item.status === "CRITICAL" || item.status === "LOW",
   );
-  const criticalItems = stockData.filter((item) => item.status === "CRITICAL");
 
   // Reset to page 1 when items per page changes
   const handleItemsPerPageChange = (value: string) => {
@@ -114,13 +169,28 @@ export const StockClient = () => {
     setCurrentPage(1);
   };
 
+  const handleHeaderSort = (key: string) => {
+    if (key === "product") {
+      setSortBy((prev) => (prev === "product_asc" ? "product_desc" : "product_asc"));
+    } else if (key === "id") {
+      setSortBy((prev) => (prev === "id_asc" ? "id_desc" : "id_asc"));
+    } else if (key === "stock") {
+      setSortBy((prev) => (prev === "stock_asc" ? "stock_desc" : "stock_asc"));
+    }
+    setCurrentPage(1);
+  };
+
   const handleEdit = (item: StockItem) => {
     setEditingItem(item);
-    setEditValues({
-      minStock: item.minStock,
-      maxStock: item.maxStock,
-      currentStock: item.currentStock,
-    });
+    setEditValues(
+      item.variants.map((variant) => ({
+        id: variant.id,
+        variant: variant.variant,
+        minStock: variant.minStock,
+        maxStock: variant.maxStock,
+        currentStock: variant.currentStock,
+      })),
+    );
     setIsEditDialogOpen(true);
   };
 
@@ -128,26 +198,26 @@ export const StockClient = () => {
     if (!editingItem) return;
 
     updateStockMutation.mutate({
-      id: editingItem.id,
-      minStock: editValues.minStock,
-      maxStock: editValues.maxStock,
-      currentStock: editValues.currentStock,
+      productId: editingItem.productId,
+      items: editValues.map((variant) => ({
+        id: variant.id,
+        minStock: variant.minStock,
+        maxStock: variant.maxStock,
+        currentStock: variant.currentStock,
+      })),
     });
   };
 
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      setStockData((prev) => prev.filter((item) => item.id !== itemToDelete));
-    }
-    setIsDeleteDialogOpen(false);
-    setItemToDelete(null);
-  };
-
   const updateEditValue = (
+    id: string,
     field: "minStock" | "maxStock" | "currentStock",
     value: number,
   ) => {
-    setEditValues((prev) => ({ ...prev, [field]: value }));
+    setEditValues((prev) =>
+      prev.map((variant) =>
+        variant.id === id ? { ...variant, [field]: value } : variant,
+      ),
+    );
   };
 
   return (
@@ -160,7 +230,7 @@ export const StockClient = () => {
       </div>
 
       <LowStockAlert
-        criticalItems={criticalItems}
+        lowStockItems={lowStockItems}
         totalLowStock={lowStockItems.length}
       />
 
@@ -175,7 +245,9 @@ export const StockClient = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="product_asc">Product (A-Z)</SelectItem>
+                  <SelectItem value="product_desc">Product (Z-A)</SelectItem>
                   <SelectItem value="id_asc">Product ID (A-Z)</SelectItem>
+                  <SelectItem value="id_desc">Product ID (Z-A)</SelectItem>
                   <SelectItem value="stock_desc">Stock (High-Low)</SelectItem>
                   <SelectItem value="stock_asc">Stock (Low-High)</SelectItem>
                 </SelectContent>
@@ -190,6 +262,8 @@ export const StockClient = () => {
               <StockTable
                 stockData={currentStockData}
                 onEdit={handleEdit}
+                sortKey={sortBy}
+                onSort={handleHeaderSort}
               />
             </div>
             <StockPagination
@@ -209,17 +283,11 @@ export const StockClient = () => {
       <EditStockDialog
         isOpen={isEditDialogOpen}
         editingItem={editingItem}
-		isPending={updateStockMutation.isPending}
+        isPending={updateStockMutation.isPending}
         editValues={editValues}
         onOpenChange={setIsEditDialogOpen}
         onUpdateValue={updateEditValue}
         onSave={handleSave}
-      />
-
-      <DeleteConfirmDialog
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={confirmDelete}
       />
     </div>
   );

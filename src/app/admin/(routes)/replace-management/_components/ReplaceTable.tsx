@@ -9,12 +9,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ReplaceRequest, ReplaceRequestStatus } from "./types";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface ReplaceTableProps {
   requests: ReplaceRequest[];
   status: ReplaceRequestStatus;
   isLoading?: boolean;
   onReviewClick: (request: ReplaceRequest) => void;
+  sortKey: "id" | "orderNumber" | "reason" | "createdAt";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 const statusClassName: Record<ReplaceRequestStatus, string> = {
@@ -37,6 +41,9 @@ export const ReplaceTable = ({
   status,
   isLoading = false,
   onReviewClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: ReplaceTableProps) => {
   const skeletonRows = 4;
   const showActionColumn = status === "Pending";
@@ -46,10 +53,42 @@ export const ReplaceTable = ({
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
-          <TableHead className="px-4 text-white font-semibold">Request ID</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Order Number</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Reason</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Requested At</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Request ID"
+              sortKey="id"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Order Number"
+              sortKey="orderNumber"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Reason"
+              sortKey="reason"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Requested At"
+              sortKey="createdAt"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Status</TableHead>
           {showActionColumn && (
             <TableHead className="px-4 text-white font-semibold">Action</TableHead>

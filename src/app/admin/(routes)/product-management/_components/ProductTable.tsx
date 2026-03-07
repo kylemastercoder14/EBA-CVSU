@@ -17,12 +17,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { NO_VARIANT_SIZE } from "@/validators/products";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface ProductTableProps {
   products: Product[];
   isLoading?: boolean;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  sortKey: "name_asc" | "name_desc" | "id_asc" | "id_desc" | "category_asc" | "category_desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const ProductTable = ({
@@ -30,18 +33,38 @@ export const ProductTable = ({
   isLoading = false,
   onEdit,
   onDelete,
+  sortKey,
+  onSort,
 }: ProductTableProps) => {
   const skeletonRows = 4;
+  const activeSortKey = sortKey.startsWith("name")
+    ? "name"
+    : sortKey.startsWith("id")
+      ? "id"
+      : "category";
+  const direction: "asc" | "desc" = sortKey.endsWith("_desc") ? "desc" : "asc";
   return (
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
           <TableHead className="px-4 text-white font-semibold">Image</TableHead>
           <TableHead className="px-4 text-white font-semibold">
-            Product Name
+            <SortableHeader
+              label="Product Name"
+              sortKey="name"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">
-            Category
+            <SortableHeader
+              label="Category"
+              sortKey="category"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">
             Variants/Sizes

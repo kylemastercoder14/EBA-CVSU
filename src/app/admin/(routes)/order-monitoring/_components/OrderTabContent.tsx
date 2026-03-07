@@ -22,6 +22,9 @@ interface OrderTabContentProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onConfirmClick?: (order: Order) => void;
+  sortKey: "orderNum" | "name" | "pickupDate";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const OrderTabContent = ({
@@ -41,6 +44,9 @@ export const OrderTabContent = ({
   onPageChange,
   onItemsPerPageChange,
   onConfirmClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: OrderTabContentProps) => {
   const tableId = `admin-order-monitoring-${stage.toLowerCase().replace(/\s+/g, "-")}`;
 
@@ -61,6 +67,9 @@ export const OrderTabContent = ({
             stage={stage}
             isLoading={isLoading}
             onConfirmClick={onConfirmClick}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={onSort}
           />
         </div>
         <OrderPagination

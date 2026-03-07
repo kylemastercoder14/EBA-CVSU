@@ -112,7 +112,7 @@ model Product {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   variants           ProductVariant[]
-  stockItem          StockItem?
+  stockItems         StockItem[]
   orderItems         OrderItem[]
   systemLogs         SystemLog[]
 
@@ -130,6 +130,7 @@ model ProductVariant {
   updatedAt  DateTime    @updatedAt
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  stockItem  StockItem?
 
   @@unique([productId, size])
   @@index([productId])
@@ -138,7 +139,8 @@ model ProductVariant {
 
 model StockItem {
   id           String      @id
-  productId    String      @unique
+  productId    String
+  productVariantId String? @unique
   minStock     Int
   maxStock     Int
   currentStock Int
@@ -146,8 +148,10 @@ model StockItem {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
   systemLogs   SystemLog[]
 
+  @@index([productId])
   @@index([status])
   @@map("stock_items")
 }

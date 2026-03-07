@@ -13,7 +13,13 @@ import { SearchIcon } from "lucide-react";
 
 type TypeFilter = LogType | "all";
 type CategoryFilter = LogCategory | "all";
-type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_asc";
+type SortOption =
+  | "createdAt_desc"
+  | "createdAt_asc"
+  | "id_asc"
+  | "id_desc"
+  | "description_asc"
+  | "description_desc";
 
 interface LogsFiltersCardProps {
   searchQuery: string;
@@ -99,8 +105,12 @@ export const LogsFiltersCard = ({
                 <SelectItem value="createdAt_desc">Newest First</SelectItem>
                 <SelectItem value="createdAt_asc">Oldest First</SelectItem>
                 <SelectItem value="id_asc">ID (A-Z)</SelectItem>
+                <SelectItem value="id_desc">ID (Z-A)</SelectItem>
                 <SelectItem value="description_asc">
                   Description (A-Z)
+                </SelectItem>
+                <SelectItem value="description_desc">
+                  Description (Z-A)
                 </SelectItem>
               </SelectContent>
             </Select>

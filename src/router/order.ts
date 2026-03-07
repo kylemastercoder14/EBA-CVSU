@@ -31,6 +31,7 @@ import {
   updateOrderStatusInputSchema,
   updateOrderStatusOutputSchema,
 } from "@/validators/order";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type ReadySmsInput = {
   orderNumber: string;
@@ -358,6 +359,9 @@ const getStockStatus = (
   return "NORMAL";
 };
 
+const toStockKey = (productId: string, productVariantId: string | null) =>
+  productVariantId ? `variant:${productVariantId}` : `product:${productId}`;
+
 export const listOrdersMonitoring = base
   .route({
     method: "GET",
@@ -392,6 +396,11 @@ export const listOrdersMonitoring = base
                 name: true,
               },
             },
+            productVariant: {
+              select: {
+                id: true,
+              },
+            },
           },
         },
         payment: {
@@ -402,7 +411,7 @@ export const listOrdersMonitoring = base
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: "asc",
       },
     });
 
@@ -497,7 +506,7 @@ export const listOrdersRelease = base
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: "asc",
       },
     });
 
@@ -765,29 +774,62 @@ export const createOrder = base
         return {
           ...item,
           productName: product.name,
-          productVariantId: selectedVariant.id,
+          productVariantId:
+            selectedVariant.size === NO_VARIANT_SIZE
+              ? null
+              : selectedVariant.id,
+          stockKey: toStockKey(
+            product.id,
+            selectedVariant.size === NO_VARIANT_SIZE ? null : selectedVariant.id,
+          ),
+          stockScope:
+            selectedVariant.size === NO_VARIANT_SIZE
+              ? ("PRODUCT" as const)
+              : ("VARIANT" as const),
           unitPrice: Number(selectedVariant.price),
         };
       }),
     );
 
-    const orderProductIds = Array.from(
-      new Set(itemsWithPricing.map((item) => item.productId)),
+    const variantIdsForStock = Array.from(
+      new Set(
+        itemsWithPricing
+          .filter((item) => item.stockScope === "VARIANT")
+          .map((item) => item.productVariantId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const productIdsForStock = Array.from(
+      new Set(
+        itemsWithPricing
+          .filter((item) => item.stockScope === "PRODUCT")
+          .map((item) => item.productId),
+      ),
     );
     const stockRows = await prisma.stockItem.findMany({
-      where: { productId: { in: orderProductIds } },
-      select: { productId: true, currentStock: true },
+      where: {
+        OR: [
+          ...(variantIdsForStock.length > 0
+            ? [{ productVariantId: { in: variantIdsForStock } }]
+            : []),
+          ...(productIdsForStock.length > 0
+            ? [{ productId: { in: productIdsForStock }, productVariantId: null }]
+            : []),
+        ],
+      },
+      select: { productId: true, productVariantId: true, currentStock: true },
     });
 
-    if (stockRows.length !== orderProductIds.length) {
+    const stockByKey = new Map(
+      stockRows.map((row) => [toStockKey(row.productId, row.productVariantId), row.currentStock]),
+    );
+    const requiredStockKeys = Array.from(new Set(itemsWithPricing.map((item) => item.stockKey)));
+    if (!requiredStockKeys.every((key) => stockByKey.has(key))) {
       throw errors.BAD_REQUEST();
     }
 
-    const stockByProductId = new Map(
-      stockRows.map((row) => [row.productId, row.currentStock]),
-    );
-    const hasPreOrderItems = orderProductIds.some(
-      (productId) => (stockByProductId.get(productId) ?? 0) <= 0,
+    const hasPreOrderItems = requiredStockKeys.some(
+      (stockKey) => (stockByKey.get(stockKey) ?? 0) <= 0,
     );
     if (hasPreOrderItems && input.paymentMethod !== "GCASH") {
       throw errors.BAD_REQUEST();
@@ -1047,29 +1089,62 @@ export const createKioskOrder = base
         return {
           ...item,
           productName: product.name,
-          productVariantId: selectedVariant.id,
+          productVariantId:
+            selectedVariant.size === NO_VARIANT_SIZE
+              ? null
+              : selectedVariant.id,
+          stockKey: toStockKey(
+            product.id,
+            selectedVariant.size === NO_VARIANT_SIZE ? null : selectedVariant.id,
+          ),
+          stockScope:
+            selectedVariant.size === NO_VARIANT_SIZE
+              ? ("PRODUCT" as const)
+              : ("VARIANT" as const),
           unitPrice: Number(selectedVariant.price),
         };
       }),
     );
 
-    const orderProductIds = Array.from(
-      new Set(itemsWithPricing.map((item) => item.productId)),
+    const variantIdsForStock = Array.from(
+      new Set(
+        itemsWithPricing
+          .filter((item) => item.stockScope === "VARIANT")
+          .map((item) => item.productVariantId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const productIdsForStock = Array.from(
+      new Set(
+        itemsWithPricing
+          .filter((item) => item.stockScope === "PRODUCT")
+          .map((item) => item.productId),
+      ),
     );
     const stockRows = await prisma.stockItem.findMany({
-      where: { productId: { in: orderProductIds } },
-      select: { productId: true, currentStock: true },
+      where: {
+        OR: [
+          ...(variantIdsForStock.length > 0
+            ? [{ productVariantId: { in: variantIdsForStock } }]
+            : []),
+          ...(productIdsForStock.length > 0
+            ? [{ productId: { in: productIdsForStock }, productVariantId: null }]
+            : []),
+        ],
+      },
+      select: { productId: true, productVariantId: true, currentStock: true },
     });
 
-    if (stockRows.length !== orderProductIds.length) {
+    const stockByKey = new Map(
+      stockRows.map((row) => [toStockKey(row.productId, row.productVariantId), row.currentStock]),
+    );
+    const requiredStockKeys = Array.from(new Set(itemsWithPricing.map((item) => item.stockKey)));
+    if (!requiredStockKeys.every((key) => stockByKey.has(key))) {
       throw errors.BAD_REQUEST();
     }
 
-    const stockByProductId = new Map(
-      stockRows.map((row) => [row.productId, row.currentStock]),
-    );
-    const hasPreOrderItems = orderProductIds.some(
-      (productId) => (stockByProductId.get(productId) ?? 0) <= 0,
+    const hasPreOrderItems = requiredStockKeys.some(
+      (stockKey) => (stockByKey.get(stockKey) ?? 0) <= 0,
     );
     // Kiosk mode does not allow pre-orders.
     if (hasPreOrderItems) {
@@ -1275,23 +1350,54 @@ export const updateOrderStatus = base
           where: { orderId: existingOrder.id },
           select: {
             productId: true,
+            productVariantId: true,
             quantity: true,
           },
         });
 
-        const quantityByProductId = new Map<string, number>();
+        const quantityByStockKey = new Map<string, number>();
         for (const item of orderItems) {
-          quantityByProductId.set(
+          const stockKey = toStockKey(
             item.productId,
-            (quantityByProductId.get(item.productId) ?? 0) + item.quantity,
+            item.productVariantId ?? null,
+          );
+          quantityByStockKey.set(
+            stockKey,
+            (quantityByStockKey.get(stockKey) ?? 0) + item.quantity,
           );
         }
 
-        const productIds = Array.from(quantityByProductId.keys());
-        if (productIds.length > 0) {
+        const variantIds = Array.from(
+          new Set(
+            orderItems
+              .map((item) => item.productVariantId)
+              .filter((id): id is string => Boolean(id)),
+          ),
+        );
+        const productIdsWithoutVariant = Array.from(
+          new Set(
+            orderItems
+              .filter((item) => !item.productVariantId)
+              .map((item) => item.productId),
+          ),
+        );
+
+        if (quantityByStockKey.size > 0) {
           const stockItems = await tx.stockItem.findMany({
             where: {
-              productId: { in: productIds },
+              OR: [
+                ...(variantIds.length > 0
+                  ? [{ productVariantId: { in: variantIds } }]
+                  : []),
+                ...(productIdsWithoutVariant.length > 0
+                  ? [
+                      {
+                        productId: { in: productIdsWithoutVariant },
+                        productVariantId: null,
+                      },
+                    ]
+                  : []),
+              ],
             },
             include: {
               product: {
@@ -1299,22 +1405,27 @@ export const updateOrderStatus = base
                   name: true,
                 },
               },
+              productVariant: {
+                select: {
+                  size: true,
+                },
+              },
             },
           });
 
-          if (stockItems.length !== productIds.length) {
+          if (stockItems.length !== quantityByStockKey.size) {
             throw errors.BAD_REQUEST();
           }
 
-          const stockByProductId = new Map(
-            stockItems.map((stock) => [stock.productId, stock]),
+          const stockByKey = new Map(
+            stockItems.map((stock) => [
+              toStockKey(stock.productId, stock.productVariantId),
+              stock,
+            ]),
           );
 
-          for (const [
-            productId,
-            deductQuantity,
-          ] of quantityByProductId.entries()) {
-            const stock = stockByProductId.get(productId);
+          for (const [stockKey, deductQuantity] of quantityByStockKey.entries()) {
+            const stock = stockByKey.get(stockKey);
             if (!stock) {
               throw errors.BAD_REQUEST();
             }
@@ -1336,7 +1447,7 @@ export const updateOrderStatus = base
             await createSystemLog(tx, {
               type: "SYSTEM",
               category: "STOCK_UPDATED",
-              description: `Stock deducted by ${deductQuantity} for "${stock.product.name}" from order "${existingOrder.orderNumber}" (current: ${nextStock}).`,
+              description: `Stock deducted by ${deductQuantity} for "${stock.product.name}"${stock.productVariant?.size ? ` (${stock.productVariant.size})` : ""} from order "${existingOrder.orderNumber}" (current: ${nextStock}).`,
               status: "SUCCESS",
               actorName: input.actorName ?? "System",
               actorUserId: existingOrder.userId,
@@ -1448,6 +1559,7 @@ export const markPreOrderStockAvailable = base
         orderItems: {
           select: {
             productId: true,
+            productVariantId: true,
             quantity: true,
           },
         },
@@ -1462,31 +1574,60 @@ export const markPreOrderStockAvailable = base
       throw errors.BAD_REQUEST();
     }
 
-    const requiredByProduct = new Map<string, number>();
+    const requiredByStockKey = new Map<string, number>();
     for (const item of existingOrder.orderItems) {
-      requiredByProduct.set(
+      const stockKey = toStockKey(
         item.productId,
-        (requiredByProduct.get(item.productId) ?? 0) + item.quantity,
+        item.productVariantId ?? null,
+      );
+      requiredByStockKey.set(
+        stockKey,
+        (requiredByStockKey.get(stockKey) ?? 0) + item.quantity,
       );
     }
 
+    const requiredVariantIds = Array.from(
+      new Set(
+        existingOrder.orderItems
+          .map((item) => item.productVariantId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const requiredProductIds = Array.from(
+      new Set(
+        existingOrder.orderItems
+          .filter((item) => !item.productVariantId)
+          .map((item) => item.productId),
+      ),
+    );
     const stockRows = await prisma.stockItem.findMany({
       where: {
-        productId: { in: Array.from(requiredByProduct.keys()) },
+        OR: [
+          ...(requiredVariantIds.length > 0
+            ? [{ productVariantId: { in: requiredVariantIds } }]
+            : []),
+          ...(requiredProductIds.length > 0
+            ? [{ productId: { in: requiredProductIds }, productVariantId: null }]
+            : []),
+        ],
       },
       select: {
         id: true,
         productId: true,
+        productVariantId: true,
         currentStock: true,
       },
     });
 
-    const stockByProductId = new Map(
-      stockRows.map((row) => [row.productId, row.currentStock]),
+    const stockByKey = new Map(
+      stockRows.map((row) => [
+        toStockKey(row.productId, row.productVariantId),
+        row.currentStock,
+      ]),
     );
-    const isStockAvailable = Array.from(requiredByProduct.entries()).every(
-      ([productId, requiredQty]) =>
-        (stockByProductId.get(productId) ?? 0) >= requiredQty,
+    const isStockAvailable = Array.from(requiredByStockKey.entries()).every(
+      ([stockKey, requiredQty]) =>
+        (stockByKey.get(stockKey) ?? 0) >= requiredQty,
     );
 
     if (!isStockAvailable) {
@@ -1576,21 +1717,46 @@ export const listPreOrders = base
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: "asc",
       },
     });
 
+    const requiredVariantIds = Array.from(
+      new Set(
+        orders.flatMap((order) =>
+          order.orderItems
+            .map((item) => item.productVariantId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ),
+    );
     const requiredProductIds = Array.from(
       new Set(
-        orders.flatMap((order) => order.orderItems.map((item) => item.productId)),
+        orders.flatMap((order) =>
+          order.orderItems
+            .filter((item) => !item.productVariantId)
+            .map((item) => item.productId),
+        ),
       ),
     );
     const stockItems = await prisma.stockItem.findMany({
-      where: { productId: { in: requiredProductIds } },
-      select: { productId: true, currentStock: true },
+      where: {
+        OR: [
+          ...(requiredVariantIds.length > 0
+            ? [{ productVariantId: { in: requiredVariantIds } }]
+            : []),
+          ...(requiredProductIds.length > 0
+            ? [{ productId: { in: requiredProductIds }, productVariantId: null }]
+            : []),
+        ],
+      },
+      select: { productId: true, productVariantId: true, currentStock: true },
     });
-    const stockByProductId = new Map(
-      stockItems.map((item) => [item.productId, item.currentStock]),
+    const stockByKey = new Map(
+      stockItems.map((item) => [
+        toStockKey(item.productId, item.productVariantId),
+        item.currentStock,
+      ]),
     );
 
     return {
@@ -1604,17 +1770,18 @@ export const listPreOrders = base
         const paymentStatus =
           order.paymentStatus ?? order.payment?.status ?? "PENDING";
 
-        const requiredByProduct = new Map<string, number>();
+        const requiredByStockKey = new Map<string, number>();
         for (const item of order.orderItems) {
-          requiredByProduct.set(
-            item.productId,
-            (requiredByProduct.get(item.productId) ?? 0) + item.quantity,
+          const stockKey = toStockKey(item.productId, item.productVariantId ?? null);
+          requiredByStockKey.set(
+            stockKey,
+            (requiredByStockKey.get(stockKey) ?? 0) + item.quantity,
           );
         }
 
-        const canMarkStockAvailable = Array.from(requiredByProduct.entries()).every(
-          ([productId, requiredQty]) =>
-            (stockByProductId.get(productId) ?? 0) >= requiredQty,
+        const canMarkStockAvailable = Array.from(requiredByStockKey.entries()).every(
+          ([stockKey, requiredQty]) =>
+            (stockByKey.get(stockKey) ?? 0) >= requiredQty,
         );
 
         return {

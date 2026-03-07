@@ -22,6 +22,9 @@ interface ReplaceTabContentProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onReviewClick: (request: ReplaceRequest) => void;
+  sortKey: "id" | "orderNumber" | "reason" | "createdAt";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const ReplaceTabContent = ({
@@ -41,6 +44,9 @@ export const ReplaceTabContent = ({
   onPageChange,
   onItemsPerPageChange,
   onReviewClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: ReplaceTabContentProps) => {
   const tableId = `admin-replace-${status.toLowerCase()}`;
 
@@ -61,6 +67,9 @@ export const ReplaceTabContent = ({
             status={status}
             isLoading={isLoading}
             onReviewClick={onReviewClick}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={onSort}
           />
         </div>
         <ReplacePagination

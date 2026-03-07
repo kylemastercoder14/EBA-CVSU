@@ -4,11 +4,11 @@ import { AlertTriangle } from "lucide-react";
 import { StockItem } from "./types";
 
 interface LowStockAlertProps {
-  criticalItems: StockItem[];
+  lowStockItems: StockItem[];
   totalLowStock: number;
 }
 
-export const LowStockAlert = ({ criticalItems, totalLowStock }: LowStockAlertProps) => {
+export const LowStockAlert = ({ lowStockItems, totalLowStock }: LowStockAlertProps) => {
   if (totalLowStock === 0) return null;
 
   return (
@@ -22,16 +22,17 @@ export const LowStockAlert = ({ criticalItems, totalLowStock }: LowStockAlertPro
             Low Stock Alert
           </p>
           <p className="text-[#d87300c4] text-sm mb-2">
-            {criticalItems.length} items need restocking
+            {totalLowStock} products need restocking
           </p>
           <div className="flex flex-wrap gap-2">
-            {criticalItems.map((item) => (
+            {lowStockItems.map((item) => (
               <Badge
-                key={item.id}
+                key={item.productId}
                 variant="secondary"
                 className="bg-[#3332301e] border border-[#D87300] text-[#D87300]"
               >
-                {item.productName} ({item.currentStock} stock)
+                {item.productName}
+                {` (${item.currentStock} total stock)`}
               </Badge>
             ))}
           </div>

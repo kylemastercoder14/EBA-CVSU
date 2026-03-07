@@ -10,6 +10,9 @@ import { ReplaceRequestsTabs } from "./_components/ReplaceRequestsTabs";
 import { ReplaceRequest, ReplaceRequestStatus } from "./_components/types";
 import { UpdateReplaceStatusDialog } from "./_components/UpdateReplaceStatusDialog";
 
+type ReplaceSortKey = "id" | "orderNumber" | "reason" | "createdAt";
+type SortDirection = "asc" | "desc";
+
 const reasonLabel: Record<string, string> = {
   WRONG_ITEM: "Wrong Item",
   DEFECTIVE_ITEM: "Defective Item",
@@ -29,6 +32,8 @@ const Page = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [sortKey, setSortKey] = useState<ReplaceSortKey>("id");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedRequest, setSelectedRequest] = useState<ReplaceRequest | null>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
@@ -81,10 +86,25 @@ const Page = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    if (sortKey === "createdAt") {
+      const timeA = Date.parse(a.createdAt);
+      const timeB = Date.parse(b.createdAt);
+      const aValue = Number.isNaN(timeA) ? 0 : timeA;
+      const bValue = Number.isNaN(timeB) ? 0 : timeB;
+      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+    }
+    const aValue = a[sortKey].toLowerCase();
+    const bValue = b[sortKey].toLowerCase();
+    return sortDirection === "asc"
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
+  });
+
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentRequests = filteredRequests.slice(startIndex, endIndex);
+  const currentRequests = sortedRequests.slice(startIndex, endIndex);
 
   const statusCounts: Record<ReplaceRequestStatus, number> = {
     Pending: requests.filter((request) => request.status === "Pending").length,
@@ -106,6 +126,17 @@ const Page = () => {
     setActiveTab(value as ReplaceRequestStatus);
     setCurrentPage(1);
     setSearchQuery("");
+  };
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as ReplaceSortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
   };
 
   const handleReviewClick = (request: ReplaceRequest) => {
@@ -161,6 +192,9 @@ const Page = () => {
           onPageChange={setCurrentPage}
           onItemsPerPageChange={handleItemsPerPageChange}
           onReviewClick={handleReviewClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
 

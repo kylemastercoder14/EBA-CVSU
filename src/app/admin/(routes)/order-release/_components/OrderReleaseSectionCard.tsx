@@ -29,6 +29,9 @@ interface OrderReleaseSectionCardProps {
   onItemsPerPageChange: (value: string) => void;
   onReleaseClick?: (order: Order) => void;
   onMarkReadyClick?: (order: Order) => void;
+  sortKey: "orderNumber" | "name" | "pickupDate";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const OrderReleaseSectionCard = ({
@@ -49,6 +52,9 @@ export const OrderReleaseSectionCard = ({
   onItemsPerPageChange,
   onReleaseClick,
   onMarkReadyClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: OrderReleaseSectionCardProps) => {
   const tableId = `admin-order-release-${status.toLowerCase()}`;
 
@@ -70,6 +76,9 @@ export const OrderReleaseSectionCard = ({
             isLoading={isLoading}
             onReleaseClick={onReleaseClick}
             onMarkReadyClick={onMarkReadyClick}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={onSort}
           />
         </div>
         <OrderReleasePagination

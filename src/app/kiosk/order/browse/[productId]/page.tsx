@@ -56,10 +56,25 @@ const ProductDetailPage = () => {
   const { data: stocksData } = useQuery(orpc.stock.list.queryOptions());
 
   const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stocksData?.stocks ?? []).map(
-      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
-    );
-    return new Map<string, number>(entries);
+    const map = new Map<string, number>();
+    for (const stock of stocksData?.stocks ?? []) {
+      map.set(
+        stock.productId,
+        (map.get(stock.productId) ?? 0) + Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
+  }, [stocksData]);
+
+  const stockByVariantKey = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    for (const stock of stocksData?.stocks ?? []) {
+      map.set(
+        `${stock.productId}::${stock.variant ?? NO_VARIANT_SIZE}`,
+        Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
   }, [stocksData]);
 
   const product = useMemo<DetailProduct | undefined>(() => {
@@ -109,9 +124,17 @@ const ProductDetailPage = () => {
     if (!activeSize) return undefined;
     return realVariants.find((variant) => variant.size === activeSize);
   }, [activeSize, realVariants]);
+  const activeStock = useMemo(() => {
+    if (!product) return 0;
+    if (!hasVariants) {
+      return stockByVariantKey.get(`${product.id}::${NO_VARIANT_SIZE}`) ?? 0;
+    }
+    return stockByVariantKey.get(`${product.id}::${activeSize}`) ?? 0;
+  }, [activeSize, hasVariants, product, stockByVariantKey]);
   const activePrice = activeVariant?.price ?? minPrice;
   const canAdd =
     Boolean(product?.available) &&
+    activeStock > 0 &&
     (!hasVariants || !!activeSize);
 
   const handleAddToCart = () => {
@@ -215,7 +238,7 @@ const ProductDetailPage = () => {
               <span className="font-serif text-xs uppercase tracking-[0.2em] text-[#07484A]/55">
                 {product.category}
               </span>
-              {!product.available ? (
+              {activeStock <= 0 ? (
                 <span className="rounded-full bg-red-500 px-2.5 py-0.5 font-serif text-[0.6rem] font-bold uppercase tracking-wider text-white">
                   Out of Stock
                 </span>
@@ -236,7 +259,9 @@ const ProductDetailPage = () => {
               </p>
 
               <p className="font-serif text-base uppercase text-[#07484A]">
-                Total stock: {product.stockCount} pc/s
+                {hasVariants
+                  ? `Stock for ${activeSize}: ${activeStock} pc/s (Total: ${product.stockCount})`
+                  : `Total stock: ${product.stockCount} pc/s`}
               </p>
             </div>
 
@@ -314,7 +339,7 @@ const ProductDetailPage = () => {
               <ShoppingCart className="mr-2 size-5" />
               {added
                 ? "Added!"
-                : product.available
+                : canAdd
                   ? "Add to Order"
                   : "Unavailable"}
             </Button>

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -14,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { TablePrintButton } from "@/components/admin/TablePrintButton";
+import { SortableHeader } from "@/components/admin/SortableHeader";
+import { useMemo, useState } from "react";
 
 interface RecentOrderItem {
   id: string;
@@ -54,6 +58,32 @@ export const RecentOrderTable = ({
   isLoading = false,
 }: RecentOrderTableProps) => {
   const skeletonRows = 5;
+  const [sortKey, setSortKey] = useState<"orderNumber" | "customerName" | "schedule" | "items" | "amount">("orderNumber");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort((a, b) => {
+      if (sortKey === "items" || sortKey === "amount") {
+        return sortDirection === "asc" ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey];
+      }
+      const aValue = a[sortKey].toLowerCase();
+      const bValue = b[sortKey].toLowerCase();
+      return sortDirection === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    });
+  }, [orders, sortDirection, sortKey]);
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as typeof sortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
+  };
+
   return (
     <div className="mt-10">
       <Card className="border-3 border-[#07484A] bg-[#D3E9FF]">
@@ -70,11 +100,56 @@ export const RecentOrderTable = ({
           <Table>
             <TableHeader className="bg-[#07484A38]">
               <TableRow>
-                <TableHead className="px-4">Order Number</TableHead>
-                <TableHead className="px-4">Customer Name</TableHead>
-                <TableHead className="px-4">Schedule</TableHead>
-                <TableHead className="px-4">Items</TableHead>
-                <TableHead className="px-4">Amount</TableHead>
+                <TableHead className="px-4">
+                  <SortableHeader
+                    label="Order Number"
+                    sortKey="orderNumber"
+                    activeSortKey={sortKey}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className="text-[#07484A]"
+                  />
+                </TableHead>
+                <TableHead className="px-4">
+                  <SortableHeader
+                    label="Customer Name"
+                    sortKey="customerName"
+                    activeSortKey={sortKey}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className="text-[#07484A]"
+                  />
+                </TableHead>
+                <TableHead className="px-4">
+                  <SortableHeader
+                    label="Schedule"
+                    sortKey="schedule"
+                    activeSortKey={sortKey}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className="text-[#07484A]"
+                  />
+                </TableHead>
+                <TableHead className="px-4">
+                  <SortableHeader
+                    label="Items"
+                    sortKey="items"
+                    activeSortKey={sortKey}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className="text-[#07484A]"
+                  />
+                </TableHead>
+                <TableHead className="px-4">
+                  <SortableHeader
+                    label="Amount"
+                    sortKey="amount"
+                    activeSortKey={sortKey}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className="text-[#07484A]"
+                  />
+                </TableHead>
                 <TableHead className="px-4">Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -91,8 +166,8 @@ export const RecentOrderTable = ({
                     <TableCell className="p-4"><div className="h-6 w-18 animate-pulse rounded-full bg-[#07484A]/10" /></TableCell>
                   </TableRow>
                 ))
-              ) : orders.length > 0 ? (
-                orders.map((order) => (
+              ) : sortedOrders.length > 0 ? (
+                sortedOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="p-4">{order.orderNumber}</TableCell>
                     <TableCell className="p-4">{order.customerName}</TableCell>

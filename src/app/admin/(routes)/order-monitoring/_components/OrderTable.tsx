@@ -9,12 +9,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Order, OrderStage, PaymentMethod, PaymentStatus } from "./types";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface OrderTableProps {
   orders: Order[];
   stage: OrderStage;
   isLoading?: boolean;
   onConfirmClick?: (order: Order) => void;
+  sortKey: "orderNum" | "name" | "pickupDate";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const OrderTable = ({
@@ -22,6 +26,9 @@ export const OrderTable = ({
   stage,
   isLoading = false,
   onConfirmClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: OrderTableProps) => {
   const skeletonRows = 4;
   const getPaymentStatusColor = (status: PaymentStatus) => {
@@ -44,13 +51,37 @@ export const OrderTable = ({
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
-          <TableHead className="px-4 text-white font-semibold">Order Number</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Name</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Order Number"
+              sortKey="orderNum"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Name"
+              sortKey="name"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Items</TableHead>
           <TableHead className="px-4 text-white font-semibold">Quantity</TableHead>
           <TableHead className="px-4 text-white font-semibold">Payment Method</TableHead>
           <TableHead className="px-4 text-white font-semibold">Payment Status</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Pickup Date</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Pickup Date"
+              sortKey="pickupDate"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           {showActionColumn && (
             <TableHead className="px-4 text-white font-semibold">Action</TableHead>
           )}

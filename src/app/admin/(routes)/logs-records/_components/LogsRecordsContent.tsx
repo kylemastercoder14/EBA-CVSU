@@ -8,7 +8,13 @@ import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
 type TypeFilter = LogType | "all";
 type CategoryFilter = LogCategory | "all";
-type SortOption = "createdAt_desc" | "createdAt_asc" | "id_asc" | "description_asc";
+type SortOption =
+  | "createdAt_desc"
+  | "createdAt_asc"
+  | "id_asc"
+  | "id_desc"
+  | "description_asc"
+  | "description_desc";
 
 interface LogsRecordsContentProps {
   logs: LogRecord[];
@@ -29,6 +35,7 @@ interface LogsRecordsContentProps {
   onSortChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
+  onHeaderSort: (sortKey: string) => void;
 }
 
 export const LogsRecordsContent = ({
@@ -50,6 +57,7 @@ export const LogsRecordsContent = ({
   onSortChange,
   onPageChange,
   onItemsPerPageChange,
+  onHeaderSort,
 }: LogsRecordsContentProps) => {
   return (
     <>
@@ -70,7 +78,12 @@ export const LogsRecordsContent = ({
             <TablePrintButton targetId="admin-logs-table" title="Logs and Records" />
           </div>
           <div id="admin-logs-table">
-            <LogsRecordsTable logs={logs} isLoading={isLoading} />
+            <LogsRecordsTable
+              logs={logs}
+              isLoading={isLoading}
+              sortKey={sortBy}
+              onSort={onHeaderSort}
+            />
           </div>
           <LogsRecordsPagination
             currentPage={currentPage}

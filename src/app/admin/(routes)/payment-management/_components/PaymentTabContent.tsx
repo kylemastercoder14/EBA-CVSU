@@ -23,6 +23,9 @@ interface PaymentTabContentProps {
   onItemsPerPageChange: (value: string) => void;
   onVerifyClick: (payment: Payment) => void;
   onDeclineClick: (payment: Payment) => void;
+  sortKey: "orderNum" | "name" | "amount" | "reference";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const PaymentTabContent = ({
@@ -43,6 +46,9 @@ export const PaymentTabContent = ({
   onItemsPerPageChange,
   onVerifyClick,
   onDeclineClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: PaymentTabContentProps) => {
   const tableId = `admin-payments-${paymentType.toLowerCase()}`;
 
@@ -68,6 +74,9 @@ export const PaymentTabContent = ({
             isLoading={isLoading}
             onVerifyClick={onVerifyClick}
             onDeclineClick={onDeclineClick}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={onSort}
           />
         </div>
         <PaymentPagination

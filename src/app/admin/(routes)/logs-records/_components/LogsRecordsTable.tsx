@@ -17,17 +17,34 @@ import { LogRecord } from "./types";
 import { LogStatus, LogType } from "@/generated/prisma";
 import { format } from "date-fns";
 import { formatEnumLabel } from '@/lib/utils';
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface LogsRecordsTableProps {
   logs: LogRecord[];
   isLoading?: boolean;
+  sortKey:
+    | "createdAt_desc"
+    | "createdAt_asc"
+    | "id_asc"
+    | "id_desc"
+    | "description_asc"
+    | "description_desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const LogsRecordsTable = ({
   logs,
   isLoading = false,
+  sortKey,
+  onSort,
 }: LogsRecordsTableProps) => {
   const skeletonRows = 5;
+  const activeSortKey = sortKey.startsWith("createdAt")
+    ? "createdAt"
+    : sortKey.startsWith("description")
+      ? "description"
+      : "id";
+  const direction: "asc" | "desc" = sortKey.endsWith("_desc") ? "desc" : "asc";
   const getTypeIcon = (type: LogType) => {
     switch (type) {
       case "ORDER":
@@ -57,18 +74,36 @@ export const LogsRecordsTable = ({
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
           <TableHead className="px-4 text-white font-semibold">
-            Log ID
+            <SortableHeader
+              label="Log ID"
+              sortKey="id"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">Type</TableHead>
           <TableHead className="px-4 text-white font-semibold">
             Category
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">
-            Description
+            <SortableHeader
+              label="Description"
+              sortKey="description"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">User</TableHead>
           <TableHead className="px-4 text-white font-semibold">
-            Timestamp
+            <SortableHeader
+              label="Timestamp"
+              sortKey="createdAt"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
           </TableHead>
           <TableHead className="px-4 text-white font-semibold">
             Action

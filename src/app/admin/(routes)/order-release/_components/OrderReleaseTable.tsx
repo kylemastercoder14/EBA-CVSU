@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { CheckCircle2, Hammer, PackageCheck } from "lucide-react";
 import { Order, OrderStatus } from "./types";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface OrderReleaseTableProps {
   orders: Order[];
@@ -17,6 +18,9 @@ interface OrderReleaseTableProps {
   isLoading?: boolean;
   onReleaseClick?: (order: Order) => void;
   onMarkReadyClick?: (order: Order) => void;
+  sortKey: "orderNumber" | "name" | "pickupDate";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const OrderReleaseTable = ({
@@ -25,6 +29,9 @@ export const OrderReleaseTable = ({
   isLoading = false,
   onReleaseClick,
   onMarkReadyClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: OrderReleaseTableProps) => {
   const skeletonRows = 4;
   const emptyText =
@@ -38,11 +45,35 @@ export const OrderReleaseTable = ({
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
-          <TableHead className="px-4 text-white font-semibold">Order Number</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Name</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Order Number"
+              sortKey="orderNumber"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Name"
+              sortKey="name"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Items</TableHead>
           <TableHead className="px-4 text-white font-semibold">Quantity</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Pickup Date</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Pickup Date"
+              sortKey="pickupDate"
+              activeSortKey={sortKey}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Action</TableHead>
         </TableRow>
       </TableHeader>

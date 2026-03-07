@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/hooks/use-cart";
 import { orpc } from "@/lib/orpc";
+import { NO_VARIANT_SIZE } from "@/validators/products";
 
 type PaymentOption = {
   id: "cash" | "gcash";
@@ -40,19 +41,25 @@ const Page = () => {
   const items = useCart((state) => state.items);
   const { data: stockData } = useQuery(orpc.stock.list.queryOptions());
 
-  const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map(
-      (stock) => [stock.productId, Number(stock.currentStock ?? 0)],
-    );
-    return new Map<string, number>(entries);
+  const stockByVariantKey = useMemo<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    for (const stock of stockData?.stocks ?? []) {
+      map.set(
+        `${stock.productId}::${stock.variant ?? NO_VARIANT_SIZE}`,
+        Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
   }, [stockData]);
 
   const hasPreOrderItems = useMemo(
     () =>
       items.some(
-        (item) => (stockByProductId.get(item.productId) ?? Number.POSITIVE_INFINITY) <= 0,
+        (item) =>
+          (stockByVariantKey.get(`${item.productId}::${item.variant}`) ??
+            Number.POSITIVE_INFINITY) <= 0,
       ),
-    [items, stockByProductId],
+    [items, stockByVariantKey],
   );
 
   const visibleOptions = hasPreOrderItems

@@ -11,12 +11,22 @@ import {
 import { EditIcon, Trash2Icon } from "lucide-react";
 import { Staff } from "./types";
 import { formatEnumLabel } from "@/lib/utils";
+import { SortableHeader } from "@/components/admin/SortableHeader";
 
 interface StaffTableProps {
   staff: Staff[];
   isLoading?: boolean;
   onEdit: (staff: Staff) => void;
   onDelete: (staff: Staff) => void;
+  sortKey:
+    | "name_asc"
+    | "name_desc"
+    | "id_asc"
+    | "id_desc"
+    | "access_key_asc"
+    | "access_key_desc"
+    | "created_desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const StaffTable = ({
@@ -24,16 +34,50 @@ export const StaffTable = ({
   isLoading = false,
   onEdit,
   onDelete,
+  sortKey,
+  onSort,
 }: StaffTableProps) => {
   const skeletonRows = 4;
+  const activeSortKey = sortKey.startsWith("name")
+    ? "name"
+    : sortKey.startsWith("id")
+      ? "id"
+      : sortKey.startsWith("access_key")
+        ? "accessKey"
+        : "";
+  const direction: "asc" | "desc" = sortKey.endsWith("_desc") ? "desc" : "asc";
   return (
     <Table>
       <TableHeader className="bg-[#07484A]">
         <TableRow className="hover:bg-[#07484A]">
-          <TableHead className="px-4 text-white font-semibold">Staff ID</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Name</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Staff ID"
+              sortKey="id"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
+          </TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Name"
+              sortKey="name"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Role</TableHead>
-          <TableHead className="px-4 text-white font-semibold">Access Key</TableHead>
+          <TableHead className="px-4 text-white font-semibold">
+            <SortableHeader
+              label="Access Key"
+              sortKey="accessKey"
+              activeSortKey={activeSortKey}
+              direction={direction}
+              onSort={onSort}
+            />
+          </TableHead>
           <TableHead className="px-4 text-white font-semibold">Mobile</TableHead>
           <TableHead className="px-4 text-white font-semibold">Status</TableHead>
           <TableHead className="px-4 text-white font-semibold">Action</TableHead>

@@ -23,7 +23,14 @@ import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
-type StaffSortOption = "name_asc" | "id_asc" | "access_key_asc" | "created_desc";
+type StaffSortOption =
+  | "name_asc"
+  | "name_desc"
+  | "id_asc"
+  | "id_desc"
+  | "access_key_asc"
+  | "access_key_desc"
+  | "created_desc";
 
 const defaultFormValues: StaffFormValues = {
   fullName: "",
@@ -130,13 +137,19 @@ export const StaffClient = () => {
       switch (sortBy) {
         case "id_asc":
           return a.id.localeCompare(b.id);
+        case "id_desc":
+          return b.id.localeCompare(a.id);
         case "access_key_asc":
           return a.accessKey.localeCompare(b.accessKey);
+        case "access_key_desc":
+          return b.accessKey.localeCompare(a.accessKey);
         case "created_desc":
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case "name_asc":
         default:
           return a.fullName.localeCompare(b.fullName);
+        case "name_desc":
+          return b.fullName.localeCompare(a.fullName);
       }
     });
     return data;
@@ -159,6 +172,19 @@ export const StaffClient = () => {
 
   const handleSortChange = (value: string) => {
     setSortBy(value as StaffSortOption);
+    setCurrentPage(1);
+  };
+
+  const handleHeaderSort = (key: string) => {
+    if (key === "name") {
+      setSortBy((prev) => (prev === "name_asc" ? "name_desc" : "name_asc"));
+    } else if (key === "id") {
+      setSortBy((prev) => (prev === "id_asc" ? "id_desc" : "id_asc"));
+    } else if (key === "accessKey") {
+      setSortBy((prev) =>
+        prev === "access_key_asc" ? "access_key_desc" : "access_key_asc",
+      );
+    }
     setCurrentPage(1);
   };
 
@@ -271,8 +297,11 @@ export const StaffClient = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z-A)</SelectItem>
                   <SelectItem value="id_asc">Staff ID (A-Z)</SelectItem>
+                  <SelectItem value="id_desc">Staff ID (Z-A)</SelectItem>
                   <SelectItem value="access_key_asc">Access Key (A-Z)</SelectItem>
+                  <SelectItem value="access_key_desc">Access Key (Z-A)</SelectItem>
                   <SelectItem value="created_desc">Newest Added</SelectItem>
                 </SelectContent>
               </Select>
@@ -287,6 +316,8 @@ export const StaffClient = () => {
                 staff={currentStaff}
                 onEdit={handleEditStaff}
                 onDelete={handleDeleteStaff}
+                sortKey={sortBy}
+                onSort={handleHeaderSort}
               />
             </div>
             <StaffPagination

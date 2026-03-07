@@ -1,4 +1,4 @@
-import { saveFileLocally } from "@/lib/file-upload";
+import { isLocalProductUploadPath, saveFileLocally } from "@/lib/file-upload";
 import { prisma } from "@/lib/prisma";
 import { base } from "@/middlewares/base";
 import {
@@ -13,6 +13,26 @@ import {
 } from "@/validators/products";
 import { unlink } from "fs/promises";
 import { basename, join } from "path";
+
+const hasRealVariants = (variants: Array<{ size: string }>) =>
+  variants.some((variant) => variant.size !== NO_VARIANT_SIZE);
+
+const getNextStockItemNumber = async () => {
+  const lastStockItem = await prisma.stockItem.findFirst({
+    where: {
+      id: {
+        startsWith: "SI",
+      },
+    },
+    orderBy: {
+      id: "desc",
+    },
+  });
+
+  if (!lastStockItem) return 1;
+  const currentNumber = parseInt(lastStockItem.id.replace("SI", ""));
+  return currentNumber + 1;
+};
 
 export const listProducts = base
   .route({
@@ -119,24 +139,7 @@ export const createProduct = base
       nextVariantNumber = currentNumber + 1;
     }
 
-    // Generate next StockItem ID
-    const lastStockItem = await prisma.stockItem.findFirst({
-      where: {
-        id: {
-          startsWith: "SI",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextStockItemNumber = 1;
-    if (lastStockItem) {
-      const currentNumber = parseInt(lastStockItem.id.replace("SI", ""));
-      nextStockItemNumber = currentNumber + 1;
-    }
-    const stockItemId = `SI${nextStockItemNumber.toString().padStart(3, "0")}`;
+    const nextStockItemNumber = await getNextStockItemNumber();
 
     // Generate next SystemLog ID
     const lastLog = await prisma.systemLog.findFirst({
@@ -194,16 +197,33 @@ export const createProduct = base
         },
       });
 
-      // Create stock item for the product
-      await tx.stockItem.create({
-        data: {
-          id: stockItemId,
-          productId: newProduct.id,
-          minStock: 0,
-          maxStock: 0,
-          currentStock: 0,
-          status: "CRITICAL",
-        },
+      const productHasRealVariants = hasRealVariants(newProduct.variants);
+      const stockItems = productHasRealVariants
+        ? newProduct.variants
+            .filter((variant) => variant.size !== NO_VARIANT_SIZE)
+            .map((variant, index) => ({
+              id: `SI${(nextStockItemNumber + index).toString().padStart(3, "0")}`,
+              productId: newProduct.id,
+              productVariantId: variant.id,
+              minStock: 0,
+              maxStock: 0,
+              currentStock: 0,
+              status: "CRITICAL" as const,
+            }))
+        : [
+            {
+              id: `SI${nextStockItemNumber.toString().padStart(3, "0")}`,
+              productId: newProduct.id,
+              productVariantId: null,
+              minStock: 0,
+              maxStock: 0,
+              currentStock: 0,
+              status: "CRITICAL" as const,
+            },
+          ];
+
+      await tx.stockItem.createMany({
+        data: stockItems,
       });
 
       // Create system log for product creation
@@ -213,11 +233,11 @@ export const createProduct = base
           logCode: logCode,
           type: "SYSTEM",
           category: "STOCK_UPDATED",
-          description: `Product "${input.name}" created with ${input.variants.length} variant(s). Stock item initialized with 0 stock.${imageUrl ? " Image uploaded." : ""}`,
+          description: `Product "${input.name}" created with ${input.variants.length} variant(s). ${stockItems.length} stock row(s) initialized with 0 stock.${imageUrl ? " Image uploaded." : ""}`,
           status: "SUCCESS",
           actorName: "System",
           productId: newProduct.id,
-          stockItemId: stockItemId,
+          stockItemId: stockItems[0]?.id,
         },
       });
 
@@ -262,6 +282,15 @@ export const updateProduct = base
     if (!existingProduct) {
       throw errors.NOT_FOUND();
     }
+
+    const existingStockItems = await prisma.stockItem.findMany({
+      where: { productId: input.id },
+      include: {
+        productVariant: {
+          select: { size: true },
+        },
+      },
+    });
 
     // Check for duplicate variant sizes
     const sizes = normalizedVariants.map((v) => v.size);
@@ -328,6 +357,7 @@ export const updateProduct = base
       .replace(/[-:T]/g, "")
       .slice(0, 14);
     const logCode = `${logId}-${timestamp}`;
+    const nextStockItemNumber = await getNextStockItemNumber();
 
     const updatedProduct = await prisma.$transaction(async (tx) => {
       const variantCreateData = normalizedVariants.map((variant, index) => ({
@@ -335,6 +365,17 @@ export const updateProduct = base
         size: variant.size,
         price: variant.price,
       }));
+
+      const previousProductStock =
+        existingStockItems.find((stock) => !stock.productVariantId) ?? null;
+      const previousStockBySize = new Map(
+        existingStockItems
+          .filter((stock) => stock.productVariant?.size)
+          .map((stock) => [stock.productVariant!.size, stock]),
+      );
+      const totalPreviousVariantStock = existingStockItems
+        .filter((stock) => stock.productVariantId)
+        .reduce((sum, stock) => sum + stock.currentStock, 0);
 
       const product = await tx.product.update({
         where: { id: input.id },
@@ -358,13 +399,52 @@ export const updateProduct = base
         },
       });
 
+      await tx.stockItem.deleteMany({
+        where: {
+          productId: product.id,
+        },
+      });
+
+      const productHasRealVariants = hasRealVariants(product.variants);
+      const stockItems = productHasRealVariants
+        ? product.variants
+            .filter((variant) => variant.size !== NO_VARIANT_SIZE)
+            .map((variant, index) => {
+              const previousStock = previousStockBySize.get(variant.size);
+              return {
+                id: `SI${(nextStockItemNumber + index).toString().padStart(3, "0")}`,
+                productId: product.id,
+                productVariantId: variant.id,
+                minStock: previousStock?.minStock ?? 0,
+                maxStock: previousStock?.maxStock ?? 0,
+                currentStock: previousStock?.currentStock ?? 0,
+                status: previousStock?.status ?? "CRITICAL",
+              };
+            })
+        : [
+            {
+              id: `SI${nextStockItemNumber.toString().padStart(3, "0")}`,
+              productId: product.id,
+              productVariantId: null,
+              minStock: previousProductStock?.minStock ?? 0,
+              maxStock: previousProductStock?.maxStock ?? 0,
+              currentStock:
+                previousProductStock?.currentStock ?? totalPreviousVariantStock,
+              status: previousProductStock?.status ?? "CRITICAL",
+            },
+          ];
+
+      await tx.stockItem.createMany({
+        data: stockItems,
+      });
+
       await tx.systemLog.create({
         data: {
           id: logId,
           logCode,
           type: "SYSTEM",
           category: "STOCK_UPDATED",
-          description: `Product "${existingProduct.name}" updated to "${product.name}" with ${product.variants.length} variant(s).`,
+          description: `Product "${existingProduct.name}" updated to "${product.name}" with ${product.variants.length} variant(s). ${stockItems.length} stock row(s) synchronized.`,
           status: "SUCCESS",
           actorName: "System",
           productId: product.id,
@@ -376,6 +456,7 @@ export const updateProduct = base
 
     if (
       hasNewImage &&
+      isLocalProductUploadPath(existingProduct.imageUrl) &&
       existingProduct.imageUrl &&
       updatedProduct.imageUrl &&
       existingProduct.imageUrl !== updatedProduct.imageUrl
@@ -516,7 +597,7 @@ export const deleteProduct = base
         });
       });
 
-      if (existingProduct.imageUrl) {
+      if (isLocalProductUploadPath(existingProduct.imageUrl) && existingProduct.imageUrl) {
         const filename = basename(existingProduct.imageUrl);
         const imagePath = join(
           process.cwd(),

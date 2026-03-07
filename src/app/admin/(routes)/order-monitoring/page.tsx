@@ -9,6 +9,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 
+type OrderSortKey = "orderNum" | "name" | "pickupDate";
+type SortDirection = "asc" | "desc";
+
 const Page = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,6 +20,8 @@ const Page = () => {
   const [activeTab, setActiveTab] = useState<OrderStage>("Pending");
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [sortKey, setSortKey] = useState<OrderSortKey>("orderNum");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { data, isLoading, isError } = useQuery(orpc.order.listMonitoring.queryOptions());
   const orders = useMemo(() => data?.orders ?? [], [data?.orders]);
@@ -48,11 +53,27 @@ const Page = () => {
     return matchesTab && matchesSearch;
   });
 
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (sortKey === "pickupDate") {
+      const timeA = Date.parse(a.pickupDate);
+      const timeB = Date.parse(b.pickupDate);
+      const aValue = Number.isNaN(timeA) ? 0 : timeA;
+      const bValue = Number.isNaN(timeB) ? 0 : timeB;
+      return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+    }
+
+    const aValue = a[sortKey].toLowerCase();
+    const bValue = b[sortKey].toLowerCase();
+    return sortDirection === "asc"
+      ? aValue.localeCompare(bValue)
+      : bValue.localeCompare(aValue);
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentOrders = filteredOrders.slice(startIndex, endIndex);
+  const currentOrders = sortedOrders.slice(startIndex, endIndex);
 
   // Count orders per stage
   const stageCounts: Record<OrderStage, number> = {
@@ -79,6 +100,17 @@ const Page = () => {
     setActiveTab(value as OrderStage);
     setCurrentPage(1);
     setSearchQuery(""); // Reset search when changing tabs
+  };
+
+  const handleSort = (nextKey: string) => {
+    const castKey = nextKey as OrderSortKey;
+    if (castKey === sortKey) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(castKey);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
   };
 
   const handleConfirmClick = (order: Order) => {
@@ -125,6 +157,9 @@ const Page = () => {
           onPageChange={setCurrentPage}
           onItemsPerPageChange={handleItemsPerPageChange}
           onConfirmClick={handleConfirmClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={handleSort}
         />
       </div>
 

@@ -48,11 +48,14 @@ const Page = () => {
 
   const products = useMemo(() => data?.products ?? [], [data?.products]);
   const stockByProductId = useMemo<Map<string, number>>(() => {
-    const entries: Array<[string, number]> = (stockData?.stocks ?? []).map((stock) => [
-      stock.productId,
-      Number(stock.currentStock ?? 0),
-    ]);
-    return new Map<string, number>(entries);
+    const map = new Map<string, number>();
+    for (const stock of stockData?.stocks ?? []) {
+      map.set(
+        stock.productId,
+        (map.get(stock.productId) ?? 0) + Number(stock.currentStock ?? 0),
+      );
+    }
+    return map;
   }, [stockData]);
 
   const categories = useMemo(() => {

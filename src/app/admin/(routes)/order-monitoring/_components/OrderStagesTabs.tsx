@@ -26,6 +26,9 @@ interface OrderStagesTabsProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: string) => void;
   onConfirmClick: (order: Order) => void;
+  sortKey: "orderNum" | "name" | "pickupDate";
+  sortDirection: "asc" | "desc";
+  onSort: (sortKey: string) => void;
 }
 
 export const OrderStagesTabs = ({
@@ -45,6 +48,9 @@ export const OrderStagesTabs = ({
   onPageChange,
   onItemsPerPageChange,
   onConfirmClick,
+  sortKey,
+  sortDirection,
+  onSort,
 }: OrderStagesTabsProps) => {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
@@ -109,6 +115,9 @@ export const OrderStagesTabs = ({
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
           onConfirmClick={onConfirmClick}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
 
@@ -129,6 +138,9 @@ export const OrderStagesTabs = ({
           onSearchChange={onSearchChange}
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
 
@@ -149,6 +161,9 @@ export const OrderStagesTabs = ({
           onSearchChange={onSearchChange}
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
 
@@ -169,6 +184,9 @@ export const OrderStagesTabs = ({
           onSearchChange={onSearchChange}
           onPageChange={onPageChange}
           onItemsPerPageChange={onItemsPerPageChange}
+          sortKey={sortKey}
+          sortDirection={sortDirection}
+          onSort={onSort}
         />
       </TabsContent>
     </Tabs>

@@ -32,7 +32,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TablePrintButton } from "@/components/admin/TablePrintButton";
 
-type ProductSortOption = "name_asc" | "name_desc" | "id_asc" | "category_asc";
+type ProductSortOption =
+  | "name_asc"
+  | "name_desc"
+  | "id_asc"
+  | "id_desc"
+  | "category_asc"
+  | "category_desc";
 
 export const ProductClient = () => {
   const queryClient = useQueryClient();
@@ -68,8 +74,12 @@ export const ProductClient = () => {
             return b.name.localeCompare(a.name);
           case "id_asc":
             return a.id.localeCompare(b.id);
+          case "id_desc":
+            return b.id.localeCompare(a.id);
           case "category_asc":
             return a.category.localeCompare(b.category);
+          case "category_desc":
+            return b.category.localeCompare(a.category);
           case "name_asc":
           default:
             return a.name.localeCompare(b.name);
@@ -101,6 +111,19 @@ export const ProductClient = () => {
 
   const handleSortChange = (value: string) => {
     setSortBy(value as ProductSortOption);
+    setCurrentPage(1);
+  };
+
+  const handleHeaderSort = (key: string) => {
+    if (key === "name") {
+      setSortBy((prev) => (prev === "name_asc" ? "name_desc" : "name_asc"));
+    } else if (key === "id") {
+      setSortBy((prev) => (prev === "id_asc" ? "id_desc" : "id_asc"));
+    } else if (key === "category") {
+      setSortBy((prev) =>
+        prev === "category_asc" ? "category_desc" : "category_asc",
+      );
+    }
     setCurrentPage(1);
   };
 
@@ -174,7 +197,9 @@ export const ProductClient = () => {
                   <SelectItem value="name_asc">Name (A-Z)</SelectItem>
                   <SelectItem value="name_desc">Name (Z-A)</SelectItem>
                   <SelectItem value="id_asc">ID (A-Z)</SelectItem>
+                  <SelectItem value="id_desc">ID (Z-A)</SelectItem>
                   <SelectItem value="category_asc">Category (A-Z)</SelectItem>
+                  <SelectItem value="category_desc">Category (Z-A)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -191,6 +216,8 @@ export const ProductClient = () => {
                 products={currentProducts}
                 onEdit={handleEditProduct}
                 onDelete={handleDeleteProduct}
+                sortKey={sortBy}
+                onSort={handleHeaderSort}
               />
             </div>
             <ProductPagination
@@ -208,6 +235,8 @@ export const ProductClient = () => {
                 products={sortedProducts}
                 onEdit={() => {}}
                 onDelete={() => {}}
+                sortKey={sortBy}
+                onSort={handleHeaderSort}
               />
             </div>
           </CardContent>
