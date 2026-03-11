@@ -10,7 +10,9 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
-    "backfill:variant-stock": "node scripts/backfill-variant-stock.js"
+    "backfill:variant-stock": "node scripts/backfill-variant-stock.js",
+    "seed:products": "node scripts/seed-products.js",
+    "seed:data": "node scripts/seed-data-json.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

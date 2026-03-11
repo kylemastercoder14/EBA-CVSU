@@ -63,7 +63,7 @@ const GCashReferencePage = () => {
       <div className="mt-8 mx-15 flex w-full justify-start">
         <button
           onClick={() => navigate("/kiosk/order/payment/gcash")}
-          className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
+          className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
         >
           <ArrowLeft className="size-4" /> Back
         </button>
@@ -92,7 +92,7 @@ const GCashReferencePage = () => {
 
             {/* Tap-to-type field */}
             <div
-              className={`flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border-2 bg-white/15 px-5 transition-all duration-200 ${
+              className={`flex h-14 w-full cursor-pointer items-center justify-center rounded-2xl border-2 bg-white/15 px-5  duration-200 ${
                 isFocused
                   ? "border-emerald-400 ring-2 ring-emerald-400/30"
                   : "border-white/25 hover:border-white/45"
@@ -113,7 +113,7 @@ const GCashReferencePage = () => {
             <Button
               disabled={!canSubmit}
               onClick={handleSubmit}
-              className="mt-4 h-13 w-full rounded-2xl bg-white font-serif text-lg font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white/90 active:scale-[0.98] disabled:opacity-35 border-0 transition-all shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
+              className="mt-4 h-13 w-full rounded-2xl bg-white font-serif text-lg font-bold uppercase tracking-[0.12em] text-[#07484A] hover:bg-white/90 active:scale-[0.98] disabled:opacity-35 border-0  shadow-[0_4px_16px_rgba(0,0,0,0.15)]"
             >
               Submit
             </Button>
@@ -173,7 +173,6 @@ const GCashReferencePage = () => {
           background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
           color: #fff; font-family: 'Playfair Display', serif; font-size: 1.05rem;
           font-weight: 500; box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-          transition: background 0.1s, transform 0.08s;
         }
         .kiosk-kb .hg-button:active { background: rgba(255,255,255,0.35); transform: scale(0.94); }
         .kiosk-kb .hg-button.hg-functionBtn {

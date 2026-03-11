@@ -20,7 +20,7 @@ import {
 import {
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from '@/hooks/use-admin-auth';
+import { useAdminLogout } from '@/hooks/use-admin-auth';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { useMemo, useState } from "react";
@@ -37,7 +37,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
-  const { logout } = useAuth();
+  const { logout } = useAdminLogout();
   const queryClient = useQueryClient();
   const [accessKey] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;

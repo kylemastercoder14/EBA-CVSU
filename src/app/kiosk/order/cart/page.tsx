@@ -78,7 +78,7 @@ const TermsDialog = ({
       <div className="border-t border-white/25 px-6 py-4">
         <button
           onClick={onClose}
-          className="h-13 w-full rounded-2xl bg-[#07484A] font-serif text-base font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_24px_rgba(7,72,74,0.3)] transition-all hover:bg-[#0a5e60] active:scale-[0.98]"
+          className="h-13 w-full rounded-2xl bg-[#07484A] font-serif text-base font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_24px_rgba(7,72,74,0.3)]  hover:bg-[#0a5e60] active:scale-[0.98]"
         >
           Close
         </button>
@@ -118,14 +118,14 @@ const CartRow = ({
       <div className="mt-3 flex gap-2">
         <button
           onClick={onEdit}
-          className="flex items-center gap-1.5 rounded-lg border border-[#07484A]/30 bg-white/40 px-3 py-2 font-serif text-base font-semibold uppercase tracking-[0.12em] text-[#07484A] transition-all hover:bg-white/60 active:scale-95"
+          className="flex items-center gap-1.5 rounded-lg border border-[#07484A]/30 bg-white/40 px-3 py-2 font-serif text-base font-semibold uppercase tracking-[0.12em] text-[#07484A]  hover:bg-white/60 active:scale-95"
         >
           <EditIcon className="size-5" />
           Edit
         </button>
         <button
           onClick={onRemove}
-          className="flex items-center gap-1.5 rounded-lg border border-red-400/40 bg-red-400/15 px-3 py-2 font-serif text-base font-semibold uppercase tracking-[0.12em] text-red-600 transition-all hover:bg-red-400/25 active:scale-95"
+          className="flex items-center gap-1.5 rounded-lg border border-red-400/40 bg-red-400/15 px-3 py-2 font-serif text-base font-semibold uppercase tracking-[0.12em] text-red-600  hover:bg-red-400/25 active:scale-95"
         >
           <Trash2 className="size-5" />
           Remove
@@ -188,7 +188,7 @@ const EditQuantityDialog = ({
               type="button"
               onClick={onDecrease}
               disabled={quantity <= 1}
-              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A] transition-all hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
+              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A]  hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
             >
               <Minus className="size-5" />
             </button>
@@ -199,7 +199,7 @@ const EditQuantityDialog = ({
               type="button"
               onClick={onIncrease}
               disabled={quantity >= 99}
-              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A] transition-all hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
+              className="flex size-11 items-center justify-center rounded-full bg-white/60 text-[#07484A]  hover:bg-white/80 active:scale-90 disabled:opacity-35 disabled:hover:bg-white/60"
             >
               <Plus className="size-5" />
             </button>
@@ -214,14 +214,14 @@ const EditQuantityDialog = ({
         <button
           type="button"
           onClick={onClose}
-          className="h-13 flex-1 rounded-2xl border-2 border-white/50 bg-white/35 font-serif text-sm font-semibold uppercase tracking-[0.14em] text-[#07484A] transition-all hover:bg-white/55 active:scale-[0.98]"
+          className="h-13 flex-1 rounded-2xl border-2 border-white/50 bg-white/35 font-serif text-sm font-semibold uppercase tracking-[0.14em] text-[#07484A]  hover:bg-white/55 active:scale-[0.98]"
         >
           Cancel
         </button>
         <Button
           type="button"
           onClick={onSave}
-          className="h-13 flex-1 rounded-2xl border-0 bg-[#07484A] font-serif text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_24px_rgba(7,72,74,0.3)] transition-all hover:bg-[#0a5e60] active:scale-[0.98]"
+          className="h-13 flex-1 rounded-2xl border-0 bg-[#07484A] font-serif text-sm font-bold uppercase tracking-[0.14em] text-white shadow-[0_8px_24px_rgba(7,72,74,0.3)]  hover:bg-[#0a5e60] active:scale-[0.98]"
         >
           Update
         </Button>
@@ -304,7 +304,7 @@ const CartPage = () => {
         <div className="flex items-center px-8 pt-6 pb-2">
           <button
             onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95 animate-[fadeUp_0.5s_ease_both]"
+            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.5s_ease_both]"
           >
             <ArrowLeft className="size-4" /> Back
           </button>
@@ -338,7 +338,7 @@ const CartPage = () => {
               <p className="font-serif text-lg italic text-[#07484A]/40">Your cart is empty</p>
               <button
                 onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-                className="mt-2 rounded-xl border border-white/30 bg-white/25 px-6 py-3 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-[#07484A] backdrop-blur-sm transition-all hover:bg-white/40 active:scale-95"
+                className="mt-2 rounded-xl border border-white/30 bg-white/25 px-6 py-3 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-[#07484A] backdrop-blur-sm  hover:bg-white/40 active:scale-95"
               >
                 Browse Products
               </button>
@@ -356,7 +356,7 @@ const CartPage = () => {
             <div className="flex w-full items-center gap-3">
               <button
                 onClick={() => setAccepted((v) => !v)}
-                className={`flex size-7 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-150 active:scale-90 ${
+                className={`flex size-7 shrink-0 items-center justify-center rounded-md border-2  duration-150 active:scale-90 ${
                   accepted ? "border-emerald-500 bg-emerald-500" : "border-white/50 bg-white/20"
                 }`}
               >
@@ -366,7 +366,7 @@ const CartPage = () => {
                 I accept the{" "}
                 <button
                   onClick={() => setTermsOpen(true)}
-                  className="font-semibold not-italic text-[#07484A] underline underline-offset-2 transition-colors hover:text-[#07484A]/70"
+                  className="font-semibold not-italic text-[#07484A] underline underline-offset-2  hover:text-[#07484A]/70"
                 >
                   terms and conditions
                 </button>
@@ -376,7 +376,7 @@ const CartPage = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleRemoveAllItems}
-                className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-red-300/50 bg-red-400/15 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-red-700 backdrop-blur-sm transition-all hover:bg-red-400/25 active:scale-[0.98]"
+                className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-red-300/50 bg-red-400/15 px-4 font-serif text-sm font-bold uppercase tracking-[0.12em] text-red-700 backdrop-blur-sm  hover:bg-red-400/25 active:scale-[0.98]"
               >
                 <Trash2 className="size-5" />
                 Remove All
@@ -384,7 +384,7 @@ const CartPage = () => {
 
               <button
                 onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-white/40 bg-white/30 font-serif text-base font-semibold uppercase text-[#07484A] backdrop-blur-sm transition-all hover:bg-white/45 active:scale-[0.98]"
+                className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-white/40 bg-white/30 font-serif text-base font-semibold uppercase text-[#07484A] backdrop-blur-sm  hover:bg-white/45 active:scale-[0.98]"
               >
                 <ShoppingBag className="size-5" />
                 Continue Shopping
@@ -393,7 +393,7 @@ const CartPage = () => {
               <Button
                 disabled={!canProceed}
                 onClick={() => navigate("/kiosk/order/payment")}
-                className="h-14 flex-1 rounded-2xl border-0 bg-emerald-500 font-serif text-base font-bold uppercase text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)] transition-all hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
+                className="h-14 flex-1 rounded-2xl border-0 bg-emerald-500 font-serif text-base font-bold uppercase text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)]  hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
               >
                 Proceed
               </Button>

@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { orpc } from "@/lib/orpc";
+
+// TEMP: Disable admin session guard while bootstrapping a fresh database.
+const ADMIN_AUTH_DISABLED = false;
 
 export const useAuth = () => {
   const router = useRouter();
 
   useEffect(() => {
+    if (ADMIN_AUTH_DISABLED) {
+      return;
+    }
+
     const validateSession = async () => {
       const accessKey = localStorage.getItem("eba_access_key");
 
@@ -27,21 +34,33 @@ export const useAuth = () => {
         }
 
         localStorage.setItem("eba_staff_session", JSON.stringify(session.staff));
-      } catch {
-        localStorage.removeItem("eba_access_key");
-        localStorage.removeItem("eba_staff_session");
-        router.replace("/admin");
+      } catch (error) {
+        // Avoid forcing logout on transient/network errors.
+        // We only clear session when the API explicitly returns loggedOut.
+        console.error("Failed to validate admin session:", error);
       }
     };
 
     validateSession();
   }, [router]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("eba_access_key");
     localStorage.removeItem("eba_staff_session");
     router.replace("/admin");
-  };
+  }, [router]);
+
+  return { logout };
+};
+
+export const useAdminLogout = () => {
+  const router = useRouter();
+
+  const logout = useCallback(() => {
+    localStorage.removeItem("eba_access_key");
+    localStorage.removeItem("eba_staff_session");
+    router.replace("/admin");
+  }, [router]);
 
   return { logout };
 };

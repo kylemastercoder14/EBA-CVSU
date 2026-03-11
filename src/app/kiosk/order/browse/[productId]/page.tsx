@@ -196,14 +196,14 @@ const ProductDetailPage = () => {
         <div className="flex items-center justify-between px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
           <button
             onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95"
+            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95"
           >
             <ArrowLeft className="size-4" /> Back
           </button>
 
           <button
             onClick={() => navigate("/kiosk/order/cart")}
-            className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40 transition-all active:scale-95"
+            className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40  active:scale-95"
           >
             <ShoppingCart className="size-5 text-white" />
             {cartQty > 0 && (
@@ -286,7 +286,7 @@ const ProductDetailPage = () => {
                     <button
                       key={variant.size}
                       onClick={() => setSelectedSize(variant.size)}
-                      className={`rounded-full border-2 px-5 py-2 font-serif text-sm font-semibold transition-all duration-150 active:scale-95 ${
+                      className={`rounded-full border-2 px-5 py-2 font-serif text-sm font-semibold  duration-150 active:scale-95 ${
                         activeSize === variant.size
                           ? "border-[#07484A] bg-[#07484A] text-white shadow-md"
                           : "border-white/40 bg-white/30 text-[#07484A] hover:bg-white/50"
@@ -311,7 +311,7 @@ const ProductDetailPage = () => {
               <div className="flex items-center gap-4 rounded-full border border-white/40 bg-white/30 px-2 py-2">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="flex size-10 items-center justify-center rounded-full bg-white/50 text-[#07484A] hover:bg-white/70 active:scale-90 transition-all"
+                  className="flex size-10 items-center justify-center rounded-full bg-white/50 text-[#07484A] hover:bg-white/70 active:scale-90 "
                 >
                   <Minus className="size-5" />
                 </button>
@@ -320,7 +320,7 @@ const ProductDetailPage = () => {
                 </span>
                 <button
                   onClick={() => setQty((q) => q + 1)}
-                  className="flex size-10 items-center justify-center rounded-full bg-white/50 text-[#07484A] hover:bg-white/70 active:scale-90 transition-all"
+                  className="flex size-10 items-center justify-center rounded-full bg-white/50 text-[#07484A] hover:bg-white/70 active:scale-90 "
                 >
                   <Plus className="size-5" />
                 </button>
@@ -330,7 +330,7 @@ const ProductDetailPage = () => {
             <Button
               disabled={!canAdd}
               onClick={handleAddToCart}
-              className={`h-16 w-full rounded-2xl font-serif text-xl font-bold uppercase tracking-[0.12em] text-white border-0 transition-all duration-300 active:scale-[0.98] disabled:opacity-40 ${
+              className={`h-16 w-full rounded-2xl font-serif text-xl font-bold uppercase tracking-[0.12em] text-white border-0  duration-300 active:scale-[0.98] disabled:opacity-40 ${
                 added
                   ? "bg-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.4)]"
                   : "bg-[#07484A] shadow-[0_8px_24px_rgba(7,72,74,0.35)] hover:bg-[#0a5e60]"

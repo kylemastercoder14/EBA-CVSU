@@ -123,7 +123,6 @@ const ReturnResultPage = () => {
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     strokeDashoffset={circumference - progress}
-                    style={{ transition: "stroke-dashoffset 0.9s linear" }}
                   />
                 </svg>
                 {/* Number in centre */}

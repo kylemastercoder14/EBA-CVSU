@@ -129,7 +129,7 @@ const ReturnReasonPage = () => {
       <div className="mt-8 mx-15 flex w-full justify-start">
         <button
           onClick={() => navigate("/kiosk/replace")}
-          className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
+          className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
         >
           <ArrowLeft className="size-4" /> Back
         </button>
@@ -157,14 +157,14 @@ const ReturnReasonPage = () => {
                   <button
                     key={key}
                     onClick={() => setSelected(key)}
-                    className={`flex w-full items-center gap-4 rounded-2xl border-2 px-5 py-4 font-serif text-lg font-semibold transition-all duration-150 active:scale-[0.98] ${
+                    className={`flex w-full items-center gap-4 rounded-2xl border-2 px-5 py-4 font-serif text-lg font-semibold  duration-150 active:scale-[0.98] ${
                       isSelected
                         ? "border-[#07484A]/70 bg-[#07484A]/15 text-[#07484A] shadow-[0_4px_20px_rgba(7,72,74,0.15)]"
                         : "border-white/30 bg-white/25 text-[#07484A]/80 hover:bg-white/40 hover:border-white/50"
                     }`}
                   >
                     <div
-                      className={`flex size-11 shrink-0 items-center justify-center rounded-full transition-all ${
+                      className={`flex size-11 shrink-0 items-center justify-center rounded-full  ${
                         isSelected ? "bg-[#07484A]" : "bg-white/40"
                       }`}
                     >
@@ -186,7 +186,7 @@ const ReturnReasonPage = () => {
           <Button
             disabled={!selected || createReplaceMutation.isPending}
             onClick={() => void handleSubmit()}
-            className="h-16 w-full rounded-2xl bg-emerald-500 font-serif text-xl font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)] hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none border-0 transition-all"
+            className="h-16 w-full rounded-2xl bg-emerald-500 font-serif text-xl font-bold uppercase tracking-[0.12em] text-white shadow-[0_8px_24px_rgba(16,185,129,0.35)] hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-40 disabled:shadow-none border-0 "
           >
             {createReplaceMutation.isPending ? "Submitting..." : "Submit Return Request"}
           </Button>

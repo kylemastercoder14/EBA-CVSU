@@ -526,7 +526,7 @@ const ProductCard = ({
     <button
       onClick={onClick}
       disabled={isUnavailableOnly}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-white/30 bg-white/25 backdrop-blur-sm shadow-[0_4px_20px_rgba(0,0,0,0.1)] transition-all duration-200 hover:bg-white/40 hover:shadow-[0_8px_28px_rgba(0,0,0,0.15)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed text-left"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-white/30 bg-white/25 backdrop-blur-sm shadow-[0_4px_20px_rgba(0,0,0,0.1)]  duration-200 hover:bg-white/40 hover:shadow-[0_8px_28px_rgba(0,0,0,0.15)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed text-left"
     >
       {/* Unavailable badge */}
       {!product.available ? (
@@ -1321,7 +1321,7 @@ const BrowsePage = () => {
           {/* Back */}
           <button
             onClick={() => navigate("/kiosk/order")}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95"
+            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95"
           >
             <ArrowLeft className="size-4" /> Back
           </button>
@@ -1331,7 +1331,7 @@ const BrowsePage = () => {
               type="button"
               onClick={handleVoiceOrderClick}
               disabled={!isVoiceSupported || isProductsLoading}
-              className={`relative flex h-11 items-center gap-2 rounded-full border px-3 backdrop-blur-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`relative flex h-11 items-center gap-2 rounded-full border px-3 backdrop-blur-sm  active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
                 voiceState === "listening"
                   ? "border-red-300/40 bg-red-500/80 text-white animate-pulse"
                   : "border-white/30 bg-black/50 text-white hover:bg-white/40"
@@ -1360,7 +1360,7 @@ const BrowsePage = () => {
 
             <button
               onClick={() => navigate("/kiosk/order/cart")}
-              className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40 transition-all active:scale-95"
+              className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40  active:scale-95"
             >
               <ShoppingCart className="size-5 text-white" />
               {cartQty > 0 && (

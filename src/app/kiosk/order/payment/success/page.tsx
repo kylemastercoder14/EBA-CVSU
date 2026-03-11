@@ -96,14 +96,14 @@ const PrintReceiptDialog = ({
         <button
           onClick={onNo}
           disabled={isPrinting}
-          className="h-13 flex-1 rounded-2xl bg-white/20 font-serif text-base font-bold uppercase tracking-[0.14em] text-white/70 transition-all hover:bg-white/30 active:scale-95"
+          className="h-13 flex-1 rounded-2xl bg-white/20 font-serif text-base font-bold uppercase tracking-[0.14em] text-white/70  hover:bg-white/30 active:scale-95"
         >
           NO
         </button>
         <button
           onClick={onYes}
           disabled={isPrinting}
-          className="h-13 flex-1 rounded-2xl bg-emerald-500 font-serif text-base font-bold uppercase tracking-[0.14em] text-white shadow-[0_4px_16px_rgba(16,185,129,0.4)] transition-all hover:bg-emerald-400 active:scale-95"
+          className="h-13 flex-1 rounded-2xl bg-emerald-500 font-serif text-base font-bold uppercase tracking-[0.14em] text-white shadow-[0_4px_16px_rgba(16,185,129,0.4)]  hover:bg-emerald-400 active:scale-95"
         >
           {isPrinting ? "PRINTING..." : "YES"}
         </button>
@@ -187,7 +187,7 @@ const OrderConfirmedDialog = ({
         <div className="px-7 pb-7">
           <Button
             onClick={onDone}
-            className="h-14 w-full rounded-2xl border-0 bg-emerald-500 font-serif text-base font-bold uppercase tracking-[0.12em] text-white shadow-[0_6px_20px_rgba(16,185,129,0.35)] transition-all hover:bg-emerald-400 active:scale-[0.98]"
+            className="h-14 w-full rounded-2xl border-0 bg-emerald-500 font-serif text-base font-bold uppercase tracking-[0.12em] text-white shadow-[0_6px_20px_rgba(16,185,129,0.35)]  hover:bg-emerald-400 active:scale-[0.98]"
           >
             Done
           </Button>
@@ -210,7 +210,7 @@ const ReceiptPrintedView = ({ onDone }: { onDone: () => void }) => (
     </p>
     <button
       onClick={onDone}
-      className="mt-10 rounded-2xl border border-white/30 bg-white/20 px-8 py-3 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm transition-all hover:bg-white/30 active:scale-95"
+      className="mt-10 rounded-2xl border border-white/30 bg-white/20 px-8 py-3 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/30 active:scale-95"
     >
       Back to Home
     </button>

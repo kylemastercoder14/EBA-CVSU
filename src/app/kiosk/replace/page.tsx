@@ -50,7 +50,7 @@ const ErrorBanner = ({
       {/* Dismiss */}
       <button
         onClick={onDismiss}
-        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-red-400/20 text-red-500 hover:bg-red-400/40 transition-all active:scale-90"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-red-400/20 text-red-500 hover:bg-red-400/40  active:scale-90"
       >
         <X className="size-3.5" />
       </button>
@@ -154,7 +154,7 @@ const OrderNumberPage = () => {
       <div className="relative z-10 px-8 pt-8 animate-[fadeUp_0.5s_ease_both]">
         <button
           onClick={() => navigate("/kiosk/action")}
-          className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-[#07484A] backdrop-blur-sm transition-all hover:bg-white/35 active:scale-95"
+          className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-[#07484A] backdrop-blur-sm  hover:bg-white/35 active:scale-95"
         >
           <ArrowLeft className="size-4" /> Back
         </button>
@@ -197,7 +197,7 @@ const OrderNumberPage = () => {
           <div className="mb-6 w-full">
             <div
               onClick={() => { setKeyboardOpen(true); dismissError(); }}
-              className={`flex h-16 w-full cursor-pointer items-center rounded-2xl border-2 px-5 backdrop-blur-sm transition-all duration-200 ${
+              className={`flex h-16 w-full cursor-pointer items-center rounded-2xl border-2 px-5 backdrop-blur-sm  duration-200 ${
                 hasError
                   ? "border-red-400/70 bg-red-50/70 ring-4 ring-red-400/15"
                   : isFieldFocused
@@ -301,7 +301,6 @@ const OrderNumberPage = () => {
           background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
           color: #fff; font-family: "Playfair Display", "Cormorant Garamond", serif;
           font-size: 1.05rem; font-weight: 500; box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-          transition: background 0.1s, transform 0.08s;
         }
         .kiosk-kb .hg-button:active { background: rgba(255,255,255,0.35); transform: scale(0.94); }
         .kiosk-kb .hg-button.hg-functionBtn {

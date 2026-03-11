@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Keyboard from "react-simple-keyboard";
@@ -41,9 +41,9 @@ const numberLayout = {
 };
 
 const keyboardDisplay = {
-  "{bksp}": "⌫",
+  "{bksp}": "BKSP",
   "{enter}": "Done",
-  "{shift}": "⇧",
+  "{shift}": "SHIFT",
   "{space}": "Space",
 };
 
@@ -187,7 +187,7 @@ const SignInPage = () => {
                     )}
                   </label>
                   <div
-                    className={`flex h-16 w-full cursor-pointer items-center rounded-2xl border-2 bg-white/70 px-5 backdrop-blur-sm transition-all duration-200 ${
+                    className={`flex h-16 w-full cursor-pointer items-center rounded-2xl border-2 bg-white/70 px-5 backdrop-blur-sm  duration-200 ${
                       isFocused
                         ? "border-[#07484A]/70 ring-4 ring-[#07484A]/15 shadow-[0_4px_24px_rgba(7,72,74,0.15)]"
                         : "border-white/40 hover:border-white/70 hover:bg-white/80"
@@ -222,7 +222,7 @@ const SignInPage = () => {
               variant="kioskDefault"
               className="h-16 w-1/3 font-serif text-lg font-semibold uppercase tracking-[0.16em] opacity-80"
             >
-              ← Back
+              &larr; Back
             </Button>
             <Button
               onClick={handleProceed}
@@ -231,7 +231,7 @@ const SignInPage = () => {
               variant="kioskDefault"
               className="h-16 flex-1 font-serif text-xl font-bold uppercase tracking-[0.14em] disabled:opacity-40"
             >
-              Proceed →
+              Proceed &rarr;
             </Button>
           </div>
 
@@ -262,7 +262,7 @@ const SignInPage = () => {
                 <button
                   key={key}
                   onClick={() => setActiveField(key)}
-                  className={`rounded-lg px-4 py-2 font-serif text-sm uppercase tracking-[0.14em] transition-all duration-150 ${
+                  className={`rounded-lg px-4 py-2 font-serif text-sm uppercase tracking-[0.14em]  duration-150 ${
                     activeField === key
                       ? "bg-white text-[#07484A] shadow-md font-bold"
                       : "bg-white/15 text-white/70 hover:bg-white/25"
@@ -326,7 +326,6 @@ const SignInPage = () => {
           font-size: 1.05rem;
           font-weight: 500;
           box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-          transition: background 0.1s, transform 0.08s;
         }
         .kiosk-kb .hg-button:active {
           background: rgba(255,255,255,0.35);
