@@ -3,6 +3,8 @@ import { ProductClient } from "./_components/ProductClient";
 import { orpc } from "@/lib/orpc";
 import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
 
+export const dynamic = "force-dynamic";
+
 const Page = async () => {
   const queryClient = getQueryClient();
 
