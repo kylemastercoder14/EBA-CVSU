@@ -83,7 +83,7 @@ const Page = () => {
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Enter student number or cvsu email"
+              placeholder="Enter CvSU email"
               className="h-11 rounded-2xl border border-[#258CFF] bg-transparent pl-11 text-sm text-[#0B525B] placeholder:text-[#6C9093] sm:h-12 sm:text-base"
             />
           </div>

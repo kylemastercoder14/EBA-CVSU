@@ -52,14 +52,14 @@ const data = {
       icon: IconUsers,
     },
     {
-      title: "Payment Management",
-      url: "/admin/payment-management",
-      icon: IconWallet,
-    },
-    {
       title: "Order Monitoring",
       url: "/admin/order-monitoring",
       icon: IconFileText,
+    },
+    {
+      title: "Payment Management",
+      url: "/admin/payment-management",
+      icon: IconWallet,
     },
     {
       title: "Pre-Order Management",

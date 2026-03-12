@@ -346,6 +346,38 @@ const getManilaTodayRange = (now = new Date()) => {
   return { startUtc, endUtc };
 };
 
+const getManilaDateIso = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+
+  return `${year}-${month}-${day}`;
+};
+
+const parsePickupDateInput = (value: string) => {
+  const normalized = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return {
+    isoDate: normalized,
+    date: parsed,
+  };
+};
+
 const getStockStatus = (
   minStock: number,
   currentStock: number,
@@ -848,9 +880,19 @@ export const createOrder = base
       0,
     );
 
-    const pickupDateIso = requestedPickupDate
-      ? new Date(`${requestedPickupDate}T00:00:00.000Z`).toISOString()
-      : null;
+    let pickupDateIso: string | null = null;
+    if (requestedPickupDate) {
+      const parsedPickupDate = parsePickupDateInput(requestedPickupDate);
+      if (!parsedPickupDate) {
+        throw errors.BAD_REQUEST();
+      }
+
+      if (parsedPickupDate.isoDate < getManilaDateIso()) {
+        throw errors.BAD_REQUEST();
+      }
+
+      pickupDateIso = parsedPickupDate.date.toISOString();
+    }
 
     const itemsSummary = itemsWithPricing
       .map((item) => `${item.productName} (${item.variant}) x${item.quantity}`)
@@ -1164,9 +1206,19 @@ export const createKioskOrder = base
       0,
     );
 
-    const pickupDateIso = requestedPickupDate
-      ? new Date(`${requestedPickupDate}T00:00:00.000Z`).toISOString()
-      : null;
+    let pickupDateIso: string | null = null;
+    if (requestedPickupDate) {
+      const parsedPickupDate = parsePickupDateInput(requestedPickupDate);
+      if (!parsedPickupDate) {
+        throw errors.BAD_REQUEST();
+      }
+
+      if (parsedPickupDate.isoDate < getManilaDateIso()) {
+        throw errors.BAD_REQUEST();
+      }
+
+      pickupDateIso = parsedPickupDate.date.toISOString();
+    }
 
     const itemsSummary = itemsWithPricing
       .map((item) => `${item.productName} (${item.variant}) x${item.quantity}`)
@@ -1838,10 +1890,16 @@ export const updateOrderPickupDate = base
       throw errors.BAD_REQUEST();
     }
 
-    const nextPickupDate = new Date(`${input.pickupDate}T00:00:00.000Z`);
-    if (Number.isNaN(nextPickupDate.getTime())) {
+    const parsedPickupDate = parsePickupDateInput(input.pickupDate);
+    if (!parsedPickupDate) {
       throw errors.BAD_REQUEST();
     }
+
+    if (parsedPickupDate.isoDate < getManilaDateIso()) {
+      throw errors.BAD_REQUEST();
+    }
+
+    const nextPickupDate = parsedPickupDate.date;
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.update({

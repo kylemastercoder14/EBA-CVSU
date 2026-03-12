@@ -23,7 +23,12 @@ const Page = () => {
   const [sortKey, setSortKey] = useState<OrderSortKey>("orderNum");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const { data, isLoading, isError } = useQuery(orpc.order.listMonitoring.queryOptions());
+  const { data, isLoading, isFetching, isError } = useQuery({
+    ...orpc.order.listMonitoring.queryOptions(),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+  });
   const orders = useMemo(() => data?.orders ?? [], [data?.orders]);
 
   const confirmOrderMutation = useMutation(
@@ -144,7 +149,7 @@ const Page = () => {
           activeTab={activeTab}
           stageCounts={stageCounts}
           currentOrders={currentOrders}
-          isLoading={isLoading}
+          isLoading={isLoading || isFetching}
           searchQuery={searchQuery}
           currentPage={currentPage}
           totalPages={totalPages}

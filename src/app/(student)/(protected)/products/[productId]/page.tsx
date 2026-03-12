@@ -54,6 +54,10 @@ const Page = () => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [pickupDate, setPickupDate] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const minPickupDate = useMemo(
+    () => new Date().toISOString().slice(0, 10),
+    [],
+  );
   const addItem = useCart((state) => state.addItem);
   const getItemCount = useCart((state) => state.getItemCount);
 
@@ -228,7 +232,14 @@ const Page = () => {
                         <input
                           type="date"
                           value={pickupDate}
-                          onChange={(event) => setPickupDate(event.target.value)}
+                          min={minPickupDate}
+                          onChange={(event) =>
+                            setPickupDate(
+                              event.target.value < minPickupDate
+                                ? minPickupDate
+                                : event.target.value,
+                            )
+                          }
                           className="w-full bg-transparent text-center text-sm text-[#0B525B] outline-none sm:text-base lg:text-lg"
                         />
                       </label>

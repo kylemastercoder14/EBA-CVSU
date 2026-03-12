@@ -69,6 +69,10 @@ const formatMoney = (value: number) =>
 
 const Page = () => {
   const [activeTab, setActiveTab] = useState<TrackStage>("all");
+  const minPickupDate = useMemo(
+    () => new Date().toISOString().slice(0, 10),
+    [],
+  );
   const [pickupDateByOrder, setPickupDateByOrder] = useState<
     Record<string, string>
   >({});
@@ -238,11 +242,15 @@ const Page = () => {
                       <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                         <input
                           type="date"
+                          min={minPickupDate}
                           value={pickupDateByOrder[order.id] ?? ""}
                           onChange={(event) =>
                             setPickupDateByOrder((prev) => ({
                               ...prev,
-                              [order.id]: event.target.value,
+                              [order.id]:
+                                event.target.value < minPickupDate
+                                  ? minPickupDate
+                                  : event.target.value,
                             }))
                           }
                           className="h-9 rounded-md border border-[#A2CDD3] bg-white px-2 text-sm text-[#0B525B]"

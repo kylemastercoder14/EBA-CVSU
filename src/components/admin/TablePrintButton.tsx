@@ -78,19 +78,7 @@ export const TablePrintButton = ({ targetId, title }: TablePrintButtonProps) => 
 
     const html = buildPrintHtml(title, printableTable.outerHTML);
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.onload = () => {
-        printWindow.print();
-        printWindow.close();
-      };
-      return;
-    }
-
-    // Popup blockers can prevent window.open; fallback to a hidden iframe.
+    // Use a hidden iframe so printing stays in the same tab.
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
