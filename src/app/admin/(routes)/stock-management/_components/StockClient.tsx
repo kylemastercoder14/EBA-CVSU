@@ -97,9 +97,14 @@ export const StockClient = () => {
             return updated ?? item;
           }),
         );
-        queryClient.invalidateQueries({
-          queryKey: orpc.stock.list.queryKey(),
-        });
+        void Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: orpc.stock.list.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listPreOrders.queryKey(),
+          }),
+        ]);
         toast.success("Product stock updated successfully");
         setIsEditDialogOpen(false);
         setEditingItem(null);

@@ -60,20 +60,8 @@ const LiveClock = () => {
 };
 
 const KioskStatusBar = () => {
-  const [isOnline, setIsOnline] = useState(true);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const currentTemp = weather?.currentTemp ?? null;
-
-  useEffect(() => {
-    const setNetworkState = () => setIsOnline(navigator.onLine);
-    setNetworkState();
-    window.addEventListener("online", setNetworkState);
-    window.addEventListener("offline", setNetworkState);
-    return () => {
-      window.removeEventListener("online", setNetworkState);
-      window.removeEventListener("offline", setNetworkState);
-    };
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -106,23 +94,17 @@ const KioskStatusBar = () => {
   }, []);
 
   return (
-    <header className="relative z-10 flex w-full items-center justify-between border-b border-white/10 bg-black/70 px-8 py-4 backdrop-blur-md animate-[fadeUp_0.6s_ease_both]">
-      <div className="flex items-center gap-2">
-        <span
-          className={`size-2 rounded-full ${
-            isOnline
-              ? "bg-emerald-400 shadow-[0_0_8px_#4ade80]"
-              : "bg-rose-400 shadow-[0_0_8px_#fb7185]"
-          }`}
-        />
-        <span className="font-serif text-xs uppercase tracking-[0.2em] text-white/60">
-          {isOnline ? "System Online" : "Offline Mode"}
-        </span>
+    <header className="relative z-10 flex w-full items-center border-b border-white/10 bg-black/70 px-8 py-4 backdrop-blur-md animate-[fadeUp_0.6s_ease_both]">
+      <div
+        aria-hidden="true"
+        className="h-12 w-20 shrink-0"
+      />
+
+      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+        <LiveClock />
       </div>
 
-      <LiveClock />
-
-      <div className="flex items-center gap-2 text-right font-serif text-xs uppercase tracking-[0.12em] text-white/55">
+      <div className="ml-auto flex items-center gap-2 text-right font-serif text-xs uppercase tracking-[0.12em] text-white/55">
         {currentTemp === null && (
           <Thermometer className="size-4.5 text-white/80" aria-hidden="true" />
         )}

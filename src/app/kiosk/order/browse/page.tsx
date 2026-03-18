@@ -5,7 +5,6 @@ import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
 import {
   ShoppingCart,
   ShoppingBag,
-  ArrowLeft,
   Mic,
   MicOff,
   Loader2,
@@ -1317,15 +1316,7 @@ const BrowsePage = () => {
     <>
       <main className="relative z-10 flex h-full flex-col overflow-hidden">
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
-          {/* Back */}
-          <button
-            onClick={() => navigate("/kiosk/order")}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95"
-          >
-            <ArrowLeft className="size-4" /> Back
-          </button>
-
+        <div className="flex items-center justify-end px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
           <div className="flex items-center gap-2">
             <button
               type="button"

@@ -10,7 +10,6 @@ import {
   Minus,
   Plus,
   AlertCircle,
-  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -193,14 +192,7 @@ const ProductDetailPage = () => {
   return (
     <>
       <main className="relative z-10 flex h-full flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
-          <button
-            onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95"
-          >
-            <ArrowLeft className="size-4" /> Back
-          </button>
-
+        <div className="flex items-center justify-end px-8 pt-6 pb-4 animate-[fadeUp_0.5s_ease_both]">
           <button
             onClick={() => navigate("/kiosk/order/cart")}
             className="relative flex size-11 items-center justify-center rounded-full border border-white/30 bg-black/50 backdrop-blur-sm hover:bg-white/40  active:scale-95"

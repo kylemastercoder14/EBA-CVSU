@@ -56,9 +56,12 @@ const Page = () => {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [selectedOrder, setSelectedOrder] = useState<PreOrderRow | null>(null);
 
-  const { data, isLoading, isError } = useQuery(
-    orpc.order.listPreOrders.queryOptions(),
-  );
+  const { data, isLoading, isError } = useQuery({
+    ...orpc.order.listPreOrders.queryOptions(),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
+  });
   const rows = useMemo(() => data?.orders ?? [], [data?.orders]);
 
   const filteredRows = useMemo(() => {

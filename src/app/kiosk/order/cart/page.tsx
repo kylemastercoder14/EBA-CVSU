@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   Check,
   EditIcon,
   Minus,
@@ -301,15 +300,6 @@ const CartPage = () => {
   return (
     <>
       <main className="relative z-10 flex h-full flex-col overflow-hidden">
-        <div className="flex items-center px-8 pt-6 pb-2">
-          <button
-            onClick={() => navigate(`/kiosk/order/browse?type=${type}`)}
-            className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.5s_ease_both]"
-          >
-            <ArrowLeft className="size-4" /> Back
-          </button>
-        </div>
-
         <div className="px-8 pt-6 pb-4 animate-[fadeUp_0.6s_ease_0.1s_both]">
           <h1 className="font-serif text-5xl font-extrabold tracking-tight text-[#07484A] drop-shadow-[0_2px_12px_rgba(0,0,0,0.1)]">
             Order Summary

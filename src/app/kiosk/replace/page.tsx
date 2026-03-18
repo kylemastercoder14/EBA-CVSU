@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
-import { ArrowLeft, AlertCircle, X } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
 import { Button } from "@/components/ui/button";
@@ -150,16 +150,6 @@ const OrderNumberPage = () => {
 
   return (
     <>
-      {/* Back button */}
-      <div className="relative z-10 px-8 pt-8 animate-[fadeUp_0.5s_ease_both]">
-        <button
-          onClick={() => navigate("/kiosk/action")}
-          className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/20 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-[#07484A] backdrop-blur-sm  hover:bg-white/35 active:scale-95"
-        >
-          <ArrowLeft className="size-4" /> Back
-        </button>
-      </div>
-
       <main className="relative z-10 flex h-full flex-col items-center justify-center px-10 py-8">
         <div className="flex w-full flex-col items-center px-6 animate-[fadeUp_0.7s_ease_0.2s_both]">
 

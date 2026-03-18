@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransitionNav } from "@/components/kiosk/PageTransitionProvider";
-import { Smartphone, Banknote, ArrowLeft } from "lucide-react";
+import { Smartphone, Banknote } from "lucide-react";
 
 type PaymentMethod = "gcash" | "cash";
 const kioskPaymentMethodStorageKey = "kiosk-payment-method";
@@ -35,15 +35,6 @@ const PaymentMethodPage = () => {
 
   return (
     <>
-      {/* Back */}
-      <div className="mt-8 mx-15 flex w-full justify-start">
-        <button
-          onClick={() => navigate("/kiosk/order/cart")}
-          className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
-        >
-          <ArrowLeft className="size-4" /> Back
-        </button>
-      </div>
       <main className="relative z-10 flex h-full flex-col items-center justify-center px-10 py-8">
         <div className="flex w-full flex-col items-center px-6 animate-[fadeUp_0.7s_ease_0.2s_both]">
           {/* Top divider */}
