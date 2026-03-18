@@ -94,7 +94,7 @@ const KioskStatusBar = () => {
   }, []);
 
   return (
-    <header className="relative z-10 flex w-full items-center border-b border-white/10 bg-black/70 px-8 py-8 backdrop-blur-md animate-[fadeUp_0.6s_ease_both]">
+    <header className="relative z-10 flex w-full items-center border-b border-white/10 bg-black/70 px-8 py-6 backdrop-blur-md animate-[fadeUp_0.6s_ease_both]">
       <div
         aria-hidden="true"
         className="h-12 w-20 shrink-0"
