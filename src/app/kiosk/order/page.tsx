@@ -54,9 +54,9 @@ const UserTypePage = () => {
   };
 
   return (
-    <>
+    <div className="relative flex h-full flex-col">
       {/* Back */}
-      <div className="mt-8 mx-15 flex w-full justify-start">
+      <div className="absolute top-8 left-15 z-20 flex justify-start">
         <button
           onClick={() => navigate("/kiosk/action")}
           className="flex items-center gap-2 rounded-xl border border-white/30 bg-black/50 px-5 py-2.5 font-serif text-sm font-semibold uppercase tracking-[0.15em] text-white backdrop-blur-sm  hover:bg-white/35 active:scale-95 animate-[fadeUp_0.7s_ease_0.2s_both]"
@@ -107,7 +107,7 @@ const UserTypePage = () => {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-    </>
+    </div>
   );
 };
 
