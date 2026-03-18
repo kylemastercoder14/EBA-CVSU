@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 type PaymentSortKey = "orderNum" | "name" | "amount" | "reference";
 type SortDirection = "asc" | "desc";
+type PaymentListItem = Payment & { orderId: string };
 
 const Page = () => {
   const queryClient = useQueryClient();
@@ -31,8 +32,43 @@ const Page = () => {
   const { data, isLoading, isError } = useQuery(orpc.payment.list.queryOptions());
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
 
+  const updatePaymentStatusOptimistically = async (
+    paymentId: string,
+    status: Payment["status"],
+  ) => {
+    await queryClient.cancelQueries({
+      queryKey: orpc.payment.list.queryKey(),
+    });
+
+    const previousPayments = queryClient.getQueryData<{ payments: PaymentListItem[] }>(
+      orpc.payment.list.queryKey(),
+    );
+
+    queryClient.setQueryData<{ payments: PaymentListItem[] }>(
+      orpc.payment.list.queryKey(),
+      (current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          payments: current.payments.map((payment) =>
+            payment.id === paymentId ? { ...payment, status } : payment,
+          ),
+        };
+      },
+    );
+
+    setIsVerifyDialogOpen(false);
+    setIsDeclineDialogOpen(false);
+    setSelectedPayment(null);
+
+    return { previousPayments };
+  };
+
   const verifyPaymentMutation = useMutation(
     orpc.payment.verify.mutationOptions({
+      onMutate: ({ paymentId }) =>
+        updatePaymentStatusOptimistically(paymentId, "Verified"),
       onSuccess: (result) => {
         const sms = result.smsNotification;
         if (sms?.attempted && sms.sent) {
@@ -44,26 +80,36 @@ const Page = () => {
         } else {
           toast.success(result.message || "Payment verified successfully");
         }
-        queryClient.invalidateQueries({
-          queryKey: orpc.payment.list.queryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listMonitoring.queryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listRelease.queryKey(),
-        });
-        setIsVerifyDialogOpen(false);
-        setSelectedPayment(null);
       },
-      onError: (error) => {
+      onError: (error, _variables, context) => {
+        if (context?.previousPayments) {
+          queryClient.setQueryData<{ payments: PaymentListItem[] }>(
+            orpc.payment.list.queryKey(),
+            context.previousPayments,
+          );
+        }
         toast.error(error.message || "Failed to verify payment");
+      },
+      onSettled: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: orpc.payment.list.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listMonitoring.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listRelease.queryKey(),
+          }),
+        ]);
       },
     }),
   );
 
   const declinePaymentMutation = useMutation(
     orpc.payment.decline.mutationOptions({
+      onMutate: ({ paymentId }) =>
+        updatePaymentStatusOptimistically(paymentId, "Declined"),
       onSuccess: (result) => {
         const sms = result.smsNotification;
         if (sms?.attempted && sms.sent) {
@@ -75,17 +121,28 @@ const Page = () => {
         } else {
           toast.success(result.message || "Payment declined successfully");
         }
-        queryClient.invalidateQueries({
-          queryKey: orpc.payment.list.queryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listMonitoring.queryKey(),
-        });
-        setIsDeclineDialogOpen(false);
-        setSelectedPayment(null);
       },
-      onError: (error) => {
+      onError: (error, _variables, context) => {
+        if (context?.previousPayments) {
+          queryClient.setQueryData<{ payments: PaymentListItem[] }>(
+            orpc.payment.list.queryKey(),
+            context.previousPayments,
+          );
+        }
         toast.error(error.message || "Failed to decline payment");
+      },
+      onSettled: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: orpc.payment.list.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listMonitoring.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listRelease.queryKey(),
+          }),
+        ]);
       },
     }),
   );

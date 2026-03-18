@@ -104,6 +104,31 @@ const Page = () => {
 
   const markStockAvailableMutation = useMutation(
     orpc.order.markPreOrderStockAvailable.mutationOptions({
+      onMutate: async ({ orderId }) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.order.listPreOrders.queryKey(),
+        });
+
+        const previousPreOrders = queryClient.getQueryData<{ orders: PreOrderRow[] }>(
+          orpc.order.listPreOrders.queryKey(),
+        );
+
+        queryClient.setQueryData<{ orders: PreOrderRow[] }>(
+          orpc.order.listPreOrders.queryKey(),
+          (current) => {
+            if (!current) return current;
+
+            return {
+              ...current,
+              orders: current.orders.filter((order) => order.id !== orderId),
+            };
+          },
+        );
+
+        setSelectedOrder(null);
+
+        return { previousPreOrders };
+      },
       onSuccess: (result) => {
         const sms = result.smsNotification;
         if (sms?.attempted && sms.sent) {
@@ -115,19 +140,31 @@ const Page = () => {
         } else {
           toast.success(result.message);
         }
-        setSelectedOrder(null);
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listPreOrders.queryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listMonitoring.queryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: orpc.order.listRelease.queryKey(),
-        });
       },
-      onError: (error) => {
+      onError: (error, _variables, context) => {
+        if (context?.previousPreOrders) {
+          queryClient.setQueryData(
+            orpc.order.listPreOrders.queryKey(),
+            context.previousPreOrders,
+          );
+        }
+
+        setSelectedOrder(null);
         toast.error(error.message || "Unable to mark stock as available.");
+      },
+      onSettled: async () => {
+        await Promise.all([
+          queryClient.refetchQueries({
+            queryKey: orpc.order.listPreOrders.queryKey(),
+            type: "active",
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listMonitoring.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: orpc.order.listRelease.queryKey(),
+          }),
+        ]);
       },
     }),
   );
