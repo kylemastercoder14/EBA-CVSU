@@ -1,5 +1,6 @@
 import { StockStatus } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { buildSystemLogData } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   listStocksInputSchema,
@@ -100,30 +101,6 @@ export const updateStock = base
 
     const status = getStockStatus(input.minStock, input.currentStock);
 
-    const lastLog = await prisma.systemLog.findFirst({
-      where: {
-        id: {
-          startsWith: "LOG",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextLogNumber = 1;
-    if (lastLog) {
-      const currentNumber = parseInt(lastLog.id.replace("LOG", ""));
-      nextLogNumber = currentNumber + 1;
-    }
-    const logId = `LOG${nextLogNumber.toString().padStart(3, "0")}`;
-
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:T]/g, "")
-      .slice(0, 14);
-    const logCode = `${logId}-${timestamp}`;
-
     const updatedStock = await prisma.$transaction(async (tx) => {
       const stock = await tx.stockItem.update({
         where: { id: input.id },
@@ -150,9 +127,7 @@ export const updateStock = base
       });
 
       await tx.systemLog.create({
-        data: {
-          id: logId,
-          logCode,
+        data: buildSystemLogData({
           type: "SYSTEM",
           category: "STOCK_UPDATED",
           description: `Stock updated for "${stock.product.name}"${stock.productVariant?.size ? ` (${stock.productVariant.size})` : ""} (current: ${stock.currentStock}, min: ${stock.minStock}, max: ${stock.maxStock}, status: ${stock.status}).`,
@@ -160,7 +135,7 @@ export const updateStock = base
           actorName: "System",
           productId: stock.productId,
           stockItemId: stock.id,
-        },
+        }),
       });
 
       return stock;
@@ -222,23 +197,6 @@ export const updateStocksByProduct = base
       throw errors.BAD_REQUEST();
     }
 
-    const lastLog = await prisma.systemLog.findFirst({
-      where: {
-        id: {
-          startsWith: "LOG",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextLogNumber = 1;
-    if (lastLog) {
-      const currentNumber = parseInt(lastLog.id.replace("LOG", ""));
-      nextLogNumber = currentNumber + 1;
-    }
-
     const updatedStocks = await prisma.$transaction(async (tx) => {
       const rows = [] as Array<{
         id: string;
@@ -278,18 +236,8 @@ export const updateStocksByProduct = base
           },
         });
 
-        const logId = `LOG${nextLogNumber.toString().padStart(3, "0")}`;
-        nextLogNumber += 1;
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[-:T]/g, "")
-          .slice(0, 14);
-        const logCode = `${logId}-${timestamp}`;
-
         await tx.systemLog.create({
-          data: {
-            id: logId,
-            logCode,
+          data: buildSystemLogData({
             type: "SYSTEM",
             category: "STOCK_UPDATED",
             description: `Stock updated for "${updated.product.name}"${updated.productVariant?.size ? ` (${updated.productVariant.size})` : ""} (current: ${updated.currentStock}, min: ${updated.minStock}, max: ${updated.maxStock}, status: ${updated.status}).`,
@@ -297,7 +245,7 @@ export const updateStocksByProduct = base
             actorName: "System",
             productId: updated.productId,
             stockItemId: updated.id,
-          },
+          }),
         });
 
         rows.push({

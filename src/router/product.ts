@@ -1,5 +1,6 @@
 import { isLocalProductUploadPath, saveFileLocally } from "@/lib/file-upload";
 import { prisma } from "@/lib/prisma";
+import { buildSystemLogData } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
   deleteProductInputSchema,
@@ -141,32 +142,6 @@ export const createProduct = base
 
     const nextStockItemNumber = await getNextStockItemNumber();
 
-    // Generate next SystemLog ID
-    const lastLog = await prisma.systemLog.findFirst({
-      where: {
-        id: {
-          startsWith: "LOG",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextLogNumber = 1;
-    if (lastLog) {
-      const currentNumber = parseInt(lastLog.id.replace("LOG", ""));
-      nextLogNumber = currentNumber + 1;
-    }
-    const logId = `LOG${nextLogNumber.toString().padStart(3, "0")}`;
-
-    // Generate unique log code (e.g., LOG001-20260216-143022)
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:T]/g, "")
-      .slice(0, 14);
-    const logCode = `${logId}-${timestamp}`;
-
     // Create product with variants, stock item, and log in a transaction
     const product = await prisma.$transaction(async (tx) => {
       const variantCreateData = normalizedVariants.map((variant, index) => ({
@@ -228,9 +203,7 @@ export const createProduct = base
 
       // Create system log for product creation
       await tx.systemLog.create({
-        data: {
-          id: logId,
-          logCode: logCode,
+        data: buildSystemLogData({
           type: "SYSTEM",
           category: "STOCK_UPDATED",
           description: `Product "${input.name}" created with ${input.variants.length} variant(s). ${stockItems.length} stock row(s) initialized with 0 stock.${imageUrl ? " Image uploaded." : ""}`,
@@ -238,7 +211,7 @@ export const createProduct = base
           actorName: "System",
           productId: newProduct.id,
           stockItemId: stockItems[0]?.id,
-        },
+        }),
       });
 
       return newProduct;
@@ -333,30 +306,6 @@ export const updateProduct = base
       nextVariantNumber = currentNumber + 1;
     }
 
-    // Generate next SystemLog ID
-    const lastLog = await prisma.systemLog.findFirst({
-      where: {
-        id: {
-          startsWith: "LOG",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextLogNumber = 1;
-    if (lastLog) {
-      const currentNumber = parseInt(lastLog.id.replace("LOG", ""));
-      nextLogNumber = currentNumber + 1;
-    }
-    const logId = `LOG${nextLogNumber.toString().padStart(3, "0")}`;
-
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:T]/g, "")
-      .slice(0, 14);
-    const logCode = `${logId}-${timestamp}`;
     const nextStockItemNumber = await getNextStockItemNumber();
 
     const updatedProduct = await prisma.$transaction(async (tx) => {
@@ -439,16 +388,14 @@ export const updateProduct = base
       });
 
       await tx.systemLog.create({
-        data: {
-          id: logId,
-          logCode,
+        data: buildSystemLogData({
           type: "SYSTEM",
           category: "STOCK_UPDATED",
           description: `Product "${existingProduct.name}" updated to "${product.name}" with ${product.variants.length} variant(s). ${stockItems.length} stock row(s) synchronized.`,
           status: "SUCCESS",
           actorName: "System",
           productId: product.id,
-        },
+        }),
       });
 
       return product;
@@ -519,31 +466,6 @@ export const deleteProduct = base
       throw errors.NOT_FOUND();
     }
 
-    // Generate next SystemLog ID
-    const lastLog = await prisma.systemLog.findFirst({
-      where: {
-        id: {
-          startsWith: "LOG",
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextLogNumber = 1;
-    if (lastLog) {
-      const currentNumber = parseInt(lastLog.id.replace("LOG", ""));
-      nextLogNumber = currentNumber + 1;
-    }
-    const logId = `LOG${nextLogNumber.toString().padStart(3, "0")}`;
-
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[-:T]/g, "")
-      .slice(0, 14);
-    const logCode = `${logId}-${timestamp}`;
-
     const hasOrderHistory = existingProduct._count.orderItems > 0;
 
     try {
@@ -558,16 +480,14 @@ export const deleteProduct = base
           });
 
           await tx.systemLog.create({
-            data: {
-              id: logId,
-              logCode,
+            data: buildSystemLogData({
               type: "SYSTEM",
               category: "STOCK_UPDATED",
               description: `Product "${existingProduct.name}" is linked to existing orders and was archived (set inactive and not visitor orderable).`,
               status: "SUCCESS",
               actorName: "System",
               productId: input.id,
-            },
+            }),
           });
         });
 
@@ -585,15 +505,13 @@ export const deleteProduct = base
         });
 
         await tx.systemLog.create({
-          data: {
-            id: logId,
-            logCode,
+          data: buildSystemLogData({
             type: "SYSTEM",
             category: "STOCK_UPDATED",
             description: `Product "${existingProduct.name}" was deleted.`,
             status: "SUCCESS",
             actorName: "System",
-          },
+          }),
         });
       });
 

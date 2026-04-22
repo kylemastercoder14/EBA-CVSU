@@ -163,25 +163,29 @@ export const registerStudent = base
     const hashedPassword = hashPassword(input.password);
     const derivedName = input.cvsuEmail.split("@")[0].replace(/[._-]/g, " ");
 
-    const student = await prisma.user.create({
-      data: {
-        id: userId,
-        type: "STUDENT",
-        fullName: input.fullName?.trim() || derivedName,
-        mobileNumber: input.mobileNumber.trim(),
-        studentNumber: null,
-        cvsuEmail: input.cvsuEmail.trim().toLowerCase(),
-        password: hashedPassword,
-      },
-    });
+    const student = await prisma.$transaction(async (tx) => {
+      const createdStudent = await tx.user.create({
+        data: {
+          id: userId,
+          type: "STUDENT",
+          fullName: input.fullName?.trim() || derivedName,
+          mobileNumber: input.mobileNumber.trim(),
+          studentNumber: null,
+          cvsuEmail: input.cvsuEmail.trim().toLowerCase(),
+          password: hashedPassword,
+        },
+      });
 
-    await createSystemLog(prisma, {
-      type: "ACTIVITY",
-      category: "PAYMENT_PENDING",
-      description: `Student account registered for "${student.fullName}" (${student.cvsuEmail ?? "no-email"}).`,
-      status: "SUCCESS",
-      actorName: student.fullName,
-      actorUserId: student.id,
+      await createSystemLog(tx, {
+        type: "ACTIVITY",
+        category: "PAYMENT_PENDING",
+        description: `Student account registered for "${createdStudent.fullName}" (${createdStudent.cvsuEmail ?? "no-email"}).`,
+        status: "SUCCESS",
+        actorName: createdStudent.fullName,
+        actorUserId: createdStudent.id,
+      });
+
+      return createdStudent;
     });
 
     return {
