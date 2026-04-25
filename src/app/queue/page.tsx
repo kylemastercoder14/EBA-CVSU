@@ -44,7 +44,8 @@ const STATUS_ORDER: QueueStatus[] = [
   "Released",
 ];
 const MAX_ORDERS_PER_STATUS = 5;
-const QUEUE_STATUS_ROTATE_INTERVAL_MS = 4000;
+const QUEUE_REFRESH_INTERVAL_MS = 2000;
+const QUEUE_STATUS_ROTATE_INTERVAL_MS = 2000;
 const QUEUE_VOICE_STORAGE_KEY = "queue-voice-enabled";
 const READY_ANNOUNCEMENT_REPEAT_COUNT = 3;
 const READY_ANNOUNCE_API_PATH = "/api/queue/announce";
@@ -419,7 +420,7 @@ const QueueDisplayPage = () => {
 
   const query = useQuery({
     ...orpc.order.listQueue.queryOptions(),
-    refetchInterval: 5000,
+    refetchInterval: QUEUE_REFRESH_INTERVAL_MS,
     refetchOnWindowFocus: false,
   });
 
