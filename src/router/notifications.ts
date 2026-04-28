@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { createNotificationId } from "@/lib/notification-id";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
@@ -98,12 +99,9 @@ export const createNotification = base
       throw errors.NOT_FOUND();
     }
 
-    const notificationCount = await prisma.notification.count();
-    const notificationId = `NOTIF${(notificationCount + 1).toString().padStart(3, "0")}`;
-
     const notification = await prisma.notification.create({
       data: {
-        id: notificationId,
+        id: createNotificationId(),
         staffId: staff.id,
         title: input.title.trim(),
         message: input.message.trim(),

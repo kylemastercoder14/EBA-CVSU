@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendEbaSmsQueued, type EbaSmsSendResult } from "@/lib/eba-sms";
+import { createNotificationId } from "@/lib/notification-id";
 import { createSystemLog } from "@/lib/system-log";
 import { base } from "@/middlewares/base";
 import {
@@ -116,28 +117,9 @@ const createStaffNotifications = async (
   });
   if (activeStaff.length === 0) return;
 
-  const lastNotification = await client.notification.findFirst({
-    where: {
-      id: { startsWith: "NOTIF" },
-    },
-    orderBy: { id: "desc" },
-    select: { id: true },
-  });
-
-  let nextNumber = 1;
-  if (lastNotification?.id) {
-    const parsed = Number.parseInt(
-      lastNotification.id.replace("NOTIF", ""),
-      10,
-    );
-    if (!Number.isNaN(parsed)) {
-      nextNumber = parsed + 1;
-    }
-  }
-
   await client.notification.createMany({
-    data: activeStaff.map((staff, index) => ({
-      id: `NOTIF${(nextNumber + index).toString().padStart(3, "0")}`,
+    data: activeStaff.map((staff) => ({
+      id: createNotificationId(),
       staffId: staff.id,
       title: input.title,
       message: input.message,
